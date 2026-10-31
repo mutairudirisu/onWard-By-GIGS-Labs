@@ -1,20 +1,31 @@
+"use client";
+
 import Link from "next/link";
+import { useMemo } from "react";
 import { HeatLegend, HeatMap } from "@/components/heat-map";
 import { PhoneShell } from "@/components/phone-shell";
 import { ShareButton } from "@/components/share-button";
 import { BackLink } from "@/components/ui";
-import { activeDaysThisYear, streak } from "@/lib/data";
+import { useAuth } from "@/components/auth";
+import { useActivity, bestWeekday, heatmapFrom } from "@/lib/activity";
+import { formatMedium } from "@/lib/dates";
 import { CalendarHeart, Flame, Medal, Sprout } from "lucide-react";
 
 const MILESTONES = [
-  { days: 7, label: "First week", done: true },
-  { days: 30, label: "One month", done: true },
-  { days: streak.current, label: "Current streak", done: true, active: true },
-  { days: 50, label: "Fifty strong", done: false },
-  { days: 100, label: "Century", done: false },
+  { days: 7, label: "First week" },
+  { days: 30, label: "One month" },
+  { days: 50, label: "Fifty strong" },
+  { days: 100, label: "Century" },
 ];
 
 export default function StreaksPage() {
+  const { user } = useAuth();
+  const { days, streak, loaded } = useActivity();
+  const grid = useMemo(() => heatmapFrom(days), [days]);
+  const joined = user?.created_at
+    ? formatMedium(user.created_at.slice(0, 10))
+    : "—";
+
   const shareText = `I'm on a ${streak.current}-day onWard streak — ${streak.daysUsing} days of showing up and turning small steps into progress.`;
 
   return (
@@ -48,8 +59,8 @@ export default function StreaksPage() {
       <div className="mb-3 grid grid-cols-3 gap-2">
         {[
           { icon: Sprout, value: `${streak.daysUsing}`, label: "days on onWard" },
-          { icon: CalendarHeart, value: `${activeDaysThisYear}`, label: "active days" },
-          { icon: Medal, value: streak.bestDay, label: "best day" },
+          { icon: CalendarHeart, value: `${days.length}`, label: "active days" },
+          { icon: Medal, value: bestWeekday(days), label: "best day" },
         ].map((s) => (
           <div key={s.label} className="card px-3 py-3 text-center">
             <s.icon className="mx-auto h-4 w-4 text-inksoft" strokeWidth={2} />
@@ -64,11 +75,15 @@ export default function StreaksPage() {
       <section className="card mb-3 px-4 py-3.5">
         <div className="mb-2.5 flex items-center justify-between">
           <h2 className="text-[12px] font-bold tracking-tight text-ink">Last 6 months</h2>
-          <span className="text-[9px] text-muted">since {streak.joined}</span>
+          <span className="text-[9px] text-muted">since {joined}</span>
         </div>
-        <HeatMap cell={12} />
+        <HeatMap cell={12} cells={grid} />
         <div className="mt-2.5 flex items-center justify-between">
-          <p className="text-[9px] text-muted">Every square is a day you showed up.</p>
+          <p className="text-[9px] text-muted">
+            {loaded && streak.daysUsing === 0
+              ? "Your first completed task, note or onWard fills a square."
+              : "Every square is a day you showed up."}
+          </p>
           <HeatLegend />
         </div>
       </section>
@@ -76,32 +91,42 @@ export default function StreaksPage() {
       <section className="card px-4 py-3.5">
         <h2 className="mb-3 text-[12px] font-bold tracking-tight text-ink">Milestones</h2>
         <div className="space-y-3">
-          {MILESTONES.map((m) => (
-            <div key={m.label} className="flex items-center gap-3">
-              <span
-                className={
-                  m.active
-                    ? "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-lime text-[10px] font-bold text-ink"
-                    : m.done
+          {MILESTONES.map((m) => {
+            const done = streak.longest >= m.days;
+            return (
+              <div key={m.label} className="flex items-center gap-3">
+                <span
+                  className={
+                    done
                       ? "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-lime-soft text-[10px] font-bold text-ink"
                       : "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-dash text-[10px] font-semibold text-faint"
-                }
-              >
-                {m.done ? "✓" : m.days}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[11.5px] font-semibold text-ink">{m.label}</span>
-                <span className="block text-[9px] text-muted">
-                  {m.done ? `Reached at ${m.days} days` : `${m.days - streak.current} days to go`}
+                  }
+                >
+                  {done ? "✓" : m.days}
                 </span>
-              </span>
-              {m.active ? (
-                <span className="rounded-full bg-lime px-2 py-0.5 text-[8px] font-bold uppercase tracking-wide text-ink">
-                  Now
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[11.5px] font-semibold text-ink">{m.label}</span>
+                  <span className="block text-[9px] text-muted">
+                    {done ? `Reached at ${m.days} days` : `${Math.max(0, m.days - streak.longest)} days to go`}
+                  </span>
                 </span>
-              ) : null}
-            </div>
-          ))}
+              </div>
+            );
+          })}
+          <div className="flex items-center gap-3">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-lime text-[10px] font-bold text-ink">
+              {streak.current}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[11.5px] font-semibold text-ink">Current streak</span>
+              <span className="block text-[9px] text-muted">
+                {streak.current > 0 ? "Keep it warm today." : "Complete one thing to start today."}
+              </span>
+            </span>
+            <span className="rounded-full bg-lime px-2 py-0.5 text-[8px] font-bold uppercase tracking-wide text-ink">
+              Now
+            </span>
+          </div>
         </div>
       </section>
 

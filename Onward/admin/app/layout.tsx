@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { AdminShell } from "@/components/admin-shell";
+import { AdminGateway } from "@/components/admin-gateway";
 
 export const metadata: Metadata = {
   title: "onWard Admin",
@@ -21,7 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AdminShell>{children}</AdminShell>
+        <AdminGateway>{children}</AdminGateway>
       </body>
     </html>
   );

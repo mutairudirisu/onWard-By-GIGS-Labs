@@ -11,7 +11,7 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import { fetchProfile, initialsFor, saveProfile, type Profile } from "@/lib/db";
+import { fetchProfile, initialsFor, redeemReferral, saveProfile, type Profile } from "@/lib/db";
 import { Sprout } from "lucide-react";
 
 export type AuthResult = { error?: string; needsConfirmation?: boolean };
@@ -26,7 +26,9 @@ type AuthValue = {
   sendPasswordReset: (email: string) => Promise<AuthResult>;
   changeEmail: (email: string) => Promise<AuthResult>;
   signOut: () => Promise<void>;
-  updateProfile: (patch: Partial<Omit<Profile, "id" | "plan">>) => Promise<AuthResult>;
+  updateProfile: (
+    patch: Partial<Pick<Profile, "displayName" | "initials" | "role" | "location" | "bio" | "avatarUrl">>,
+  ) => Promise<AuthResult>;
 };
 
 const AuthCtx = createContext<AuthValue | null>(null);
@@ -62,6 +64,9 @@ function fallbackProfile(user: User): Profile {
     bio: "",
     avatarUrl: meta.avatar_url ?? null,
     plan: "free",
+    referralCode: "",
+    referralCredits: 0,
+    proUntil: null,
   };
 }
 
@@ -113,6 +118,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       .catch(() => {
         /* the fallback profile keeps the shell usable until the row is readable */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  // A friend arriving from a referral link redeems the code once a session exists,
+  // including after they confirm their email on another device.
+  useEffect(() => {
+    if (!userId) return;
+    let code: string | null = null;
+    try {
+      code = localStorage.getItem("onward.ref");
+    } catch {
+      /* storage unavailable */
+    }
+    if (!code) return;
+    let cancelled = false;
+    redeemReferral(code)
+      .then(async (ok) => {
+        if (!ok || cancelled) return;
+        const next = await fetchProfile(userId).catch(() => null);
+        if (next && !cancelled) setProfile(next);
+      })
+      .finally(() => {
+        try {
+          localStorage.removeItem("onward.ref");
+        } catch {
+          /* storage unavailable */
+        }
       });
     return () => {
       cancelled = true;

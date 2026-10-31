@@ -5,11 +5,13 @@ import { PortfolioDownloadButton } from "@/components/portfolio-download";
 import { BackButton, Tag } from "@/components/ui";
 import { Wordmark } from "@/components/wordmark";
 import { useCurrentUser } from "@/components/auth";
-import { appraisal, portfolioWins, skillTests, streak } from "@/lib/data";
+import { useActivity } from "@/lib/activity";
+import { appraisal, portfolioWins } from "@/lib/data";
 import { CheckCircle2, Mail, Sprout } from "lucide-react";
 
 export default function EmployerPortfolioPage() {
   const user = useCurrentUser();
+  const { streak } = useActivity();
   return (
     <PhoneShell>
       <div className="mb-5 flex items-center justify-between">
@@ -120,16 +122,16 @@ export default function EmployerPortfolioPage() {
       <h2 className="mb-2.5 text-[13px] font-bold tracking-tight text-ink">
         Digital skills. In context.
       </h2>
-      <div className="card mb-5 divide-y divide-line px-4">
-        {skillTests.map((test) => (
-          <div key={test.name} className="flex items-center justify-between py-3">
-            <span>
-              <span className="block text-[11px] font-semibold text-ink">{test.name}</span>
-              <span className="block text-[9px] text-muted">{test.meta}</span>
-            </span>
-            <span className="text-[13px] font-bold tracking-tight text-ink">{test.score}</span>
-          </div>
-        ))}
+      <div className="card mb-5 px-4 py-3.5">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[11px] font-semibold text-ink">Skills assessments</p>
+          <span className="rounded-full bg-cream px-2 py-0.5 text-[8px] font-bold uppercase tracking-[0.12em] text-muted">
+            Coming soon
+          </span>
+        </div>
+        <p className="mt-1 text-[9.5px] leading-[1.55] text-muted">
+          Short tests will score your digital skills and add verified results here.
+        </p>
       </div>
 
       <h2 className="mb-1.5 text-[13px] font-bold tracking-tight text-ink">

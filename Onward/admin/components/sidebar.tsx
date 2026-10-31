@@ -6,13 +6,14 @@ import {
   BarChart3,
   LayoutDashboard,
   LifeBuoy,
+  LogOut,
   Megaphone,
   ScrollText,
   Settings,
   Users,
 } from "lucide-react";
 import { Wordmark } from "@/components/wordmark";
-import { admin } from "@/lib/data";
+import { useAdminSession } from "@/lib/admin-session";
 
 const PRIMARY = [
   { href: "/", label: "Overview", Icon: LayoutDashboard },
@@ -67,6 +68,7 @@ function NavItem({
 
 export function Sidebar({ open }: { open?: boolean }) {
   const pathname = usePathname();
+  const session = useAdminSession();
   return (
     <aside
       className={`sticky top-0 z-40 flex h-dvh w-[248px] shrink-0 flex-col border-r border-line bg-paper px-3 py-5 ${
@@ -110,16 +112,25 @@ export function Sidebar({ open }: { open?: boolean }) {
 
       <div className="flex items-center gap-2.5 rounded-xl border border-line px-2 py-2">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-[10px] font-bold text-paper">
-          {admin.initials}
+          {session?.initials ?? "OW"}
         </span>
-        <span className="min-w-0">
+        <span className="min-w-0 flex-1">
           <span className="block truncate text-[12px] font-bold text-ink">
-            {admin.name}
+            {session?.name ?? "Admin"}
           </span>
           <span className="block truncate text-[10px] text-muted">
-            {admin.role}
+            {session?.email ?? "Signed in"}
           </span>
         </span>
+        <button
+          type="button"
+          onClick={() => session?.signOut()}
+          aria-label="Sign out"
+          title="Sign out"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-cream hover:text-ink"
+        >
+          <LogOut className="h-3.5 w-3.5" strokeWidth={2.1} />
+        </button>
       </div>
     </aside>
   );

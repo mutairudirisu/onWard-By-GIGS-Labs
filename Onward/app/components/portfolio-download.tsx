@@ -3,11 +3,10 @@
 import { Button } from "@/components/ui";
 import { useCurrentUser, type CurrentUser } from "@/components/auth";
 import { useStore } from "@/components/store";
+import { useActivity } from "@/lib/activity";
 import {
   appraisal,
   portfolioWins,
-  skillTests,
-  streak,
   type OnWard,
 } from "@/lib/data";
 import { Download } from "lucide-react";
@@ -123,7 +122,11 @@ function wrap(text: string, width: number): string[] {
   return out;
 }
 
-function portfolioLines(user: CurrentUser, onWards: OnWard[]): Line[] {
+function portfolioLines(
+  user: CurrentUser,
+  onWards: OnWard[],
+  streak: { current: number; daysUsing: number },
+): Line[] {
   const L: Line[] = [];
   L.push({ text: "onWard - Work portfolio", size: 11, bold: true });
   L.push({ text: user.name, size: 24, bold: true, gapBefore: 8 });
@@ -159,11 +162,12 @@ function portfolioLines(user: CurrentUser, onWards: OnWard[]): Line[] {
     L.push({ text: `Skills: ${win.skills.join(", ")}`, size: 10 });
   }
 
-  L.push({ text: "Digital skills test results", size: 16, bold: true, gapBefore: 22 });
-  for (const test of skillTests) {
-    L.push({ text: `${test.name} - ${test.score}`, size: 11, bold: true, gapBefore: 8 });
-    L.push({ text: test.meta, size: 10 });
-  }
+  L.push({ text: "Digital skills", size: 16, bold: true, gapBefore: 22 });
+  L.push({
+    text: "Skills assessments are coming soon. Verified results will appear here.",
+    size: 11,
+    gapBefore: 8,
+  });
 
   L.push({ text: "Recent onWards", size: 16, bold: true, gapBefore: 22 });
   if (onWards.length === 0) L.push({ text: "No onWards logged yet.", size: 11, gapBefore: 8 });
@@ -192,6 +196,7 @@ export function PortfolioDownloadButton({
 }) {
   const user = useCurrentUser();
   const { onWards } = useStore();
+  const { streak } = useActivity();
 
   return (
     <Button
@@ -200,7 +205,7 @@ export function PortfolioDownloadButton({
       iconLeft={<Download className="h-4 w-4" />}
       onClick={() =>
         download(
-          buildPdf(portfolioLines(user, onWards.filter((w) => w.inPortfolio))),
+          buildPdf(portfolioLines(user, onWards.filter((w) => w.inPortfolio), streak)),
           "onWard-portfolio.pdf",
         )
       }

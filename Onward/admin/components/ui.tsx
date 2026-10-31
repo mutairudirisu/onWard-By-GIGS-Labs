@@ -1,4 +1,4 @@
-import type { UserStatus } from "@/lib/data";
+import type { AdminUserStatus } from "@/lib/admin-api";
 
 export function Avatar({
   name,
@@ -23,13 +23,13 @@ export function Avatar({
   );
 }
 
-const STATUS: Record<UserStatus, { label: string; cls: string }> = {
+const STATUS: Record<AdminUserStatus, { label: string; cls: string }> = {
   active: { label: "Active", cls: "bg-lime-soft text-good" },
-  invited: { label: "Invited", cls: "bg-[#E7E2F5] text-[#6D5AA8]" },
-  suspended: { label: "Suspended", cls: "bg-[#F6E0DC] text-bad" },
+  idle: { label: "Idle", cls: "bg-[#EFEFE6] text-inksoft" },
+  invited: { label: "Never signed in", cls: "bg-[#E7E2F5] text-[#6D5AA8]" },
 };
 
-export function StatusBadge({ status }: { status: UserStatus }) {
+export function StatusBadge({ status }: { status: AdminUserStatus }) {
   const s = STATUS[status];
   return (
     <span className={`badge ${s.cls}`}>

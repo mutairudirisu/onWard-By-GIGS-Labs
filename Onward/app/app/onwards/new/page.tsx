@@ -4,11 +4,13 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PhoneShell } from "@/components/phone-shell";
+import { DictateButton } from "@/components/dictate-button";
 import { BackLink, Button, Field, TextArea, TextInput, Toggle } from "@/components/ui";
 import { ProBadge, UpgradeModal } from "@/components/pro";
 import { useStore } from "@/components/store";
 import { BASE_DATE, type Evidence } from "@/lib/data";
 import { uuid } from "@/lib/db";
+import { appendDictation } from "@/lib/dictation";
 import {
   CalendarDays,
   File as FileIcon,
@@ -148,7 +150,17 @@ export default function LogOnWardPage() {
 
       <div className="space-y-4">
         <Field label="Give your work a title">
-          <TextInput value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What did you accomplish?" />
+          <TextInput
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="What did you accomplish?"
+            trailing={
+              <DictateButton
+                label="Dictate the title"
+                onText={(text) => setTitle((value) => appendDictation(value, text))}
+              />
+            }
+          />
         </Field>
 
         <div className="grid grid-cols-2 gap-3">
@@ -169,14 +181,30 @@ export default function LogOnWardPage() {
           </Field>
         </div>
 
-        <Field label="What did you do?">
+        <div>
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <span className="text-[11px] font-semibold text-inksoft">What did you do?</span>
+            <DictateButton
+              label="Dictate what you did"
+              className="-my-1 -mr-1"
+              onText={(text) => setBody((value) => appendDictation(value, text))}
+            />
+          </div>
           <TextArea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Describe the work behind the win." />
-        </Field>
+        </div>
 
         <div>
-          <Field label="What changed because of your work?">
-            <TextArea value={impact} onChange={(e) => setImpact(e.target.value)} placeholder="The specific result." />
-          </Field>
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <span className="text-[11px] font-semibold text-inksoft">
+              What changed because of your work?
+            </span>
+            <DictateButton
+              label="Dictate the result"
+              className="-my-1 -mr-1"
+              onText={(text) => setImpact((value) => appendDictation(value, text))}
+            />
+          </div>
+          <TextArea value={impact} onChange={(e) => setImpact(e.target.value)} placeholder="The specific result." />
           <p className="mt-1.5 text-[9px] text-muted">
             Specific results turn a busy day into credible evidence.
           </p>

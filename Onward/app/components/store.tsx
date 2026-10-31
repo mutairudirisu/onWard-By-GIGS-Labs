@@ -24,6 +24,7 @@ import { formatMedium, wardDateLabel } from "@/lib/dates";
 import {
   deleteRow,
   fetchWorkspace,
+  recordActivity,
   uuid,
   writeNote,
   writeOnWard,
@@ -211,12 +212,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const toggleTask = useCallback(
-    (id: string) =>
+    (id: string) => {
+      const before = stateRef.current.tasks.find((t) => t.id === id);
       commit((s) => ({
         ...s,
         tasks: s.tasks.map((t) => (t.id === id ? { ...t, done: !t.done } : t)),
-      })),
-    [commit],
+      }));
+      if (userId && before && !before.done) {
+        void recordActivity("task").catch(() => {
+          /* activity is a nice-to-have; never block the task write */
+        });
+      }
+    },
+    [commit, userId],
   );
 
   const addTask = useCallback(
@@ -318,9 +326,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           ...s.notes,
         ],
       }));
+      if (userId) {
+        void recordActivity("note").catch(() => {
+          /* activity is a nice-to-have; never block the note write */
+        });
+      }
       return id;
     },
-    [commit],
+    [commit, userId],
   );
 
   const updateNote = useCallback(
@@ -375,9 +388,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           ]),
         ],
       }));
+      if (userId) {
+        void recordActivity("ward", date).catch(() => {
+          /* activity is a nice-to-have; never block the ward write */
+        });
+      }
       return id;
     },
-    [commit],
+    [commit, userId],
   );
 
   const togglePortfolio = useCallback(

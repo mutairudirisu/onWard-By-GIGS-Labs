@@ -1,4 +1,4 @@
-import { heatmap } from "@/lib/data";
+import type { HeatCell } from "@/lib/data";
 
 const LEVEL: Record<number, string> = {
   0: "bg-[#EDEEE8]",
@@ -8,16 +8,16 @@ const LEVEL: Record<number, string> = {
   4: "bg-lime",
 };
 
-export function HeatMap({ cell = 11 }: { cell?: number }) {
+export function HeatMap({ cell = 11, cells }: { cell?: number; cells: HeatCell[][] }) {
   return (
-    <div className="overflow-x-auto">
-      <div className="flex gap-[3px]">
-        {heatmap.map((col, w) => (
+    <div className="overflow-x-auto scrollbar-none">
+      <div className="flex w-max gap-[3px]">
+        {cells.map((col, w) => (
           <div key={w} className="flex flex-col gap-[3px]">
             {col.map((c) => (
               <span
                 key={c.date}
-                title={`${c.level} onWard${c.level === 1 ? "" : "s"} · ${c.date}`}
+                title={`${c.level} step${c.level === 1 ? "" : "s"} · ${c.date}`}
                 className={`rounded-[3px] ${LEVEL[c.level]}`}
                 style={{ width: cell, height: cell }}
               />

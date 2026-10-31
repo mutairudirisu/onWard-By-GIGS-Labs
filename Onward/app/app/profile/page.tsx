@@ -4,17 +4,20 @@ import Link from "next/link";
 import { HeatLegend, HeatMap } from "@/components/heat-map";
 import { InstallButton } from "@/components/install-button";
 import { PhoneShell } from "@/components/phone-shell";
+import { ReferralCard } from "@/components/referral-card";
 import { ShareButton } from "@/components/share-button";
 import { Button, PageHeader, Tag } from "@/components/ui";
 import { ProBadge } from "@/components/pro";
 import { useStore } from "@/components/store";
 import { useCurrentUser } from "@/components/auth";
-import { activeDaysThisYear, skillTests, streak } from "@/lib/data";
+import { heatmapFrom, useActivity } from "@/lib/activity";
 import { BarChart3, Crown, Flame, Pencil, Settings, Share2, Sparkles, Trophy } from "lucide-react";
 
 export default function ProfilePage() {
   const { skills, onWards, isPro } = useStore();
   const user = useCurrentUser();
+  const { days, streak } = useActivity();
+  const grid = heatmapFrom(days);
   const headline = [user.role, user.location].filter(Boolean).join(" · ");
   const shareText = `I'm on a ${streak.current}-day onWard streak — ${streak.daysUsing} days of showing up and turning small steps into progress.`;
 
@@ -77,7 +80,7 @@ export default function ProfilePage() {
               {[
                 { value: String(onWards.length), label: "onWards" },
                 { value: String(skills.length), label: "skills" },
-                { value: String(skillTests.length), label: "tests" },
+                { value: String(days.length), label: "active days" },
               ].map((s) => (
                 <span key={s.label}>
                   <span className="block text-[20px] font-bold tracking-tight text-ink lg:text-[26px]">
@@ -91,10 +94,7 @@ export default function ProfilePage() {
             </div>
           </section>
 
-          <Link
-            href="/streaks"
-            className="flex items-center gap-4 rounded-2xl bg-dark px-5 py-4 transition hover:brightness-110"
-          >
+            <Link href="/streaks" className="flex items-center gap-4 rounded-2xl bg-dark px-5 py-4 transition hover:brightness-110">
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#2B2C24]">
               <Flame className="h-6 w-6 text-lime" strokeWidth={2.2} />
             </span>
@@ -115,14 +115,16 @@ export default function ProfilePage() {
                 Your last 6 months
               </h2>
               <span className="text-[10px] text-muted lg:text-[12px]">
-                {activeDaysThisYear} active days
+                {days.length} active days
               </span>
             </div>
-            <HeatMap />
+            <HeatMap cells={grid} />
             <div className="mt-3 flex justify-end">
               <HeatLegend />
             </div>
           </section>
+
+          <ReferralCard />
         </div>
 
         {/* Right rail */}
@@ -178,29 +180,20 @@ export default function ProfilePage() {
           <section className="card px-5 py-4">
             <div className="mb-3 flex items-end justify-between">
               <h2 className="text-[14px] font-bold tracking-tight text-ink lg:text-[17px]">
-                Digital skills results
+                Digital skills
               </h2>
-              <button type="button" className="text-[11px] font-semibold text-muted underline">
-                Take a test
-              </button>
+              <span className="rounded-full bg-cream px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-muted">
+                Coming soon
+              </span>
             </div>
-            <div className="space-y-2">
-              {skillTests.map((test) => (
-                <div
-                  key={test.name}
-                  className="flex items-center justify-between rounded-xl border border-line bg-cream px-3.5 py-3"
-                >
-                  <span>
-                    <span className="block text-[12px] font-semibold text-ink lg:text-[13.5px]">
-                      {test.name}
-                    </span>
-                    <span className="block text-[10px] text-muted lg:text-[11px]">{test.meta}</span>
-                  </span>
-                  <span className="text-[15px] font-bold tracking-tight text-ink lg:text-[17px]">
-                    {test.score}
-                  </span>
-                </div>
-              ))}
+            <p className="text-[10px] leading-[1.55] text-muted lg:text-[11.5px]">
+              Short assessments that score your digital skills and add verified results to your
+              portfolio.
+            </p>
+            <div className="mt-3 rounded-xl border border-dashed border-dash bg-cream/60 px-3.5 py-3">
+              <p className="text-[10px] font-semibold text-inksoft">
+                We&apos;re building the first tests now.
+              </p>
             </div>
           </section>
 
@@ -210,7 +203,7 @@ export default function ProfilePage() {
               <span className="flex-1 text-[13px] font-semibold text-ink lg:text-[14px]">
                 Team leaderboard
               </span>
-              <span className="text-[11px] font-semibold text-muted">You&apos;re #3</span>
+              <span className="text-[11px] font-semibold text-muted">See where you stand</span>
             </Link>
             <Link href="/insights" className="card flex items-center gap-3 px-4 py-3.5">
               <BarChart3 className="h-[18px] w-[18px] text-inksoft" />

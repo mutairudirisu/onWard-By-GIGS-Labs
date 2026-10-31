@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import { APP_URL } from "@/lib/site";
+import { LOGIN_URL } from "@/lib/site";
 import { Logo } from "./logo";
 
 const LINKS = [
@@ -47,7 +47,7 @@ export function SiteNav() {
         </nav>
         <div className="flex items-center gap-3">
           <a
-            href={APP_URL}
+            href={LOGIN_URL}
             className={`hidden items-center gap-1.5 rounded-full px-4 py-2 text-[14px] font-semibold transition sm:inline-flex ${
               scrolled
                 ? "text-ink hover:bg-mist"

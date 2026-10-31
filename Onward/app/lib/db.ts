@@ -24,6 +24,45 @@ export type Profile = {
   bio: string;
   avatarUrl: string | null;
   plan: Plan;
+  referralCode: string;
+  referralCredits: number;
+  proUntil: string | null;
+};
+
+export type ActivityDay = {
+  day: string;
+  taskCount: number;
+  wardCount: number;
+  noteCount: number;
+};
+
+export type StreakStats = {
+  current: number;
+  longest: number;
+  daysUsing: number;
+};
+
+export type LeaderboardRow = {
+  place: number;
+  userId: string;
+  name: string;
+  initials: string;
+  streak: number;
+  onWards: number;
+};
+
+export type ReferralRecord = {
+  name: string;
+  initials: string;
+  status: "joined" | "qualified";
+  joined: string;
+};
+
+export type MyReferrals = {
+  code: string;
+  credits: number;
+  proUntil: string | null;
+  referrals: ReferralRecord[];
 };
 
 export type Workspace = {
@@ -103,7 +142,16 @@ type ProfileRow = {
   bio: string | null;
   avatar_url: string | null;
   plan: Plan;
+  referral_code: string | null;
+  referral_credits: number | null;
+  pro_until: string | null;
 };
+
+function effectivePlan(plan: Plan, proUntil: string | null | undefined): Plan {
+  if (plan === "pro") return "pro";
+  if (proUntil && Date.parse(proUntil) > Date.now()) return "pro";
+  return "free";
+}
 
 function fail(...errors: ({ message: string } | null)[]) {
   const first = errors.find((e) => e != null);
@@ -184,7 +232,10 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
     location: row.location ?? "",
     bio: row.bio ?? "",
     avatarUrl: row.avatar_url,
-    plan: row.plan,
+    plan: effectivePlan(row.plan, row.pro_until),
+    referralCode: row.referral_code ?? "",
+    referralCredits: row.referral_credits ?? 0,
+    proUntil: row.pro_until,
   };
 }
 
@@ -209,7 +260,7 @@ export async function fetchWorkspace(userId: string): Promise<Workspace> {
       .order("created_at", { ascending: false }),
     supabase.from("skills").select("name").eq("user_id", userId).order("created_at"),
     supabase.from("user_settings").select("*").eq("user_id", userId).maybeSingle(),
-    supabase.from("profiles").select("plan").eq("id", userId).maybeSingle(),
+    supabase.from("profiles").select("plan, pro_until").eq("id", userId).maybeSingle(),
   ]);
 
   fail(tasksRes.error, notesRes.error, wardsRes.error, skillsRes.error, settingsRes.error, profileRes.error);
@@ -226,7 +277,10 @@ export async function fetchWorkspace(userId: string): Promise<Workspace> {
     onWards: wards.map(wardFromRow),
     skills: skillRows.map((s) => s.name),
     settings: settingsFromRow(settingsRow),
-    plan: (profileRes.data as { plan?: Plan } | null)?.plan ?? "free",
+    plan: effectivePlan(
+      ((profileRes.data as { plan?: Plan } | null)?.plan ?? "free") as Plan,
+      (profileRes.data as { pro_until?: string | null } | null)?.pro_until,
+    ),
   };
 }
 
@@ -455,4 +509,107 @@ export async function saveProfile(userId: string, patch: Partial<Omit<Profile, "
 export async function deleteRow(table: "tasks" | "notes" | "on_wards", id: string) {
   const { error } = await supabase.from(table).delete().eq("id", id);
   if (error) throw new Error(error.message);
+}
+
+// --------------------------------------------------------------------- activity
+
+/** Counts one piece of real usage for streaks, heatmaps and insights. */
+export async function recordActivity(kind: "task" | "ward" | "note", day?: string) {
+  const { error } = await supabase.rpc("record_activity", {
+    p_kind: kind,
+    p_day: day ?? toISO(new Date()),
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function fetchActivity(
+  userId: string,
+  since: string,
+): Promise<{ days: ActivityDay[]; streak: StreakStats }> {
+  const [daysRes, streakRes] = await Promise.all([
+    supabase
+      .from("activity_days")
+      .select("day, task_count, ward_count, note_count")
+      .eq("user_id", userId)
+      .gte("day", since)
+      .order("day"),
+    supabase
+      .from("streaks")
+      .select("current, longest, days_using")
+      .eq("user_id", userId)
+      .maybeSingle(),
+  ]);
+  fail(daysRes.error, streakRes.error);
+  const rows: { day: string; task_count: number; ward_count: number; note_count: number }[] =
+    daysRes.data ?? [];
+  const streak = streakRes.data as
+    | { current: number; longest: number; days_using: number }
+    | null;
+  return {
+    days: rows.map((row) => ({
+      day: row.day,
+      taskCount: row.task_count,
+      wardCount: row.ward_count,
+      noteCount: row.note_count,
+    })),
+    streak: {
+      current: streak?.current ?? 0,
+      longest: streak?.longest ?? 0,
+      daysUsing: streak?.days_using ?? 0,
+    },
+  };
+}
+
+// ------------------------------------------------------------------ leaderboard
+
+export async function fetchLeaderboard(period: "week" | "month" | "all"): Promise<LeaderboardRow[]> {
+  const { data, error } = await supabase.rpc("leaderboard", { p_period: period });
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as {
+    place: number;
+    user_id: string;
+    display_name: string;
+    initials: string;
+    streak: number;
+    on_wards: number;
+  }[];
+  return rows.map((row) => ({
+    place: Number(row.place),
+    userId: row.user_id,
+    name: row.display_name,
+    initials: row.initials,
+    streak: row.streak,
+    onWards: Number(row.on_wards),
+  }));
+}
+
+// -------------------------------------------------------------------- referrals
+
+export async function fetchMyReferrals(): Promise<MyReferrals | null> {
+  const { data, error } = await supabase.rpc("my_referrals");
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+  const payload = data as {
+    code: string;
+    credits: number;
+    pro_until: string | null;
+    referrals: { name: string; initials: string | null; status: "joined" | "qualified"; joined: string }[];
+  };
+  return {
+    code: payload.code,
+    credits: payload.credits,
+    proUntil: payload.pro_until,
+    referrals: (payload.referrals ?? []).map((r) => ({
+      name: r.name,
+      initials: r.initials ?? initialsFor(r.name),
+      status: r.status,
+      joined: r.joined,
+    })),
+  };
+}
+
+export async function redeemReferral(code: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("redeem_referral", { p_code: code });
+  if (error) return false;
+  return data === true;
 }

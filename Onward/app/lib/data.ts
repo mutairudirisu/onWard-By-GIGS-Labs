@@ -300,37 +300,6 @@ onWards.forEach((w, i) => {
     }));
 });
 
-export const skillTests = [
-  { name: "Spreadsheet essentials", score: "88/100", meta: "Verified assessment · 12 Oct 2026" },
-  { name: "Data literacy", score: "82/100", meta: "Self-assessed · work examples reviewed" },
-];
-
-export const weekDays = [
-  { letter: "M", day: 26 },
-  { letter: "T", day: 27 },
-  { letter: "W", day: 28, active: true },
-  { letter: "T", day: 29 },
-  { letter: "F", day: 30 },
-  { letter: "S", day: 31 },
-  { letter: "S", day: 1 },
-];
-
-export const insightBars = [
-  { label: "W1", value: 34 },
-  { label: "W2", value: 46 },
-  { label: "W3", value: 40 },
-  { label: "W4", value: 78 },
-  { label: "W5", value: 52 },
-  { label: "W6", value: 44 },
-  { label: "W7", value: 96, highlight: true },
-];
-
-export const skillUsage = [
-  { name: "Process design", count: 4 },
-  { name: "Collaboration", count: 3 },
-  { name: "Data analysis", count: 2 },
-];
-
 export const portfolioWins = [
   {
     meta: "ATLAS · 28 OCT 2026",
@@ -354,20 +323,6 @@ export const portfolioWins = [
     skills: ["Spreadsheets", "Data analysis"],
   },
 ];
-
-/* ------------------------------------------------------------------ *
- * Streaks, activity heatmap, roles and leaderboard (Turn D)
- * ------------------------------------------------------------------ */
-
-export const streak = {
-  current: 12,
-  longest: 28,
-  daysUsing: 143,
-  joined: "3 June 2026",
-  onWardsThisWeek: 5,
-  thisMonth: 7,
-  bestDay: "Tuesday",
-};
 
 export const roles = [
   "Operations coordinator",
@@ -394,72 +349,4 @@ export const appraisal = {
   ],
 };
 
-export type LeaderRow = {
-  rank: number;
-  name: string;
-  initials: string;
-  onWards: number;
-  streak: number;
-  you?: boolean;
-};
-
-export const leaderboard: { period: string; rows: LeaderRow[] } = {
-  period: "This month",
-  rows: [
-    { rank: 1, name: "Amara Okafor", initials: "AO", onWards: 14, streak: 31 },
-    { rank: 2, name: "Priya Nair", initials: "PN", onWards: 11, streak: 19 },
-    { rank: 3, name: "Maya Chen", initials: "MC", onWards: 7, streak: 12, you: true },
-    { rank: 4, name: "Tomás Silva", initials: "TS", onWards: 6, streak: 8 },
-    { rank: 5, name: "Lena Fischer", initials: "LF", onWards: 5, streak: 22 },
-    { rank: 6, name: "Kwame Mensah", initials: "KM", onWards: 4, streak: 6 },
-    { rank: 7, name: "Sofia Rossi", initials: "SR", onWards: 3, streak: 11 },
-  ],
-};
-
 export type HeatCell = { level: 0 | 1 | 2 | 3 | 4; date: string };
-
-function mulberry32(seed: number) {
-  return function () {
-    seed |= 0;
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-// Deterministic 26-week (half-year) activity grid so SSR and CSR render identically.
-function buildHeatmap(weeks: number): HeatCell[][] {
-  const rand = mulberry32(20261028);
-  const today = new Date(2026, 9, 28);
-  const cols: HeatCell[][] = [];
-  for (let w = 0; w < weeks; w++) {
-    const col: HeatCell[] = [];
-    for (let d = 0; d < 7; d++) {
-      const offset = (weeks - 1 - w) * 7 + (6 - d);
-      const date = new Date(today);
-      date.setDate(today.getDate() - offset);
-      const future = date.getTime() > today.getTime();
-      const r = rand();
-      let level: HeatCell["level"];
-      if (future) level = 0;
-      else if (r < 0.4) level = 0;
-      else if (r < 0.64) level = 1;
-      else if (r < 0.82) level = 2;
-      else if (r < 0.94) level = 3;
-      else level = 4;
-      // keep the current streak visible in the last column
-      if (w === weeks - 1 && d >= 1 && d <= 5 && level === 0) level = 2;
-      col.push({ level, date: date.toISOString().slice(0, 10) });
-    }
-    cols.push(col);
-  }
-  return cols;
-}
-
-export const heatmap: HeatCell[][] = buildHeatmap(26);
-
-export const activeDaysThisYear = heatmap.reduce(
-  (n, col) => n + col.filter((c) => c.level > 0).length,
-  0
-);

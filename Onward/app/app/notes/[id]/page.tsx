@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { PhoneShell } from "@/components/phone-shell";
+import { DictateButton } from "@/components/dictate-button";
 import { BackLink, Button } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { useStore } from "@/components/store";
+import { appendDictation } from "@/lib/dictation";
 import {
   CheckCheck,
   Copy,
@@ -326,9 +328,16 @@ export default function NoteEditorPage() {
             placeholder="Untitled note"
             className="w-full bg-transparent text-[27px] font-bold leading-[1.15] tracking-[-0.02em] text-ink outline-none placeholder:text-faint lg:text-[34px]"
           />
-          <p className="mb-4 mt-2 text-[10px] font-medium text-muted lg:mb-5 lg:text-[11.5px]">
-            {note.when} · {body.length} characters
-          </p>
+          <div className="mb-4 mt-2 flex items-center justify-between gap-2 lg:mb-5">
+            <p className="text-[10px] font-medium text-muted lg:text-[11.5px]">
+              {note.when} · {body.length} characters
+            </p>
+            <DictateButton
+              label="Dictate note"
+              className="-mr-1.5"
+              onText={(text) => setBody((value) => appendDictation(value, text))}
+            />
+          </div>
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}

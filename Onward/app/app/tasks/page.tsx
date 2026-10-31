@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PhoneShell } from "@/components/phone-shell";
+import { DictateButton } from "@/components/dictate-button";
 import { TaskRow } from "@/components/task-row";
 import { SortableTaskList } from "@/components/sortable-task-list";
 import { Chip, NewButton, PageHeader, ProgressBar } from "@/components/ui";
@@ -11,6 +12,7 @@ import { UpgradeModal } from "@/components/pro";
 import { useStore } from "@/components/store";
 import { BASE_DATE, type Task } from "@/lib/data";
 import { formatMedium, formatTasksHeader } from "@/lib/dates";
+import { appendDictation } from "@/lib/dictation";
 import { Bell, Clock, ListChecks, Search, X } from "lucide-react";
 
 const FILTERS = ["Today", "Upcoming", "All tasks"] as const;
@@ -52,6 +54,14 @@ export default function TasksPage() {
       router.replace("/tasks");
     }
   }, [router]);
+
+  // Dictated text lands outside the textarea's own onChange, so resize here.
+  useEffect(() => {
+    const el = draftRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 132)}px`;
+  }, [draft, adding]);
 
   const q = query.trim().toLowerCase();
   const scoped = tasks.filter((t) => inBucket(t, filter, selectedDate));
@@ -212,6 +222,11 @@ export default function TasksPage() {
                     if (e.key === "Escape") closeComposer();
                   }}
                   aria-label="New task title"
+                />
+                <DictateButton
+                  label="Dictate a task"
+                  className="-mr-1 -mt-1"
+                  onText={(text) => setDraft((value) => appendDictation(value, text))}
                 />
                 <button
                   type="button"

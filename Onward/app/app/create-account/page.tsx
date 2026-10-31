@@ -36,7 +36,16 @@ export default function CreateAccountPage() {
 
   // The welcome screen hands the typed email over in the query string.
   useEffect(() => {
-    setEmail(new URLSearchParams(window.location.search).get("email") ?? "");
+    const params = new URLSearchParams(window.location.search);
+    setEmail(params.get("email") ?? "");
+    const ref = params.get("ref")?.trim();
+    if (ref) {
+      try {
+        localStorage.setItem("onward.ref", ref.toUpperCase());
+      } catch {
+        /* storage unavailable — the code is still visible in the URL */
+      }
+    }
   }, []);
 
   const score = useMemo(() => strengthOf(password), [password]);
