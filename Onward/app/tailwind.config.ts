@@ -28,6 +28,7 @@ export default {
           DEFAULT: withVar("dark"),
           soft: withVar("dark-soft"),
         },
+        night: withVar("night"),
       },
       fontFamily: {
         sans: [

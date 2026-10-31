@@ -20,6 +20,7 @@
   --lime-pale: 245 251 223;
   --dark: 32 33 26;
   --dark-soft: 43 44 35;
+  --night: 12 13 8;
   --tag-bg: 239 239 230;
 }
 
@@ -41,6 +42,7 @@
   --lime-pale: 33 40 22;
   --dark: 15 16 12;
   --dark-soft: 30 31 25;
+  --night: 8 9 5;
   --tag-bg: 46 47 39;
 }
 
@@ -141,4 +143,69 @@ textarea::placeholder {
 }
 .wheel::-webkit-scrollbar {
   display: none;
+}
+
+/* Desktop auth: the form column sits on the dark split panel. */
+@media (min-width: 1024px) {
+  .auth-panel .label {
+    color: rgb(246 246 240 / 0.8);
+    font-size: 12.5px;
+  }
+  .auth-panel .h1 {
+    color: rgb(246 246 240 / 0.95);
+    font-size: 31px;
+    font-weight: 600;
+    letter-spacing: -0.022em;
+  }
+  .auth-panel .sub {
+    color: rgb(246 246 240 / 0.48);
+    font-size: 13.5px;
+  }
+  .auth-panel .eyebrow {
+    display: none;
+  }
+  .auth-panel :where(.text-ink) {
+    color: rgb(246 246 240 / 0.95);
+  }
+  .auth-panel :where(.text-inksoft) {
+    color: rgb(246 246 240 / 0.72);
+  }
+  .auth-panel :where(.text-muted) {
+    color: rgb(246 246 240 / 0.5);
+  }
+  .auth-panel :where(.text-faint) {
+    color: rgb(246 246 240 / 0.3);
+  }
+  .auth-panel :where(.bg-line) {
+    background-color: rgb(246 246 240 / 0.14);
+  }
+  .auth-panel :where(.bg-paper) {
+    background-color: transparent;
+  }
+  .auth-panel :where(.bg-lime-soft) {
+    background-color: rgb(201 242 78 / 0.12);
+  }
+  .auth-panel :where(.bg-lime),
+  .auth-panel :where(.bg-lime) :where(.text-ink) {
+    color: rgb(29 30 25);
+  }
+  .auth-panel :where(.border-line),
+  .auth-panel :where(.border-dash) {
+    border-color: rgb(246 246 240 / 0.14);
+  }
+  .auth-panel :where(.hover\:bg-cream):hover {
+    background-color: rgb(255 255 255 / 0.07);
+  }
+  .auth-panel .field-input {
+    border-color: rgb(255 255 255 / 0.1);
+    background-color: rgb(255 255 255 / 0.055);
+    color: rgb(246 246 240 / 0.94);
+  }
+  .auth-panel .field-input::placeholder {
+    color: rgb(246 246 240 / 0.3);
+  }
+  .auth-panel .field-input:focus {
+    border-color: rgb(201 242 78 / 0.55);
+    box-shadow: 0 0 0 3px rgb(201 242 78 / 0.12);
+  }
 }

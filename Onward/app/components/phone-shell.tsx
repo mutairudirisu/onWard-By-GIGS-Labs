@@ -52,7 +52,7 @@ export function PhoneShell({
 
 export function AuthHeader({ href = "/" }: { href?: string }) {
   return (
-    <a href={href} className="mb-7 flex items-center gap-3">
+    <a href={href} className="mb-7 flex items-center gap-3 lg:hidden">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
         <path
           d="M15 5 8 12l7 7"

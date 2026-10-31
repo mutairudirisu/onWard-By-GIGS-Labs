@@ -6,7 +6,7 @@ import { Check, Share2 } from "lucide-react";
 export function ShareButton({
   title,
   text,
-  url = "https://onward.app",
+  url,
   className = "",
   label = "Share",
   icon = true,
@@ -21,16 +21,17 @@ export function ShareButton({
   const [copied, setCopied] = useState(false);
 
   async function onShare() {
+    const target = url ?? window.location.origin;
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
-        await navigator.share({ title, text, url });
+        await navigator.share({ title, text, url: target });
         return;
       } catch {
         /* user dismissed — fall through to clipboard */
       }
     }
     try {
-      await navigator.clipboard.writeText(`${text} ${url}`);
+      await navigator.clipboard.writeText(`${text} ${target}`);
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
