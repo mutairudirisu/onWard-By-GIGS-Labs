@@ -32,7 +32,7 @@ export function TaskRow({
           task.done ? "border-lime-deep bg-lime" : "border-dash bg-paper hover:border-lime-deep"
         }`}
       >
-        {task.done ? <Check className="h-3 w-3 text-ink" strokeWidth={3} /> : null}
+        {task.done ? <Check className="h-3 w-3 text-dark" strokeWidth={3} /> : null}
       </button>
       <span className="min-w-0 flex-1">
         <span

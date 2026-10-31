@@ -22,6 +22,9 @@
   --dark-soft: 43 44 35;
   --night: 12 13 8;
   --tag-bg: 239 239 230;
+  --panel: 32 33 26;
+  --panel-soft: 43 44 35;
+  --on-panel: 255 255 255;
 }
 
 .dark {
@@ -44,6 +47,9 @@
   --dark-soft: 30 31 25;
   --night: 8 9 5;
   --tag-bg: 46 47 39;
+  --panel: 24 25 20;
+  --panel-soft: 42 43 34;
+  --on-panel: 243 243 236;
 }
 
 html,

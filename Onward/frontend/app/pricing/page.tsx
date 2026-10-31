@@ -28,8 +28,8 @@ const FAQS = [
     a: "Anytime, in two taps from the app. Your Free plan keeps your full history and export rights forever — upgrading adds capability, it never holds your growth hostage.",
   },
   {
-    q: "Do you offer student or wage-gap discounts?",
-    a: "Grow is free for full-time students and for users enrolled in a partner programme. Verify once in the app and the discount applies for as long as you qualify.",
+    q: "Do you offer a student discount?",
+    a: "Yes — half price while you study. Set your role to Student in the app and Pro drops to ₦750/mo (₦600 billed yearly). We do not ask for a student ID; the rate stays with you as long as your role says Student.",
   },
 ];
 

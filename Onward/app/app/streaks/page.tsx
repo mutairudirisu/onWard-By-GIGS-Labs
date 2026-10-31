@@ -36,12 +36,12 @@ export default function StreaksPage() {
       </div>
       <p className="tiny mb-4">How far you&apos;ve come — one small step at a time.</p>
 
-      <section className="mb-3 flex items-center gap-4 rounded-2xl bg-dark px-4 py-4">
+      <section className="mb-3 flex items-center gap-4 rounded-2xl bg-panel px-4 py-4">
         <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#2B2C24]">
           <Flame className="h-7 w-7 text-lime" strokeWidth={2.2} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[26px] font-bold leading-none tracking-tight text-paper">
+          <p className="text-[26px] font-bold leading-none tracking-tight text-on-panel">
             {streak.current}
             <span className="ml-1 text-[12px] font-semibold text-[#A9AAA0]">days</span>
           </p>
@@ -52,7 +52,7 @@ export default function StreaksPage() {
         <ShareButton
           text={shareText}
           label=""
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2B2C24] text-paper hover:bg-[#34352C]"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-panel-soft text-on-panel hover:bg-[#34352C]"
         />
       </section>
 
@@ -114,7 +114,7 @@ export default function StreaksPage() {
             );
           })}
           <div className="flex items-center gap-3">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-lime text-[10px] font-bold text-ink">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-lime text-[10px] font-bold text-dark">
               {streak.current}
             </span>
             <span className="min-w-0 flex-1">
@@ -123,7 +123,7 @@ export default function StreaksPage() {
                 {streak.current > 0 ? "Keep it warm today." : "Complete one thing to start today."}
               </span>
             </span>
-            <span className="rounded-full bg-lime px-2 py-0.5 text-[8px] font-bold uppercase tracking-wide text-ink">
+            <span className="rounded-full bg-lime px-2 py-0.5 text-[8px] font-bold uppercase tracking-wide text-dark">
               Now
             </span>
           </div>

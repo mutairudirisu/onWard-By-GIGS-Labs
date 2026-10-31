@@ -126,7 +126,7 @@ export function ReminderModal({
             type="button"
             onClick={() => setMode("date")}
             className={`rounded-full px-3.5 py-1.5 text-[12px] font-bold transition ${
-              mode === "date" ? "bg-lime text-ink" : "bg-cream text-inksoft hover:bg-line"
+              mode === "date" ? "bg-lime text-dark" : "bg-cream text-inksoft hover:bg-line"
             }`}
           >
             {dateLabel}
@@ -135,7 +135,7 @@ export function ReminderModal({
             type="button"
             onClick={() => setMode("time")}
             className={`rounded-full px-3.5 py-1.5 text-[12px] font-bold transition ${
-              mode === "time" ? "bg-lime text-ink" : "bg-cream text-inksoft hover:bg-line"
+              mode === "time" ? "bg-lime text-dark" : "bg-cream text-inksoft hover:bg-line"
             }`}
           >
             {timeLabel}
@@ -190,7 +190,7 @@ export function ReminderModal({
                       onClick={() => setDate(cell.iso)}
                       className={`mx-auto flex h-9 w-9 items-center justify-center rounded-full text-[13px] font-semibold transition ${
                         isSel
-                          ? "bg-lime text-ink"
+                          ? "bg-lime text-dark"
                           : dim
                             ? "text-faint/40"
                             : "text-inksoft hover:bg-cream"
@@ -227,7 +227,7 @@ export function ReminderModal({
         <button
           type="button"
           onClick={() => onSave({ date, time: joinTime(hour, minute, meridiem) })}
-          className="flex-1 rounded-btn bg-lime py-3 text-[13px] font-bold text-ink transition hover:bg-lime-deep"
+          className="flex-1 rounded-btn bg-lime py-3 text-[13px] font-bold text-dark transition hover:bg-lime-deep"
         >
           OK
         </button>

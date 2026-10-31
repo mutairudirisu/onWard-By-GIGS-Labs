@@ -1,44 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { PhoneShell } from "@/components/phone-shell";
-import { PortfolioDownloadButton } from "@/components/portfolio-download";
+import { PortfolioDownloadButton, usePortfolio } from "@/components/portfolio-download";
 import { BackLink, Button, Chip, Field, TextInput, Toggle } from "@/components/ui";
 import { ChevronDown, Eye, Globe, Lock, Minus } from "lucide-react";
 
 const AUDIENCES = ["Employers", "Agencies", "Personal"];
 
-const INCLUDES = [
-  {
-    id: "achievements",
-    title: "Selected achievements",
-    meta: "3 onWards · Operations & project story",
-    initial: true,
-  },
-  {
-    id: "skills",
-    title: "Skills & work examples",
-    meta: "6 skills · 2 test results",
-    initial: true,
-  },
-  {
-    id: "tests",
-    title: "Digital skills test results",
-    meta: "2 tests · Spreadsheet essentials, Data literacy",
-    initial: true,
-  },
-  {
-    id: "evidence",
-    title: "Evidence attachments",
-    meta: "1 file · Onboarding-results.pdf",
-    initial: false,
-  },
-];
-
 export default function SharePortfolioPage() {
   const [audience, setAudience] = useState("Employers");
-  const [toggles, setToggles] = useState<Record<string, boolean>>(
-    Object.fromEntries(INCLUDES.map((i) => [i.id, i.initial]))
+  const portfolio = usePortfolio();
+  const includes = useMemo(
+    () => [
+      {
+        id: "achievements",
+        title: "Selected achievements",
+        meta: `${portfolio.wins.length} onWard${portfolio.wins.length === 1 ? "" : "s"} in the portfolio`,
+        initial: true,
+      },
+      {
+        id: "skills",
+        title: "Skills & work examples",
+        meta: `${portfolio.skills.length} skill${portfolio.skills.length === 1 ? "" : "s"} tracked`,
+        initial: true,
+      },
+      {
+        id: "tests",
+        title: "Digital skills test results",
+        meta: "Coming soon - nothing verified yet",
+        initial: false,
+      },
+      {
+        id: "evidence",
+        title: "Evidence attachments",
+        meta: `${portfolio.wins.reduce((n, w) => n + w.evidence, 0)} files and links`,
+        initial: false,
+      },
+    ],
+    [portfolio],
+  );
+  const [toggles, setToggles] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(includes.map((i) => [i.id, i.initial]))
   );
 
   return (
@@ -55,7 +58,7 @@ export default function SharePortfolioPage() {
 
       <div className="space-y-4">
         <Field label="Portfolio title" uppercase>
-          <TextInput defaultValue="Operations & project notes" />
+          <TextInput defaultValue={`${portfolio.name.split(" ")[0]}'s work portfolio`} />
         </Field>
 
         <div>
@@ -77,7 +80,7 @@ export default function SharePortfolioPage() {
         <section className="card px-4 py-3.5">
           <h2 className="mb-3 text-[12px] font-bold tracking-tight text-ink">What to include</h2>
           <div className="space-y-3.5">
-            {INCLUDES.map((item) => (
+            {includes.map((item) => (
               <div key={item.id} className="flex items-center justify-between gap-3">
                 <span>
                   <span className="block text-[11px] font-semibold text-ink">{item.title}</span>
@@ -111,7 +114,7 @@ export default function SharePortfolioPage() {
         </Button>
 
         <div className="grid grid-cols-2 gap-2.5">
-          <PortfolioDownloadButton label="Download PDF" className="w-full" />
+          <PortfolioDownloadButton portfolio={portfolio} label="Download PDF" className="w-full" />
           <Button href="/portfolio" iconLeft={<Globe className="h-4 w-4" />}>
             Create share link
           </Button>

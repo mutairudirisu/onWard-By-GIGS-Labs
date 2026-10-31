@@ -5,9 +5,12 @@ import { usePathname } from "next/navigation";
 import { InstallButton } from "@/components/install-button";
 import { Wordmark } from "@/components/wordmark";
 import { useCurrentUser } from "@/components/auth";
+import { UnreadDot, useNotifications } from "@/components/notifications";
 import {
   BarChart3,
+  Bell,
   Flame,
+  GraduationCap,
   Home,
   ListChecks,
   NotebookPen,
@@ -22,6 +25,7 @@ const MENU = [
   { href: "/tasks", label: "Tasks", Icon: ListChecks },
   { href: "/notes", label: "Notes", Icon: NotebookPen },
   { href: "/onwards", label: "onWards", Icon: Sprout },
+  { href: "/notifications", label: "Notifications", Icon: Bell, badge: true },
   { href: "/profile", label: "You", Icon: User },
 ];
 
@@ -29,6 +33,7 @@ const PROGRESS = [
   { href: "/streaks", label: "Streaks", Icon: Flame },
   { href: "/leaderboard", label: "Leaderboard", Icon: Trophy },
   { href: "/insights", label: "Insights", Icon: BarChart3 },
+  { href: "/student", label: "Student space", Icon: GraduationCap },
 ];
 
 const AUTH_ROUTES = [
@@ -51,10 +56,12 @@ function NavGroup({
   title,
   items,
   pathname,
+  unread = 0,
 }: {
   title: string;
-  items: { href: string; label: string; Icon: typeof Home }[];
+  items: { href: string; label: string; Icon: typeof Home; badge?: boolean }[];
   pathname: string;
+  unread?: number;
 }) {
   return (
     <div>
@@ -62,7 +69,7 @@ function NavGroup({
         {title}
       </p>
       <div className="space-y-0.5">
-        {items.map(({ href, label, Icon }) => {
+        {items.map(({ href, label, Icon, badge }) => {
           const active = isActive(pathname, href);
           return (
             <Link
@@ -80,6 +87,11 @@ function NavGroup({
                 strokeWidth={active ? 2.3 : 2}
               />
               {label}
+              {badge && unread > 0 ? (
+                <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                  {unread > 99 ? "99+" : unread}
+                </span>
+              ) : null}
             </Link>
           );
         })}
@@ -91,6 +103,7 @@ function NavGroup({
 export function Sidebar() {
   const pathname = usePathname();
   const user = useCurrentUser();
+  const { unread } = useNotifications();
   if (AUTH_ROUTES.includes(pathname)) return null;
 
   return (
@@ -102,14 +115,14 @@ export function Sidebar() {
 
       <Link
         href="/onwards/new"
-        className="mb-6 flex items-center justify-center gap-2 rounded-btn bg-lime px-3 py-2.5 text-[13px] font-semibold text-ink transition hover:bg-lime-deep"
+        className="mb-6 flex items-center justify-center gap-2 rounded-btn bg-lime px-3 py-2.5 text-[13px] font-semibold text-dark transition hover:bg-lime-deep"
       >
         <Plus className="h-4 w-4" strokeWidth={2.4} />
         New onWard
       </Link>
 
       <nav className="flex-1 space-y-5 overflow-y-auto">
-        <NavGroup title="Menu" items={MENU} pathname={pathname} />
+        <NavGroup title="Menu" items={MENU} pathname={pathname} unread={unread} />
         <NavGroup title="Progress" items={PROGRESS} pathname={pathname} />
       </nav>
 
@@ -119,8 +132,9 @@ export function Sidebar() {
         href="/profile"
         className="flex items-center gap-2.5 rounded-xl px-2 py-2 transition hover:bg-cream"
       >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-lime-soft text-[10px] font-bold text-ink">
+        <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-lime-soft text-[10px] font-bold text-ink">
           {user.initials}
+          <UnreadDot />
         </span>
         <span className="min-w-0">
           <span className="block truncate text-[12px] font-bold text-ink">{user.name}</span>

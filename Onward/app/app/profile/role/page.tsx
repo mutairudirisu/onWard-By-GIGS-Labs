@@ -6,7 +6,8 @@ import { PhoneShell } from "@/components/phone-shell";
 import { Button, TextInput } from "@/components/ui";
 import { BackLink } from "@/components/ui";
 import { useAuth, useCurrentUser } from "@/components/auth";
-import { roles } from "@/lib/data";
+import { roles, STUDENT_PRICING } from "@/lib/data";
+import { isStudentRole } from "@/lib/student";
 import { Check, Plus } from "lucide-react";
 
 function isCustomRole(role: string) {
@@ -74,10 +75,17 @@ export default function SetRolePage() {
                 active ? "border-lime-deep bg-lime-pale" : "hover:border-dash"
               }`}
             >
-              <span className="text-[12px] font-semibold text-ink">{r}</span>
+              <span className="flex items-center gap-2">
+                <span className="text-[12px] font-semibold text-ink">{r}</span>
+                {r === "Student" ? (
+                  <span className="rounded-full bg-lime px-2 py-0.5 text-[9px] font-bold text-dark">
+                    Half-price Pro
+                  </span>
+                ) : null}
+              </span>
               <span
                 className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
-                  active ? "border-lime-deep bg-lime text-ink" : "border-dash"
+                  active ? "border-lime-deep bg-lime text-dark" : "border-dash"
                 }`}
               >
                 {active ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
@@ -93,7 +101,7 @@ export default function SetRolePage() {
             className="card flex w-full items-center justify-between border-lime-deep bg-lime-pale px-4 py-3 text-left transition hover:border-lime-deep"
           >
             <span className="text-[12px] font-semibold text-ink">{selected}</span>
-            <span className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-lime-deep bg-lime text-ink">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-lime-deep bg-lime text-dark">
               <Check className="h-3 w-3" strokeWidth={3} />
             </span>
           </button>
@@ -143,6 +151,14 @@ export default function SetRolePage() {
           </button>
         )}
       </div>
+
+      {isStudentRole(selected) ? (
+        <p className="mt-4 rounded-xl bg-lime-pale px-3.5 py-2.5 text-[11px] font-semibold leading-[1.5] text-ink">
+          Student rate unlocked — Pro at {STUDENT_PRICING.currency}
+          {STUDENT_PRICING.monthly.toLocaleString("en-NG")}/mo. Your student space has the
+          placement checklist.
+        </p>
+      ) : null}
 
       {error ? (
         <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-[11px] font-semibold leading-[1.5] text-red-700">

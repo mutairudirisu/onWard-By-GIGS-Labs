@@ -121,11 +121,11 @@ export default function WelcomePage() {
               <span className="absolute -right-9 -top-11 h-28 w-28 rounded-full bg-lime" />
               <span className="absolute -bottom-2 left-9 h-12 w-px rotate-[24deg] border-l-2 border-dashed border-ink/20" />
               <span className="absolute right-12 top-6 h-9 w-px -rotate-[18deg] border-l-2 border-dashed border-ink/20" />
-              <div className="relative ml-4 -rotate-3 rounded-xl bg-dark px-4 py-3.5 shadow-lift">
+              <div className="relative ml-4 -rotate-3 rounded-xl bg-panel px-4 py-3.5 shadow-lift">
                 <p className="mb-1 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.12em] text-lime">
                   <Sprout className="h-3 w-3" strokeWidth={2.2} /> A new onWard
                 </p>
-                <p className="text-[12px] font-medium leading-snug text-paper">
+                <p className="text-[12px] font-medium leading-snug text-on-panel">
                   Turned effort into
                   <br />
                   something worth sharing.
@@ -134,7 +134,7 @@ export default function WelcomePage() {
               <div className="relative -mt-3 ml-0 w-[78%] rotate-[-1deg] rounded-xl bg-paper px-3 py-2.5 shadow-lift">
                 <div className="flex items-start gap-2">
                   <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-lime">
-                    <Check className="h-3 w-3 text-ink" strokeWidth={3} />
+                    <Check className="h-3 w-3 text-dark" strokeWidth={3} />
                   </span>
                   <span>
                     <span className="block text-[11px] font-bold text-ink">
@@ -146,7 +146,7 @@ export default function WelcomePage() {
                   </span>
                 </div>
               </div>
-              <span className="absolute bottom-3 right-4 flex items-center gap-1 rounded-full bg-lime px-2.5 py-1 text-[9px] font-bold text-ink">
+              <span className="absolute bottom-3 right-4 flex items-center gap-1 rounded-full bg-lime px-2.5 py-1 text-[9px] font-bold text-dark">
                 <Sprout className="h-2.5 w-2.5" strokeWidth={2.2} /> Your growth, documented
               </span>
             </div>

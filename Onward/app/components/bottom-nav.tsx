@@ -15,6 +15,8 @@ import {
   X,
 } from "lucide-react";
 import { useStore } from "@/components/store";
+import { UnreadDot } from "@/components/notifications";
+import { haptic } from "@/lib/haptics";
 
 const TABS = [
   { id: "today", label: "Today", href: "/today", Icon: Home },
@@ -34,11 +36,14 @@ const CREATE_OPTIONS = [
 
 export function BottomNav({ active }: { active: TabId }) {
   const router = useRouter();
-  const { addNote } = useStore();
+  const { addNote, settings } = useStore();
   const [open, setOpen] = useState(false);
+
+  const buzz = (kind: "tap" | "success") => haptic(kind, settings.haptics);
 
   const create = (key: (typeof CREATE_OPTIONS)[number]["key"]) => {
     setOpen(false);
+    buzz("success");
     if (key === "task") router.push("/tasks?new=1");
     else if (key === "note") {
       const id = addNote({ tag: "Personal" });
@@ -52,7 +57,10 @@ export function BottomNav({ active }: { active: TabId }) {
         <button
           type="button"
           aria-label="Close create menu"
-          onClick={() => setOpen(false)}
+          onClick={() => {
+            setOpen(false);
+            buzz("tap");
+          }}
           className="fixed inset-0 z-40 bg-ink/45 backdrop-blur-[2px]"
         />
       ) : null}
@@ -65,9 +73,13 @@ export function BottomNav({ active }: { active: TabId }) {
                 key={id}
                 href={href}
                 aria-current="page"
+                onClick={() => buzz("tap")}
                 className="flex items-center gap-1.5 rounded-full bg-line py-2 pl-3 pr-3.5"
               >
-                <Icon className="h-4 w-4 text-lime-deep" strokeWidth={2.2} />
+                <span className="relative flex">
+                  <Icon className="h-4 w-4 text-lime-deep" strokeWidth={2.2} />
+                  {id === "you" ? <UnreadDot ring="ring-line" /> : null}
+                </span>
                 <span className="text-[10px] font-bold text-lime-deep">{label}</span>
               </Link>
             ) : (
@@ -75,9 +87,13 @@ export function BottomNav({ active }: { active: TabId }) {
                 key={id}
                 href={href}
                 aria-label={label}
+                onClick={() => buzz("tap")}
                 className="flex h-9 w-9 items-center justify-center rounded-full text-faint transition hover:text-lime-deep"
               >
-                <Icon className="h-4 w-4" strokeWidth={2} />
+                <span className="relative flex">
+                  <Icon className="h-4 w-4" strokeWidth={2} />
+                  {id === "you" ? <UnreadDot /> : null}
+                </span>
               </Link>
             ),
           )}
@@ -88,7 +104,7 @@ export function BottomNav({ active }: { active: TabId }) {
             <div
               role="menu"
               aria-label="What do you want to create?"
-              className="absolute bottom-[calc(100%+16px)] right-0 w-[264px] rounded-[26px] bg-dark p-2.5 shadow-[0_24px_60px_rgba(16,17,8,0.35)]"
+              className="absolute bottom-[calc(100%+16px)] right-0 w-[264px] rounded-[26px] bg-panel p-2.5 shadow-[0_24px_60px_rgba(16,17,8,0.35)]"
             >
               <div className="grid grid-cols-3 gap-2">
                 {CREATE_OPTIONS.map(({ label, key, Icon }) => (
@@ -97,7 +113,7 @@ export function BottomNav({ active }: { active: TabId }) {
                     type="button"
                     role="menuitem"
                     onClick={() => create(key)}
-                    className="flex flex-col items-center gap-2 rounded-2xl bg-dark-soft px-2 py-4 text-paper transition hover:bg-[#34352C]"
+                    className="flex flex-col items-center gap-2 rounded-2xl bg-panel-soft px-2 py-4 text-on-panel transition hover:bg-[#34352C]"
                   >
                     <Icon className="h-5 w-5" strokeWidth={2} />
                     <span className="text-center text-[10px] font-semibold leading-tight">
@@ -113,8 +129,11 @@ export function BottomNav({ active }: { active: TabId }) {
             type="button"
             aria-label={open ? "Close create menu" : "Create something new"}
             aria-expanded={open}
-            onClick={() => setOpen((o) => !o)}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-lime text-ink shadow-[0_10px_30px_rgba(16,17,8,0.15)] transition active:scale-95"
+            onClick={() => {
+              setOpen((o) => !o);
+              buzz("tap");
+            }}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-lime text-dark shadow-[0_10px_30px_rgba(16,17,8,0.15)] transition active:scale-95"
           >
             {open ? (
               <X className="h-5 w-5" strokeWidth={2.4} />

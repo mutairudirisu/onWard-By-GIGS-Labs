@@ -29,6 +29,11 @@ export default {
           soft: withVar("dark-soft"),
         },
         night: withVar("night"),
+        panel: {
+          DEFAULT: withVar("panel"),
+          soft: withVar("panel-soft"),
+        },
+        "on-panel": withVar("on-panel"),
       },
       fontFamily: {
         sans: [

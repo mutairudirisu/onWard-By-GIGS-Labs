@@ -7,7 +7,7 @@ import { Modal } from "@/components/modal";
 export function ProBadge({ className = "" }: { className?: string }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full bg-lime px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-ink ${className}`}
+      className={`inline-flex items-center gap-1 rounded-full bg-lime px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-dark ${className}`}
     >
       <Sparkles className="h-2.5 w-2.5" strokeWidth={2.8} />
       Pro
@@ -44,7 +44,7 @@ export function UpgradeModal({
           <Link
             href="/upgrade"
             onClick={onClose}
-            className="flex items-center justify-center gap-2 rounded-btn bg-lime px-4 py-3 text-[13px] font-bold text-ink transition hover:bg-lime-deep"
+            className="flex items-center justify-center gap-2 rounded-btn bg-lime px-4 py-3 text-[13px] font-bold text-dark transition hover:bg-lime-deep"
           >
             <Sparkles className="h-4 w-4" strokeWidth={2.6} />
             Upgrade to Pro

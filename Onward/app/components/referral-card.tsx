@@ -149,7 +149,7 @@ export function ReferralCard() {
           text="Join me on onWard — plan your day, capture your wins, and build a record of your work. Use my invite code when you sign up."
           url={link}
           label="Share invite"
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-lime px-3 py-2 text-[10.5px] font-bold text-ink transition hover:bg-lime-deep"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-lime px-3 py-2 text-[10.5px] font-bold text-dark transition hover:bg-lime-deep"
         />
         <button
           type="button"

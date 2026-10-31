@@ -21,6 +21,8 @@ import {
   type Task,
 } from "@/lib/data";
 import { formatMedium, wardDateLabel } from "@/lib/dates";
+import { haptic } from "@/lib/haptics";
+import { emitNotice } from "@/lib/notices";
 import {
   deleteRow,
   fetchWorkspace,
@@ -218,7 +220,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         ...s,
         tasks: s.tasks.map((t) => (t.id === id ? { ...t, done: !t.done } : t)),
       }));
+      const hapticsOn = stateRef.current.settings.haptics;
+      haptic(before && !before.done ? "success" : "tap", hapticsOn);
       if (userId && before && !before.done) {
+        emitNotice({
+          kind: "task",
+          title: "Task complete",
+          body: before.title,
+          href: `/tasks/${id}`,
+        });
         void recordActivity("task").catch(() => {
           /* activity is a nice-to-have; never block the task write */
         });
@@ -249,6 +259,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           ...s.tasks,
         ],
       }));
+      haptic("tap", stateRef.current.settings.haptics);
       return id;
     },
     [commit],
@@ -326,6 +337,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           ...s.notes,
         ],
       }));
+      haptic("tap", stateRef.current.settings.haptics);
       if (userId) {
         void recordActivity("note").catch(() => {
           /* activity is a nice-to-have; never block the note write */
@@ -388,6 +400,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           ]),
         ],
       }));
+      haptic("success", stateRef.current.settings.haptics);
+      emitNotice({
+        kind: "win",
+        title: "onWard captured",
+        body: data.title,
+        href: `/onwards/${id}`,
+      });
       if (userId) {
         void recordActivity("ward", date).catch(() => {
           /* activity is a nice-to-have; never block the ward write */

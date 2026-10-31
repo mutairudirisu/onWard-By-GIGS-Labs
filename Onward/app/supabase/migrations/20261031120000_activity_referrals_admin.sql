@@ -2,8 +2,7 @@
 -- 1. activity_days becomes the single source for streaks, heatmaps and leaderboards
 -- 2. every profile gets a shareable referral code; qualified referrals earn Pro time
 -- 3. authenticated RPCs for the leaderboard and referrals, admin-only RPCs for the console
-
-begin;
+-- Runs inside Supabase's own migration transaction, so no explicit BEGIN/COMMIT.
 
 -- ------------------------------------------------------------------ activity
 alter table public.activity_days
@@ -588,5 +587,3 @@ $$;
 
 revoke all on function public.admin_overview() from public, anon;
 grant execute on function public.admin_overview() to authenticated;
-
-commit;

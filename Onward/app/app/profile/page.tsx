@@ -11,13 +11,25 @@ import { ProBadge } from "@/components/pro";
 import { useStore } from "@/components/store";
 import { useCurrentUser } from "@/components/auth";
 import { heatmapFrom, useActivity } from "@/lib/activity";
-import { BarChart3, Crown, Flame, Pencil, Settings, Share2, Sparkles, Trophy } from "lucide-react";
+import {
+  BarChart3,
+  Crown,
+  Flame,
+  GraduationCap,
+  Pencil,
+  Settings,
+  Share2,
+  Sparkles,
+  Trophy,
+} from "lucide-react";
+import { isStudentRole } from "@/lib/student";
 
 export default function ProfilePage() {
   const { skills, onWards, isPro } = useStore();
   const user = useCurrentUser();
   const { days, streak } = useActivity();
   const grid = heatmapFrom(days);
+  const student = isStudentRole(user.role);
   const headline = [user.role, user.location].filter(Boolean).join(" · ");
   const shareText = `I'm on a ${streak.current}-day onWard streak — ${streak.daysUsing} days of showing up and turning small steps into progress.`;
 
@@ -43,7 +55,7 @@ export default function ProfilePage() {
             <Link
               href="/profile/edit"
               aria-label="Edit profile"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-lime text-ink transition hover:bg-lime-deep lg:h-10 lg:w-10"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-lime text-dark transition hover:bg-lime-deep lg:h-10 lg:w-10"
             >
               <Pencil className="h-[17px] w-[17px]" />
             </Link>
@@ -94,12 +106,12 @@ export default function ProfilePage() {
             </div>
           </section>
 
-            <Link href="/streaks" className="flex items-center gap-4 rounded-2xl bg-dark px-5 py-4 transition hover:brightness-110">
+            <Link href="/streaks" className="flex items-center gap-4 rounded-2xl bg-panel px-5 py-4 transition hover:brightness-110">
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#2B2C24]">
               <Flame className="h-6 w-6 text-lime" strokeWidth={2.2} />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-[15px] font-bold text-paper lg:text-[18px]">
+              <span className="block text-[15px] font-bold text-on-panel lg:text-[18px]">
                 {streak.current}-day streak
               </span>
               <span className="block text-[10px] text-[#A9AAA0] lg:text-[12px]">
@@ -132,7 +144,7 @@ export default function ProfilePage() {
           <Link
             href="/upgrade"
             className={`flex items-center gap-3 rounded-2xl px-5 py-4 transition ${
-              isPro ? "bg-dark text-paper hover:brightness-110" : "bg-lime text-ink hover:bg-lime-deep"
+              isPro ? "bg-panel text-on-panel hover:brightness-110" : "bg-lime text-dark hover:bg-lime-deep"
             }`}
           >
             <span
@@ -198,6 +210,15 @@ export default function ProfilePage() {
           </section>
 
           <div className="grid gap-2.5">
+            <Link href="/student" className="card flex items-center gap-3 px-4 py-3.5">
+              <GraduationCap className="h-[18px] w-[18px] text-inksoft" />
+              <span className="flex-1 text-[13px] font-semibold text-ink lg:text-[14px]">
+                Student space
+              </span>
+              <span className="text-[11px] font-semibold text-muted">
+                {student ? "Student rate on" : "Half-price Pro"}
+              </span>
+            </Link>
             <Link href="/leaderboard" className="card flex items-center gap-3 px-4 py-3.5">
               <Trophy className="h-[18px] w-[18px] text-inksoft" />
               <span className="flex-1 text-[13px] font-semibold text-ink lg:text-[14px]">

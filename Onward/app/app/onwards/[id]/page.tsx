@@ -52,10 +52,10 @@ export default function OnWardDetailPage() {
       <h2 className="h1 mb-4 text-[24px]">{ward.title}</h2>
 
       <section className="mb-5 rounded-2xl bg-lime px-4 py-4">
-        <p className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.12em] text-inksoft">
+        <p className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.12em] text-dark/70">
           <TrendingUp className="h-3 w-3" /> The difference made
         </p>
-        <p className="mt-1.5 text-[18px] font-bold leading-snug tracking-tight text-ink">
+        <p className="mt-1.5 text-[18px] font-bold leading-snug tracking-tight text-dark">
           {ward.impact}
         </p>
       </section>

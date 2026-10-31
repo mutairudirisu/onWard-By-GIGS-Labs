@@ -212,6 +212,10 @@ export function PricingBlock() {
           Prices in Nigerian Naira (₦). Cancel anytime — your timeline and portfolio stay
           exportable forever, even on Free.
         </p>
+        <p className="tiny mt-3 text-center">
+          Studying? Set your role to Student in the app and Pro drops to ₦750/mo (₦600 billed
+          yearly) for as long as you are in school — same plan, none of the ceiling.
+        </p>
       </div>
     </>
   );

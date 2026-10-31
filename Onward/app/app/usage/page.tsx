@@ -54,7 +54,7 @@ export default function UsagePage() {
             >
               <span
                 className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-                  active ? "bg-lime text-ink" : "bg-cream text-inksoft"
+                  active ? "bg-lime text-dark" : "bg-cream text-inksoft"
                 }`}
               >
                 <Icon className="h-4 w-4" strokeWidth={2.1} />
@@ -72,7 +72,7 @@ export default function UsagePage() {
                   active ? "border-lime bg-lime" : "border-dash"
                 }`}
               >
-                {active ? <Check className="h-3 w-3 text-ink" strokeWidth={3} /> : null}
+                {active ? <Check className="h-3 w-3 text-dark" strokeWidth={3} /> : null}
               </span>
             </button>
           );

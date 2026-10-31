@@ -183,9 +183,9 @@ const AUDIENCES = [
     title: "Graduate with a record, not just a transcript.",
     body: "Coursework, side projects, internships and club wins get logged as you go — so final-year you has proof of everything first-year you planned.",
     points: [
-      "A portfolio that grows every semester",
-      "Internship and project milestones in one link",
-      "Skills mapped before you ever write a CV",
+      "Half-price Pro while your role says Student",
+      "Quick-log buckets for coursework, projects, internships",
+      "A placement checklist that grades your own portfolio",
     ],
     card: (
       <div className="space-y-3">
@@ -206,8 +206,8 @@ const AUDIENCES = [
             <Check className="h-4 w-4 text-lime-deep" strokeWidth={2.5} />
           </span>
           <div>
-            <p className="text-[13px] font-semibold">Summer internship done</p>
-            <p className="tiny">Verified milestone · added to portfolio</p>
+            <p className="text-[13px] font-semibold">Placement readiness · 4 of 6</p>
+            <p className="tiny">Portfolio PDF ready to download</p>
           </div>
         </div>
       </div>

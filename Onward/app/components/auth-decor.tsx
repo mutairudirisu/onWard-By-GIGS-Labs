@@ -39,7 +39,7 @@ export function AuthBrand({
   return (
     <span className={`flex items-center gap-2 ${className}`}>
       <span className={`flex ${tile} items-center justify-center bg-lime shadow-card`}>
-        <Sprout className={`${glyph} text-ink`} strokeWidth={2.2} />
+        <Sprout className={`${glyph} text-dark`} strokeWidth={2.2} />
       </span>
       <Wordmark className={size === "md" ? "text-[17px]" : "text-[15px]"} />
     </span>

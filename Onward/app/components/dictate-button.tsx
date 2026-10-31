@@ -24,7 +24,7 @@ export function DictateButton({
       aria-pressed={listening}
       title={error ?? (listening ? "Stop dictating" : label)}
       className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition ${
-        listening ? "bg-lime text-ink" : "text-inksoft hover:bg-cream"
+        listening ? "bg-lime text-dark" : "text-inksoft hover:bg-cream"
       } ${error ? "ring-1 ring-red-300" : ""} ${className}`}
     >
       <Mic className="h-[16px] w-[16px]" strokeWidth={2.2} />

@@ -45,15 +45,23 @@ export default function TasksPage() {
   const [reminderOpen, setReminderOpen] = useState(false);
   const [reminderGate, setReminderGate] = useState(false);
   const draftRef = useRef<HTMLTextAreaElement>(null);
+  const [pendingFocus, setPendingFocus] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("new") === "1") {
       setFilter("Today");
       setAdding(true);
+      setPendingFocus(true);
       router.replace("/tasks");
     }
   }, [router]);
+
+  useEffect(() => {
+    if (!adding || !pendingFocus) return;
+    setPendingFocus(false);
+    draftRef.current?.focus();
+  }, [adding, pendingFocus]);
 
   // Dictated text lands outside the textarea's own onChange, so resize here.
   useEffect(() => {
@@ -414,7 +422,7 @@ export default function TasksPage() {
             </dl>
           </section>
 
-          <section className="rounded-2xl bg-dark px-5 py-4 text-paper">
+          <section className="rounded-2xl bg-panel px-5 py-4 text-on-panel">
             <h3 className="text-[12px] font-bold">A calmer day</h3>
             <p className="mt-1 text-[11px] leading-[1.55] text-[#B7B8AC]">
               One clear priority beats ten open tabs. Drag the most important task to the top.

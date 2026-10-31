@@ -46,12 +46,12 @@ export function AuthShell({
 
         <Link href="/" className="relative flex w-fit items-center gap-2.5">
           <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-lime">
-            <Sprout className="h-5 w-5 text-ink" strokeWidth={2.2} />
+            <Sprout className="h-5 w-5 text-dark" strokeWidth={2.2} />
           </span>
           <Wordmark tone="paper" className="text-[19px]" />
         </Link>
 
-        <p className="relative mb-24 mt-auto max-w-[20ch] self-center text-balance text-center font-serif text-[clamp(29px,2.6vw,43px)] leading-[1.16] tracking-[-0.01em] text-paper xl:mb-32">
+        <p className="relative mb-24 mt-auto max-w-[20ch] self-center text-balance text-center font-serif text-[clamp(29px,2.6vw,43px)] leading-[1.16] tracking-[-0.01em] text-on-panel xl:mb-32">
           {quote}
         </p>
       </aside>
@@ -60,7 +60,7 @@ export function AuthShell({
         <div className="auth-panel mx-auto flex w-full max-w-[400px] flex-1 flex-col lg:max-w-[430px] lg:justify-center">
           {children}
         </div>
-        <p className="mt-8 hidden text-center text-[11px] text-paper/30 lg:block">
+        <p className="mt-8 hidden text-center text-[11px] text-on-panel/30 lg:block">
           © 2026 onWard · A GIGS Labs product
         </p>
         <div className="lg:hidden">

@@ -88,6 +88,13 @@ export const PRO_PRICING = {
   currency: "₦",
 } as const;
 
+/** Half price while you are studying - the role you set on your profile unlocks it. */
+export const STUDENT_PRICING = {
+  monthly: 750,
+  yearly: 600,
+  currency: "₦",
+} as const;
+
 export type PlanFeature = {
   label: string;
   free: string | boolean;
@@ -300,30 +307,6 @@ onWards.forEach((w, i) => {
     }));
 });
 
-export const portfolioWins = [
-  {
-    meta: "ATLAS · 28 OCT 2026",
-    title: "A smoother start for new hires",
-    highlight: "5 days → 3 days to get ready",
-    body: "Redesigned the onboarding checklist and coordinated handoffs with three team leads for the October cohort. Cut time-to-ready for 12 new hires.",
-    skills: ["Process design", "Collaboration"],
-  },
-  {
-    meta: "ATLAS · 24 OCT 2026",
-    title: "Knowledge that's easier to find",
-    highlight: "An estimated 3 hours saved / week",
-    body: "Consolidated team guides into a single, searchable workspace with clear ownership and review dates.",
-    skills: ["Communication", "Documentation"],
-  },
-  {
-    meta: "MERIDIAN · 20 OCT 2026",
-    title: "One dashboard, a clearer picture",
-    highlight: "3 data sources. 4 hours saved / week",
-    body: "Combined weekly reporting into one spreadsheet dashboard, with automatic checks and a single handover point.",
-    skills: ["Spreadsheets", "Data analysis"],
-  },
-];
-
 export const roles = [
   "Operations coordinator",
   "Project manager",
@@ -335,18 +318,5 @@ export const roles = [
   "Educator",
   "Student",
 ];
-
-export const appraisal = {
-  company: "Northwind Logistics",
-  role: "Operations coordinator",
-  period: "October 2026 review",
-  manager: "Priya Nair",
-  assigned: { total: 56, done: 42, onTime: "92%" },
-  outcomes: [
-    "Cut new-hire time-to-ready from 5 days to 3 across the October cohort.",
-    "Consolidated team guides into one searchable workspace (~3h/wk saved).",
-    "Delivered a single reporting dashboard combining 3 data sources.",
-  ],
-};
 
 export type HeatCell = { level: 0 | 1 | 2 | 3 | 4; date: string };

@@ -38,7 +38,7 @@ function DayCell({
       <span
         className={`flex h-8 w-8 items-center justify-center rounded-[10px] text-[12px] font-bold transition ${
           selected
-            ? "bg-lime text-ink"
+            ? "bg-lime text-dark"
             : today
               ? "text-ink ring-1 ring-lime-deep"
               : cell.inMonth
@@ -103,7 +103,7 @@ function MonthCalendar({
               onClick={() => onPick(c.iso)}
               className={`mx-auto flex h-8 w-8 items-center justify-center rounded-full text-[11.5px] font-semibold transition ${
                 sel
-                  ? "bg-lime text-ink"
+                  ? "bg-lime text-dark"
                   : today
                     ? "text-ink ring-1 ring-lime-deep"
                     : c.inMonth
@@ -182,7 +182,7 @@ export function DateStrip() {
               setViewDate(selectedDate);
             }}
             className={`flex h-7 w-7 items-center justify-center rounded-full transition ${
-              expanded ? "bg-lime text-ink" : "text-inksoft hover:bg-cream"
+              expanded ? "bg-lime text-dark" : "text-inksoft hover:bg-cream"
             }`}
           >
             <CalendarDays className="h-4 w-4" />

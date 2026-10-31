@@ -1,17 +1,14 @@
 "use client";
 
 import { PhoneShell } from "@/components/phone-shell";
-import { PortfolioDownloadButton } from "@/components/portfolio-download";
+import { PortfolioDownloadButton, usePortfolio } from "@/components/portfolio-download";
 import { BackButton, Tag } from "@/components/ui";
 import { Wordmark } from "@/components/wordmark";
-import { useCurrentUser } from "@/components/auth";
-import { useActivity } from "@/lib/activity";
-import { appraisal, portfolioWins } from "@/lib/data";
-import { CheckCircle2, Mail, Sprout } from "lucide-react";
+import { FileText, Mail, Sprout } from "lucide-react";
 
 export default function EmployerPortfolioPage() {
-  const user = useCurrentUser();
-  const { streak } = useActivity();
+  const portfolio = usePortfolio();
+
   return (
     <PhoneShell>
       <div className="mb-5 flex items-center justify-between">
@@ -29,122 +26,141 @@ export default function EmployerPortfolioPage() {
 
       <section className="mb-5">
         <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-lime-soft text-[12px] font-bold text-ink">
-          {user.initials}
+          {portfolio.initials}
         </span>
         <h1 className="text-[24px] font-bold leading-tight tracking-tight text-ink">
-          {user.name}
+          {portfolio.name}
         </h1>
-        <p className="mt-1 text-[11px] font-semibold text-inksoft">
-          {user.role || "Role not set yet"}
-        </p>
-        {user.location ? <p className="text-[9px] text-muted">{user.location}</p> : null}
-        <p className="mt-3 text-[10.5px] leading-[1.6] text-inksoft">{user.bio}</p>
+        {portfolio.role ? (
+          <p className="mt-1 text-[11px] font-semibold text-inksoft">{portfolio.role}</p>
+        ) : null}
+        {portfolio.location ? (
+          <p className="text-[9px] text-muted">{portfolio.location}</p>
+        ) : null}
+        {portfolio.bio ? (
+          <p className="mt-3 text-[10.5px] leading-[1.6] text-inksoft">{portfolio.bio}</p>
+        ) : null}
       </section>
 
       <section className="mb-5 rounded-2xl border border-lime-deep/40 bg-lime-pale px-4 py-3.5">
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-[12px] font-bold tracking-tight text-ink">
-            Appraisal snapshot
-          </h2>
+          <h2 className="text-[12px] font-bold tracking-tight text-ink">Proof at a glance</h2>
           <span className="text-[8px] font-semibold uppercase tracking-[0.12em] text-muted">
-            {appraisal.period}
+            {portfolio.activeDays} active days
           </span>
         </div>
-        <p className="text-[9px] text-muted">
-          {appraisal.role} · reports to {appraisal.manager}
-        </p>
-        <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-          <div className="rounded-xl bg-paper px-2 py-2.5">
-            <p className="text-[16px] font-bold leading-none tracking-tight text-ink">
-              {appraisal.assigned.done}/{appraisal.assigned.total}
-            </p>
-            <p className="mt-1 text-[8px] font-semibold text-inksoft">tasks done</p>
-          </div>
-          <div className="rounded-xl bg-paper px-2 py-2.5">
-            <p className="text-[16px] font-bold leading-none tracking-tight text-ink">
-              {appraisal.assigned.onTime}
-            </p>
-            <p className="mt-1 text-[8px] font-semibold text-inksoft">on time</p>
-          </div>
-          <div className="rounded-xl bg-paper px-2 py-2.5">
-            <p className="text-[16px] font-bold leading-none tracking-tight text-ink">
-              {streak.current}
-            </p>
-            <p className="mt-1 text-[8px] font-semibold text-inksoft">day streak</p>
-          </div>
-        </div>
-        <ul className="mt-3 space-y-1.5">
-          {appraisal.outcomes.map((o) => (
-            <li key={o} className="flex items-start gap-1.5">
-              <CheckCircle2 className="mt-px h-3 w-3 shrink-0 text-lime-deep" />
-              <span className="text-[9.5px] leading-[1.5] text-inksoft">{o}</span>
-            </li>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          {portfolio.stats.map((s) => (
+            <div key={s.label} className="rounded-xl bg-paper px-2 py-2.5">
+              <p className="text-[16px] font-bold leading-none tracking-tight text-ink">
+                {s.value}
+              </p>
+              <p className="mt-1 text-[8px] font-semibold leading-tight text-inksoft">{s.label}</p>
+            </div>
           ))}
-        </ul>
+        </div>
       </section>
 
-      <div className="mb-5 grid grid-cols-2 gap-2">
-        <div className="rounded-2xl bg-lime px-3.5 py-3">
-          <p className="text-[17px] font-bold leading-none tracking-tight text-ink">40%</p>
-          <p className="mt-1 text-[9px] font-bold text-ink">faster onboarding</p>
-          <p className="mt-0.5 text-[8px] text-inksoft">5 days → 3 · 12 new hires</p>
+      {portfolio.headline.length ? (
+        <div className="mb-5 grid grid-cols-2 gap-2">
+          {portfolio.headline.map((win) => (
+            <div key={win.id} className="rounded-2xl bg-lime px-3.5 py-3">
+              <p className="text-[11.5px] font-bold leading-snug text-dark">{win.impact}</p>
+              <p className="mt-1 text-[8px] font-semibold leading-tight text-dark/70">{win.title}</p>
+            </div>
+          ))}
         </div>
-        <div className="rounded-2xl bg-lime px-3.5 py-3">
-          <p className="text-[17px] font-bold leading-none tracking-tight text-ink">6h/wk</p>
-          <p className="mt-1 text-[9px] font-bold text-ink">estimated time saved</p>
-          <p className="mt-0.5 text-[8px] text-inksoft">Across 3 workflows</p>
-        </div>
-      </div>
+      ) : null}
 
       <h2 className="mb-2.5 text-[13px] font-bold tracking-tight text-ink">
         Small steps. Tangible impact.
       </h2>
-      <div className="mb-5 space-y-2.5">
-        {portfolioWins.map((win) => (
-          <article key={win.title} className="card px-4 py-3.5">
-            <p className="text-[8px] font-semibold uppercase tracking-[0.12em] text-muted">
-              {win.meta}
-            </p>
-            <h3 className="mt-1 text-[13px] font-bold tracking-tight text-ink">{win.title}</h3>
-            <p className="mt-1 inline-block rounded-md bg-lime-soft px-2 py-1 text-[10px] font-bold text-ink">
-              {win.highlight}
-            </p>
-            <p className="mt-2 text-[10px] leading-[1.6] text-inksoft">{win.body}</p>
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
-              {win.skills.map((s) => (
-                <Tag key={s}>{s}</Tag>
-              ))}
-            </div>
-          </article>
-        ))}
-      </div>
+      {portfolio.wins.length ? (
+        <div className="mb-5 space-y-2.5">
+          {portfolio.wins.map((win) => (
+            <article key={win.id} className="card px-4 py-3.5">
+              <p className="text-[8px] font-semibold uppercase tracking-[0.12em] text-muted">
+                {win.meta}
+              </p>
+              <h3 className="mt-1 text-[13px] font-bold tracking-tight text-ink">{win.title}</h3>
+              <p className="mt-1 inline-block rounded-md bg-lime-soft px-2 py-1 text-[10px] font-bold text-ink">
+                {win.impact}
+              </p>
+              {win.body ? (
+                <p className="mt-2 text-[10px] leading-[1.6] text-inksoft">{win.body}</p>
+              ) : null}
+              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                {win.skills.map((s) => (
+                  <Tag key={s}>{s}</Tag>
+                ))}
+                {win.evidence ? (
+                  <span className="flex items-center gap-1 text-[8.5px] font-semibold uppercase tracking-[0.1em] text-muted">
+                    <FileText className="h-3 w-3" />
+                    {win.evidence} evidence
+                  </span>
+                ) : null}
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="card mb-5 px-4 py-6 text-center">
+          <p className="text-[12px] font-semibold text-ink">No wins in the portfolio yet</p>
+          <p className="tiny mt-1">
+            Log an onWard and switch it on here — every entry becomes evidence of your progress.
+          </p>
+        </div>
+      )}
 
       <h2 className="mb-2.5 text-[13px] font-bold tracking-tight text-ink">
-        Digital skills. In context.
+        Skills. Shown by the work.
       </h2>
       <div className="card mb-5 px-4 py-3.5">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[11px] font-semibold text-ink">Skills assessments</p>
+        {portfolio.skills.length ? (
+          <ul className="space-y-3">
+            {portfolio.skills.map((skill) => (
+              <li key={skill.name}>
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <span className="truncate text-[11px] font-semibold text-ink">{skill.name}</span>
+                  <span className="shrink-0 text-[8.5px] font-bold uppercase tracking-[0.1em] text-muted">
+                    {skill.stage} · {skill.count} win{skill.count === 1 ? "" : "s"}
+                  </span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-line">
+                  <div
+                    className="h-full rounded-full bg-lime-deep"
+                    style={{ width: `${skill.percent}%` }}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-[10px] leading-[1.55] text-muted">
+            Skills appear here as you tag them on your onWards.
+          </p>
+        )}
+        <div className="mt-3.5 flex items-center justify-between gap-2 border-t border-line pt-3">
+          <p className="text-[10px] font-semibold text-inksoft">Skills assessments</p>
           <span className="rounded-full bg-cream px-2 py-0.5 text-[8px] font-bold uppercase tracking-[0.12em] text-muted">
             Coming soon
           </span>
         </div>
-        <p className="mt-1 text-[9.5px] leading-[1.55] text-muted">
-          Short tests will score your digital skills and add verified results here.
-        </p>
       </div>
 
       <h2 className="mb-1.5 text-[13px] font-bold tracking-tight text-ink">
         Let&apos;s talk about what&apos;s next.
       </h2>
-      <p className="mb-3 flex items-center gap-1.5 text-[10px] font-medium text-inksoft">
-        <Mail className="h-3 w-3 text-muted" /> {user.email}
-      </p>
-      <PortfolioDownloadButton />
+      {portfolio.email ? (
+        <p className="mb-3 flex items-center gap-1.5 text-[10px] font-medium text-inksoft">
+          <Mail className="h-3 w-3 text-muted" /> {portfolio.email}
+        </p>
+      ) : null}
+      <PortfolioDownloadButton portfolio={portfolio} />
 
       <p className="mt-5 text-center text-[8px] leading-[1.6] text-faint">
-        Assessments verified where noted. Other metrics are self-reported. Evidence shared with
-        permission. Built with onWard.
+        Metrics are self-reported from the work logged in onWard. Evidence shared with permission.
+        Built with onWard.
       </p>
     </PhoneShell>
   );

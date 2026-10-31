@@ -188,7 +188,7 @@ export default function CreateAccountPage() {
             agreed ? "border-lime-deep bg-lime" : "border-dash bg-paper"
           }`}
         >
-          {agreed ? <Check className="h-3 w-3 text-ink" strokeWidth={3} /> : null}
+          {agreed ? <Check className="h-3 w-3 text-dark" strokeWidth={3} /> : null}
         </span>
         <span className="text-[10px] leading-[1.5] text-muted">
           I agree to the <span className="font-semibold text-inksoft underline">Terms of Service</span>{" "}

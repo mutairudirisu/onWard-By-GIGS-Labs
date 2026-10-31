@@ -6,7 +6,9 @@ import { PhoneShell } from "@/components/phone-shell";
 import { BackLink } from "@/components/ui";
 import { ProBadge } from "@/components/pro";
 import { useStore } from "@/components/store";
-import { PLAN_FEATURES, PRO_PRICING } from "@/lib/data";
+import { useCurrentUser } from "@/components/auth";
+import { PLAN_FEATURES, PRO_PRICING, STUDENT_PRICING } from "@/lib/data";
+import { isStudentRole, pricingFor } from "@/lib/student";
 
 function ValueCell({ value }: { value: string | boolean }) {
   if (value === true)
@@ -26,7 +28,10 @@ function ValueCell({ value }: { value: string | boolean }) {
 
 export default function UpgradePage() {
   const { isPro, wardsThisMonth, limits } = useStore();
-  const save = PRO_PRICING.monthly - PRO_PRICING.yearly;
+  const user = useCurrentUser();
+  const student = isStudentRole(user.role);
+  const pricing = pricingFor(user.role);
+  const save = pricing.monthly - pricing.yearly;
 
   return (
     <PhoneShell indicator wide>
@@ -35,7 +40,7 @@ export default function UpgradePage() {
       </div>
 
       <div className="mx-auto max-w-[560px] text-center">
-        <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-lime text-ink shadow-card">
+        <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-lime text-dark shadow-card">
           <Sparkles className="h-7 w-7" strokeWidth={2.4} />
         </span>
         <h1 className="mt-4 text-[26px] font-bold leading-tight tracking-[-0.02em] text-ink lg:text-[34px]">
@@ -64,32 +69,52 @@ export default function UpgradePage() {
               <div className="flex-1 border-r border-line px-4 py-4 text-center">
                 <p className="text-[13px] font-bold text-ink">Free</p>
                 <p className="mt-1 text-[22px] font-bold tracking-tight text-ink">
-                  {PRO_PRICING.currency}0
+                  {pricing.currency}0
                 </p>
                 <p className="text-[11px] text-muted">forever</p>
               </div>
-              <div className="relative flex-1 bg-dark px-4 py-4 text-center text-paper">
+              <div className="relative flex-1 bg-panel px-4 py-4 text-center text-on-panel">
                 <span className="absolute right-2 top-2">
                   <ProBadge />
                 </span>
-                <p className="text-[13px] font-bold">Pro</p>
-                <p className="mt-1 text-[22px] font-bold tracking-tight">
-                  {PRO_PRICING.currency}
-                  {PRO_PRICING.yearly.toLocaleString("en-NG")}
+                <p className="text-[13px] font-bold">
+                  Pro
+                  {student ? (
+                    <span className="ml-1.5 rounded-full bg-lime px-1.5 py-0.5 align-middle text-[8px] font-bold uppercase tracking-wide text-dark">
+                      Student
+                    </span>
+                  ) : null}
                 </p>
-                <p className="text-[11px] text-paper/60">/mo, billed yearly</p>
+                <p className="mt-1 text-[22px] font-bold tracking-tight">
+                  {pricing.currency}
+                  {pricing.yearly.toLocaleString("en-NG")}
+                </p>
+                <p className="text-[11px] text-on-panel/60">
+                  {student ? (
+                    <>
+                      /mo, billed yearly ·{" "}
+                      <span className="line-through">
+                        {PRO_PRICING.currency}
+                        {PRO_PRICING.yearly.toLocaleString("en-NG")}
+                      </span>
+                    </>
+                  ) : (
+                    "/mo, billed yearly"
+                  )}
+                </p>
               </div>
             </div>
             <p className="bg-cream px-4 py-2 text-center text-[11px] font-semibold text-lime-deep">
-              Save {PRO_PRICING.currency}
-              {(save * 12).toLocaleString("en-NG")} a year with annual billing
+              {student
+                ? `Student rate - ${PRO_PRICING.currency}${PRO_PRICING.monthly.toLocaleString("en-NG")}/mo becomes ${pricing.currency}${pricing.monthly.toLocaleString("en-NG")}/mo`
+                : `Save ${pricing.currency}${(save * 12).toLocaleString("en-NG")} a year with annual billing`}
             </p>
           </div>
 
           <div className="mt-4">
             <Link
               href="/upgrade/pay"
-              className="flex w-full items-center justify-center gap-2 rounded-btn bg-lime px-4 py-3.5 text-[14px] font-bold text-ink transition hover:bg-lime-deep active:scale-[0.99]"
+              className="flex w-full items-center justify-center gap-2 rounded-btn bg-lime px-4 py-3.5 text-[14px] font-bold text-dark transition hover:bg-lime-deep active:scale-[0.99]"
             >
               <Sparkles className="h-4 w-4" strokeWidth={2.6} />
               Continue to payment
@@ -97,6 +122,20 @@ export default function UpgradePage() {
             <p className="mt-2 text-center text-[11px] text-muted">
               No card needed to keep using Free. Cancel Pro anytime in two taps.
             </p>
+            {!student ? (
+              <Link
+                href="/student"
+                className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-cream px-3.5 py-2.5"
+              >
+                <span className="text-[11px] font-semibold text-ink">
+                  Still in school? There is a student rate
+                </span>
+                <span className="text-[11px] font-bold text-lime-deep">
+                  {STUDENT_PRICING.currency}
+                  {STUDENT_PRICING.monthly.toLocaleString("en-NG")}/mo
+                </span>
+              </Link>
+            ) : null}
           </div>
         </div>
       )}

@@ -8,6 +8,7 @@ import { TaskRow } from "@/components/task-row";
 import { Button } from "@/components/ui";
 import { useStore } from "@/components/store";
 import { useCurrentUser } from "@/components/auth";
+import { UnreadDot } from "@/components/notifications";
 import { BASE_DATE } from "@/lib/data";
 import { formatLong } from "@/lib/dates";
 import { Bell, CalendarClock, ChevronRight, Plus } from "lucide-react";
@@ -39,17 +40,19 @@ export default function TodayPage() {
               <Link
                 href="/profile"
                 aria-label="Your profile"
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-lime-soft text-[10px] font-bold text-ink"
+                className="relative flex h-8 w-8 items-center justify-center rounded-full bg-lime-soft text-[10px] font-bold text-ink"
               >
                 {user.initials}
+                <UnreadDot ring="ring-cream" />
               </Link>
-              <button
-                type="button"
+              <Link
+                href="/notifications"
                 aria-label="Notifications"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-inksoft hover:bg-cream"
+                className="relative flex h-8 w-8 items-center justify-center rounded-full text-inksoft transition hover:bg-cream"
               >
                 <Bell className="h-[18px] w-[18px]" />
-              </button>
+                <UnreadDot ring="ring-cream" />
+              </Link>
             </div>
           </div>
         </div>

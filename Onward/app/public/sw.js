@@ -55,3 +55,22 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
+
+// Tapping an alert opens the screen it came from.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const href = (event.notification.data && event.notification.data.href) || "/today";
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((windows) => {
+        const open = windows.find((w) => "focus" in w);
+        if (open) {
+          open.navigate(href);
+          return open.focus();
+        }
+        return self.clients.openWindow(href);
+      })
+  );
+});
+

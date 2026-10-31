@@ -8,7 +8,7 @@ export function Wordmark({
   return (
     <span
       className={`font-bold tracking-tight ${
-        tone === "paper" ? "text-paper" : "text-ink"
+        tone === "paper" ? "text-on-panel" : "text-ink"
       } ${className}`}
     >
       <span className={tone === "paper" ? "text-lime" : "text-lime-deep"}>o</span>nWard

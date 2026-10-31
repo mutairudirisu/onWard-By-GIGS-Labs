@@ -15,7 +15,9 @@ import {
 import { PhoneShell } from "@/components/phone-shell";
 import { BackLink } from "@/components/ui";
 import { useStore } from "@/components/store";
+import { useCurrentUser } from "@/components/auth";
 import { PRO_PRICING } from "@/lib/data";
+import { isStudentRole, pricingFor } from "@/lib/student";
 
 type Period = "monthly" | "yearly";
 type Method = "card" | "transfer" | "ussd";
@@ -44,8 +46,11 @@ export default function PayPage() {
   const [status, setStatus] = useState<Status>("idle");
   const [card, setCard] = useState({ number: "", name: "", expiry: "", cvv: "" });
 
-  const monthly = PRO_PRICING.monthly;
-  const total = period === "yearly" ? PRO_PRICING.yearly * 12 : monthly;
+  const user = useCurrentUser();
+  const student = isStudentRole(user.role);
+  const pricing = pricingFor(user.role);
+  const monthly = pricing.monthly;
+  const total = period === "yearly" ? pricing.yearly * 12 : monthly;
   const cardValid =
     card.number.replace(/\s/g, "").length === 16 &&
     card.name.trim().length > 1 &&
@@ -66,7 +71,7 @@ export default function PayPage() {
     return (
       <PhoneShell indicator>
         <div className="mx-auto flex max-w-[420px] flex-col items-center pt-10 text-center">
-          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-lime text-ink">
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-lime text-dark">
             <BadgeCheck className="h-9 w-9" strokeWidth={2.2} />
           </span>
           <h1 className="mt-5 text-[24px] font-bold tracking-tight text-ink">
@@ -80,7 +85,7 @@ export default function PayPage() {
             <button
               type="button"
               onClick={() => router.push("/onwards/new")}
-              className="flex w-full items-center justify-center gap-2 rounded-btn bg-lime px-4 py-3.5 text-[14px] font-bold text-ink transition hover:bg-lime-deep"
+              className="flex w-full items-center justify-center gap-2 rounded-btn bg-lime px-4 py-3.5 text-[14px] font-bold text-dark transition hover:bg-lime-deep"
             >
               <Sparkles className="h-4 w-4" strokeWidth={2.6} />
               Log your first Pro onWard
@@ -131,15 +136,15 @@ export default function PayPage() {
                 <span className="flex items-center justify-between">
                   <span className="text-[13px] font-bold capitalize text-ink">{p}</span>
                   {period === p ? (
-                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-lime text-ink">
+                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-lime text-dark">
                       <Check className="h-3 w-3" strokeWidth={3} />
                     </span>
                   ) : null}
                 </span>
                 <span className="mt-0.5 block text-[11px] text-muted">
                   {p === "yearly"
-                    ? `${PRO_PRICING.currency}${PRO_PRICING.yearly.toLocaleString("en-NG")}/mo · 2 months free`
-                    : `${PRO_PRICING.currency}${monthly.toLocaleString("en-NG")}/mo`}
+                    ? `${pricing.currency}${pricing.yearly.toLocaleString("en-NG")}/mo · 2 months free`
+                    : `${pricing.currency}${monthly.toLocaleString("en-NG")}/mo`}
                 </span>
               </button>
             ))}
@@ -169,7 +174,7 @@ export default function PayPage() {
                     method === m.id ? "border-lime-deep bg-lime" : "border-dash"
                   }`}
                 >
-                  {method === m.id ? <Check className="h-3 w-3 text-ink" strokeWidth={3} /> : null}
+                  {method === m.id ? <Check className="h-3 w-3 text-dark" strokeWidth={3} /> : null}
                 </span>
               </button>
             ))}
@@ -244,12 +249,17 @@ export default function PayPage() {
         {/* Summary */}
         <aside className="mt-8 lg:mt-0">
           <div className="card sticky top-6 overflow-hidden">
-            <div className="bg-dark px-4 py-4 text-paper">
+            <div className="bg-panel px-4 py-4 text-on-panel">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-lime" strokeWidth={2.4} />
                 <span className="text-[13px] font-bold">onWard Pro</span>
+                {student ? (
+                  <span className="rounded-full bg-lime px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-dark">
+                    Student
+                  </span>
+                ) : null}
               </div>
-              <p className="mt-1 text-[11px] text-paper/60">
+              <p className="mt-1 text-[11px] text-on-panel/60">
                 {period === "yearly" ? "Billed yearly" : "Billed monthly"}
               </p>
             </div>
@@ -257,8 +267,8 @@ export default function PayPage() {
               <div className="flex justify-between">
                 <span className="text-muted">Plan</span>
                 <span className="font-semibold text-ink">
-                  {PRO_PRICING.currency}
-                  {(period === "yearly" ? PRO_PRICING.yearly : monthly).toLocaleString("en-NG")}
+                  {pricing.currency}
+                  {(period === "yearly" ? pricing.yearly : monthly).toLocaleString("en-NG")}
                   /mo
                 </span>
               </div>
@@ -272,15 +282,27 @@ export default function PayPage() {
                 <div className="flex justify-between text-lime-deep">
                   <span className="font-semibold">Annual discount</span>
                   <span className="font-bold">
-                    −{PRO_PRICING.currency}
-                    {((monthly - PRO_PRICING.yearly) * 12).toLocaleString("en-NG")}
+                    −{pricing.currency}
+                    {((monthly - pricing.yearly) * 12).toLocaleString("en-NG")}
+                  </span>
+                </div>
+              ) : null}
+              {student ? (
+                <div className="flex justify-between text-lime-deep">
+                  <span className="font-semibold">Student discount</span>
+                  <span className="font-bold">
+                    −{pricing.currency}
+                    {(
+                      (PRO_PRICING.monthly - pricing.monthly) *
+                      (period === "yearly" ? 12 : 1)
+                    ).toLocaleString("en-NG")}
                   </span>
                 </div>
               ) : null}
               <div className="mt-1 flex items-end justify-between border-t border-line pt-3">
                 <span className="text-[13px] font-bold text-ink">Total due today</span>
                 <span className="text-[18px] font-bold tracking-tight text-ink">
-                  {PRO_PRICING.currency}
+                  {pricing.currency}
                   {total.toLocaleString("en-NG")}
                 </span>
               </div>
@@ -290,7 +312,7 @@ export default function PayPage() {
                 type="button"
                 disabled={!canPay}
                 onClick={pay}
-                className="flex w-full items-center justify-center gap-2 rounded-btn bg-lime px-4 py-3.5 text-[14px] font-bold text-ink transition hover:bg-lime-deep active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-btn bg-lime px-4 py-3.5 text-[14px] font-bold text-dark transition hover:bg-lime-deep active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {status === "processing" ? (
                   <>
@@ -300,7 +322,7 @@ export default function PayPage() {
                 ) : (
                   <>
                     <Lock className="h-4 w-4" strokeWidth={2.4} />
-                    Pay {PRO_PRICING.currency}
+                    Pay {pricing.currency}
                     {total.toLocaleString("en-NG")}
                   </>
                 )}

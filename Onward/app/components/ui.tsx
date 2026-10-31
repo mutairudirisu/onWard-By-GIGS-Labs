@@ -25,10 +25,10 @@ export function Button({
 }: ButtonProps) {
   const base = [
     "flex items-center justify-center gap-2 rounded-btn px-4 py-3 text-[13px] font-semibold transition active:scale-[0.99]",
-    variant === "primary" ? "bg-lime text-ink hover:bg-lime-deep" : "",
+    variant === "primary" ? "bg-lime text-dark hover:bg-lime-deep" : "",
     variant === "secondary" ? "border border-line bg-paper text-ink hover:bg-cream" : "",
     variant === "quiet" ? "text-muted hover:text-ink" : "",
-    variant === "dark" ? "bg-ink text-paper hover:bg-dark-soft" : "",
+    variant === "dark" ? "bg-ink text-paper hover:brightness-125" : "",
     full ? "w-full" : "",
     className,
   ].join(" ");
@@ -257,7 +257,7 @@ export function NewButton({
   children?: ReactNode;
 }) {
   const cls =
-    "flex items-center gap-1.5 rounded-full bg-lime px-3.5 py-2 text-[13px] font-bold text-ink transition hover:bg-lime-deep active:scale-[0.98] lg:px-4 lg:py-2.5 lg:text-[14px]";
+    "flex items-center gap-1.5 rounded-full bg-lime px-3.5 py-2 text-[13px] font-bold text-dark transition hover:bg-lime-deep active:scale-[0.98] lg:px-4 lg:py-2.5 lg:text-[14px]";
   const inner = (
     <>
       <Plus className="h-4 w-4" strokeWidth={2.6} />
@@ -355,7 +355,7 @@ export function ProgressRing({
           strokeDashoffset={circumference * (1 - value)}
         />
       </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-[15px] font-bold text-paper">
+      <span className="absolute inset-0 flex items-center justify-center text-[15px] font-bold text-on-panel">
         {label}
       </span>
     </div>

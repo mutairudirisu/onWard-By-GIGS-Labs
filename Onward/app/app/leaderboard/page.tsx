@@ -18,7 +18,7 @@ const PERIOD_KEY: Record<Period, "week" | "month" | "all"> = {
 };
 
 const RANK_STYLE = [
-  "bg-lime text-ink",
+  "bg-lime text-dark",
   "bg-[#E4E6D8] text-ink",
   "bg-[#EFE7D6] text-ink",
 ];
@@ -107,7 +107,7 @@ export default function LeaderboardPage() {
                         className={`flex ${
                           place === 1 ? "h-12 w-12 text-[13px]" : "h-10 w-10 text-[11px]"
                         } items-center justify-center rounded-full ${
-                          place === 1 ? "bg-lime text-ink" : "bg-lime-soft text-ink"
+                          place === 1 ? "bg-lime text-dark" : "bg-lime-soft text-ink"
                         } font-bold`}
                       >
                         {r.initials}
@@ -152,7 +152,7 @@ export default function LeaderboardPage() {
                   </span>
                   <span
                     className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
-                      isYou ? "bg-lime text-ink" : "bg-lime-soft text-ink"
+                      isYou ? "bg-lime text-dark" : "bg-lime-soft text-ink"
                     }`}
                   >
                     {r.initials}

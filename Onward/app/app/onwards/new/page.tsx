@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PhoneShell } from "@/components/phone-shell";
@@ -36,14 +36,12 @@ export default function LogOnWardPage() {
   const [wardGate, setWardGate] = useState(false);
   const [evidenceGate, setEvidenceGate] = useState(false);
 
-  const [title, setTitle] = useState("A smoother start for new hires");
+  const [title, setTitle] = useState("");
   const [date, setDate] = useState(selectedDate || BASE_DATE);
-  const [project, setProject] = useState("Atlas");
-  const [body, setBody] = useState(
-    "Redesigned our onboarding checklist and coordinated handoffs with three team leads for the October cohort.",
-  );
-  const [impact, setImpact] = useState("Cut time-to-ready from 5 days to 3 for 12 new hires — a 40% improvement.");
-  const [skills, setSkills] = useState<string[]>(["Process design", "Collaboration"]);
+  const [project, setProject] = useState("");
+  const [body, setBody] = useState("");
+  const [impact, setImpact] = useState("");
+  const [skills, setSkills] = useState<string[]>([]);
   const [skillDraft, setSkillDraft] = useState("");
   const [showSkillInput, setShowSkillInput] = useState(false);
   const [evidence, setEvidence] = useState<Evidence[]>([]);
@@ -53,6 +51,17 @@ export default function LogOnWardPage() {
   const [urlDraft, setUrlDraft] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLInputElement>(null);
+
+  // Quick-log cards arrive as /onwards/new?project=Coursework.
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const presetProject = query.get("project");
+    const presetTitle = query.get("title");
+    if (!presetProject && !presetTitle) return;
+    if (presetProject) setProject(presetProject);
+    if (presetTitle) setTitle(presetTitle);
+    window.history.replaceState(null, "", window.location.pathname);
+  }, []);
 
   const toggleSkill = (name: string) =>
     setSkills((list) => (list.includes(name) ? list.filter((x) => x !== name) : [...list, name]));
@@ -151,6 +160,7 @@ export default function LogOnWardPage() {
       <div className="space-y-4">
         <Field label="Give your work a title">
           <TextInput
+            autoFocus
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="What did you accomplish?"
@@ -249,7 +259,7 @@ export default function LogOnWardPage() {
                 className="field-input flex-1"
                 aria-label="New skill"
               />
-              <button type="button" onClick={commitSkill} className="rounded-btn bg-lime px-3 py-2 text-[11px] font-bold text-ink">
+              <button type="button" onClick={commitSkill} className="rounded-btn bg-lime px-3 py-2 text-[11px] font-bold text-dark">
                 Add
               </button>
             </div>
@@ -295,7 +305,7 @@ export default function LogOnWardPage() {
                 className="field-input flex-1"
                 aria-label="Evidence URL"
               />
-              <button type="button" onClick={addUrl} className="rounded-btn bg-lime px-3 py-2 text-[11px] font-bold text-ink">
+              <button type="button" onClick={addUrl} className="rounded-btn bg-lime px-3 py-2 text-[11px] font-bold text-dark">
                 Add
               </button>
             </div>
