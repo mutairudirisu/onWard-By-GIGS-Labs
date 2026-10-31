@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { PageHero } from "@/components/page-hero";
 import { LogoMark } from "@/components/logo";
+import { APP_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "About — GIGS Labs",
@@ -227,7 +228,7 @@ export default function About() {
             and a company — still finding its feet.
           </p>
           <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
-            <a href="https://pwa.onward.app" className="btn-dark">
+            <a href={APP_URL} className="btn-dark">
               Get onWard free
             </a>
             <Link href="/press" className="btn-ghost">

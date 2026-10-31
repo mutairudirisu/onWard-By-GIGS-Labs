@@ -12,6 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import { PageHero } from "@/components/page-hero";
+import { APP_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Careers — GIGS Labs",
@@ -203,7 +204,7 @@ export default function Careers() {
             break it, tell us what we should build next.
           </p>
           <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
-            <a href="https://pwa.onward.app" className="btn-lime">
+            <a href={APP_URL} className="btn-lime">
               Try onWard free <ArrowRight className="h-4 w-4" strokeWidth={2.4} />
             </a>
             <a

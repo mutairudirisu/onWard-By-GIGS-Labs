@@ -8,6 +8,7 @@ import { AudiencesTabs } from "@/components/audiences-tabs";
 import { FeatureAccordion } from "@/components/feature-accordion";
 import { StepsShowcase } from "@/components/steps-showcase";
 import { Testimonials } from "@/components/testimonials";
+import { APP_URL } from "@/lib/site";
 
 const LOGOS = [
   { abbr: "Ff", name: "Fieldworth" },
@@ -256,7 +257,7 @@ export default function Home() {
                 <ArrowRight className="h-4 w-4" strokeWidth={2.4} />
               </Link>
               <a
-                href="https://pwa.onward.app"
+                href={APP_URL}
                 className="inline-flex items-center gap-2 rounded-full border border-paper/20 px-6 py-3 text-[14px] font-semibold text-paper/85 transition hover:border-lime hover:text-lime"
               >
                 Open the app

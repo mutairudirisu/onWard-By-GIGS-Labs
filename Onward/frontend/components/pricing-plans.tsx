@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Check, Sparkles } from "lucide-react";
+import { APP_URL } from "@/lib/site";
 
 type Tier = {
   id: string;
@@ -173,7 +174,7 @@ export function PricingBlock() {
                 </span>
               ) : (
                 <Link
-                  href="https://pwa.onward.app"
+                  href={APP_URL}
                   className={`mt-7 ${
                     t.featured
                       ? "btn-lime w-full"

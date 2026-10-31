@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { APP_URL } from "@/lib/site";
 import { FooterWordmark } from "./footer-wordmark";
 import { LogoMark } from "./logo";
 
@@ -39,7 +40,7 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
       { label: "Privacy Policy", href: "/privacy" },
       { label: "Terms of Service", href: "/terms" },
       { label: "Security", href: "/security" },
-      { label: "Log in", href: "https://pwa.onward.app", external: true },
+      { label: "Log in", href: APP_URL, external: true },
     ],
   },
 ];

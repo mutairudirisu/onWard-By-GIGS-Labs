@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { PageHero } from "@/components/page-hero";
 import { ContactForm } from "@/components/contact-form";
+import { APP_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Contact — GIGS Labs",
@@ -151,7 +152,7 @@ export default function Contact() {
           </div>
           <div className="mt-10 flex items-center justify-center">
             <a
-              href="https://pwa.onward.app"
+              href={APP_URL}
               className="inline-flex items-center gap-2 text-[14px] font-semibold text-ink transition hover:text-lime-deep"
             >
               <MessageCircle className="h-4 w-4" />
