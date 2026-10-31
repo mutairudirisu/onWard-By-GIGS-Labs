@@ -148,7 +148,7 @@ export default function ProfilePage() {
                 {isPro ? <ProBadge /> : null}
               </span>
               <span className={`block text-[10px] lg:text-[12px] ${isPro ? "text-[#A9AAA0]" : "text-ink/70"}`}>
-                {isPro ? "Every capability unlocked" : "Unlimited onWards, reminders & more"}
+                {isPro ? "Every capability unlocked" : "Unlimited onWards, unlimited reminders & more"}
               </span>
             </span>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className={isPro ? "text-[#A9AAA0]" : "text-ink/60"} aria-hidden>

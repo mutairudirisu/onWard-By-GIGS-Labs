@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { PhoneShell } from "@/components/phone-shell";
 import { BackLink, Button, Chip, PageHeader, Toggle } from "@/components/ui";
-import { ProBadge, UpgradeModal } from "@/components/pro";
+import { ProBadge } from "@/components/pro";
 import { useStore } from "@/components/store";
 import { useAuth } from "@/components/auth";
 import {
@@ -47,23 +47,14 @@ function Row({
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { settings, setSetting, isPro, limits } = useStore();
+  const { settings, setSetting, isPro } = useStore();
   const { signOut: leave, user } = useAuth();
-  const [themeGate, setThemeGate] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
   const doSignOut = async () => {
     setLeaving(true);
     await leave();
     router.push("/");
-  };
-
-  const pickTheme = (t: "light" | "dark") => {
-    if (t === "dark" && !limits.darkTheme) {
-      setThemeGate(true);
-      return;
-    }
-    setSetting("theme", t);
   };
 
   return (
@@ -89,7 +80,7 @@ export default function SettingsPage() {
             <span className="block text-[11px] text-muted lg:text-[12px]">
               {isPro
                 ? "Every Pro capability is active."
-                : "3 onWards/mo, 1 share link, no reminders yet."}
+                : "3 onWards/mo, 1 share link, reminders on 3 tasks."}
             </span>
           </span>
           <button
@@ -126,11 +117,10 @@ export default function SettingsPage() {
                   <Chip
                     key={t}
                     active={settings.theme === t}
-                    onClick={() => pickTheme(t)}
+                    onClick={() => setSetting("theme", t)}
                     className="flex-1 justify-center py-2.5 capitalize lg:text-[14px]"
                   >
                     {t === "light" ? "Light" : "Dark"}
-                    {t === "dark" && !limits.darkTheme ? <ProBadge className="ml-1" /> : null}
                   </Chip>
                 ))}
               </div>
@@ -211,13 +201,6 @@ export default function SettingsPage() {
           </p>
         </section>
       </div>
-
-      <UpgradeModal
-        open={themeGate}
-        onClose={() => setThemeGate(false)}
-        feature="Dark theme"
-        blurb="Switch onWard to a low-light palette that's easy on the eyes after dark. Included with Pro."
-      />
     </PhoneShell>
   );
 }

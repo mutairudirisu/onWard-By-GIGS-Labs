@@ -55,8 +55,7 @@ export type PlanLimits = {
   wardsPerMonth: number | null;
   evidencePerWard: number | null;
   portfolioShares: number | null;
-  reminders: boolean;
-  darkTheme: boolean;
+  reminderTasks: number | null;
   verifiedSkills: boolean;
   streakForgiveness: boolean;
   insights: "weekly" | "full";
@@ -67,8 +66,7 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
     wardsPerMonth: 3,
     evidencePerWard: 1,
     portfolioShares: 1,
-    reminders: false,
-    darkTheme: false,
+    reminderTasks: 3,
     verifiedSkills: false,
     streakForgiveness: false,
     insights: "weekly",
@@ -77,8 +75,7 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
     wardsPerMonth: null,
     evidencePerWard: null,
     portfolioShares: null,
-    reminders: true,
-    darkTheme: true,
+    reminderTasks: null,
     verifiedSkills: true,
     streakForgiveness: true,
     insights: "full",
@@ -101,11 +98,11 @@ export const PLAN_FEATURES: PlanFeature[] = [
   { label: "Tasks & notes", free: "Unlimited", pro: "Unlimited" },
   { label: "onWards per month", free: "3", pro: "Unlimited" },
   { label: "Evidence per onWard", free: "1 file", pro: "Unlimited" },
-  { label: "Smart reminders", free: false, pro: true },
+  { label: "Task reminders", free: "3 tasks", pro: "Unlimited" },
   { label: "Portfolio share links", free: "1", pro: "Unlimited" },
   { label: "Verified skill snapshots", free: false, pro: true },
   { label: "Streak forgiveness & nudges", free: false, pro: true },
-  { label: "Dark theme", free: false, pro: true },
+  { label: "Dark theme", free: true, pro: true },
   { label: "Insights", free: "Weekly", pro: "Full history" },
   { label: "Offline PWA", free: true, pro: true },
 ];

@@ -18,6 +18,28 @@ import {
   Trash2,
 } from "lucide-react";
 
+// Distance between the layout viewport and the visual viewport — the on-screen
+// keyboard. zero when it is closed.
+function useKeyboardInset() {
+  const [inset, setInset] = useState(0);
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const update = () =>
+      setInset(Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop)));
+    update();
+    viewport.addEventListener("resize", update);
+    viewport.addEventListener("scroll", update);
+    return () => {
+      viewport.removeEventListener("resize", update);
+      viewport.removeEventListener("scroll", update);
+    };
+  }, []);
+
+  return inset;
+}
+
 function slugify(s: string) {
   return (
     s
@@ -142,6 +164,7 @@ export default function NoteEditorPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [copied, setCopied] = useState<"text" | "link" | null>(null);
+  const keyboardInset = useKeyboardInset();
 
   useEffect(() => {
     if (!note) return;
@@ -247,7 +270,7 @@ export default function NoteEditorPage() {
   };
 
   return (
-    <PhoneShell>
+    <PhoneShell indicator={!editing}>
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-1">
           <BackLink href="/notes" label="Back to notes" />
@@ -293,6 +316,7 @@ export default function NoteEditorPage() {
       </div>
 
       {editing ? (
+        <>
         <div className="lg:max-w-[760px]">
           <input
             autoFocus
@@ -300,28 +324,36 @@ export default function NoteEditorPage() {
             onChange={(e) => setTitle(e.target.value)}
             aria-label="Note title"
             placeholder="Untitled note"
-            className="w-full bg-transparent text-[22px] font-bold leading-tight tracking-tight text-ink outline-none placeholder:text-faint lg:text-[32px]"
+            className="w-full bg-transparent text-[27px] font-bold leading-[1.15] tracking-[-0.02em] text-ink outline-none placeholder:text-faint lg:text-[34px]"
           />
-          <p className="mb-3 mt-1 text-[9px] font-medium text-muted lg:mb-4 lg:text-[11px]">
+          <p className="mb-4 mt-2 text-[10px] font-medium text-muted lg:mb-5 lg:text-[11.5px]">
             {note.when} · {body.length} characters
           </p>
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
             aria-label="Note body"
-            rows={14}
+            rows={10}
             placeholder="Start writing…"
-            className="w-full resize-none bg-transparent text-[13px] leading-[1.7] text-inksoft outline-none placeholder:text-faint lg:min-h-[420px] lg:text-[15px] lg:leading-[1.75]"
+            className="w-full resize-none bg-transparent text-[15px] leading-[1.75] text-inksoft outline-none placeholder:text-faint lg:min-h-[420px] lg:text-[16px] lg:leading-[1.8]"
           />
-          <div className="mt-6 flex gap-2">
-            <Button onClick={save} iconLeft={<CheckCheck className="h-4 w-4" />}>
+          <div className="h-32 lg:hidden" aria-hidden />
+        </div>
+        {/* Rides above the on-screen keyboard instead of hiding behind it. */}
+        <div
+          className="fixed inset-x-0 z-40 mx-auto w-full max-w-[400px] border-t border-line/70 bg-cream/95 px-5 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur transition-[bottom] duration-150 md:max-w-[680px] lg:static lg:mx-0 lg:mt-6 lg:max-w-[760px] lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none"
+          style={{ bottom: keyboardInset }}
+        >
+          <div className="flex gap-2">
+            <Button onClick={save} iconLeft={<CheckCheck className="h-4 w-4" />} className="flex-1">
               Save note
             </Button>
-            <Button variant="secondary" onClick={discard}>
+            <Button variant="secondary" onClick={discard} className="flex-1">
               Discard
             </Button>
           </div>
         </div>
+        </>
       ) : (
         <div
           role="button"
@@ -335,18 +367,18 @@ export default function NoteEditorPage() {
           }}
           className="cursor-text rounded-2xl outline-none transition focus-visible:ring-2 focus-visible:ring-lime/50 lg:max-w-[760px]"
         >
-          <h2 className="text-[22px] font-bold leading-tight tracking-tight text-ink lg:text-[32px]">
+          <h2 className="text-[27px] font-bold leading-[1.15] tracking-[-0.02em] text-ink lg:text-[34px]">
             {note.title}
           </h2>
-          <p className="mb-4 mt-1 text-[9px] font-medium text-muted lg:mb-6 lg:text-[11px]">
+          <p className="mb-4 mt-2 text-[10px] font-medium text-muted lg:mb-6 lg:text-[11.5px]">
             {note.when} · {savedBody.length} characters
           </p>
           {savedBody ? (
-            <p className="whitespace-pre-line text-[12.5px] leading-[1.7] text-inksoft lg:text-[15px] lg:leading-[1.75]">
+            <p className="whitespace-pre-line text-[15px] leading-[1.75] text-inksoft lg:text-[16px] lg:leading-[1.8]">
               {savedBody}
             </p>
           ) : (
-            <p className="text-[12.5px] italic text-faint lg:text-[15px]">Empty note — tap to write.</p>
+            <p className="text-[15px] italic text-faint lg:text-[16px]">Empty note — tap to write.</p>
           )}
           <p className="mt-6 flex items-center gap-1.5 text-[10px] font-semibold text-muted lg:text-[12px]">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>

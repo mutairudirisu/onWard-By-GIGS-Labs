@@ -20,11 +20,13 @@ export function UpgradeModal({
   onClose,
   feature,
   blurb,
+  title,
 }: {
   open: boolean;
   onClose: () => void;
   feature: string;
   blurb: string;
+  title?: string;
 }) {
   return (
     <Modal open={open} onClose={onClose}>
@@ -33,7 +35,7 @@ export function UpgradeModal({
           <Sparkles className="h-6 w-6" strokeWidth={2.4} />
         </span>
         <h2 className="mt-3 text-[17px] font-bold tracking-tight text-ink">
-          {feature} is a Pro feature
+          {title ?? `${feature} is a Pro feature`}
         </h2>
         <p className="mx-auto mt-1.5 max-w-[34ch] text-[13px] leading-[1.5] text-muted">
           {blurb}

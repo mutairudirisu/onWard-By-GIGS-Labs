@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PhoneShell } from "@/components/phone-shell";
 import { TaskRow } from "@/components/task-row";
 import { SortableTaskList } from "@/components/sortable-task-list";
 import { Chip, NewButton, PageHeader, ProgressBar } from "@/components/ui";
 import { ReminderModal, type ReminderValue } from "@/components/reminder-modal";
-import { ProBadge, UpgradeModal } from "@/components/pro";
+import { UpgradeModal } from "@/components/pro";
 import { useStore } from "@/components/store";
 import { BASE_DATE, type Task } from "@/lib/data";
 import { formatMedium, formatTasksHeader } from "@/lib/dates";
@@ -42,6 +42,7 @@ export default function TasksPage() {
   const [reminder, setReminder] = useState<ReminderValue | null>(null);
   const [reminderOpen, setReminderOpen] = useState(false);
   const [reminderGate, setReminderGate] = useState(false);
+  const draftRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -66,22 +67,45 @@ export default function TasksPage() {
   const doneCount = scoped.filter((t) => t.done).length;
   const percent = total ? Math.round((doneCount / total) * 100) : 0;
 
+  const reminderCap = limits.reminderTasks;
+  const remindersUsed = tasks.filter((t) => t.time && !t.archived).length;
+  const remindersFull = reminderCap != null && remindersUsed >= reminderCap;
+
   const closeComposer = () => {
     setAdding(false);
     setDraft("");
     setReminder(null);
   };
 
-  const submitDraft = () => {
+  // Enter keeps the composer open so the next task can be typed straight away.
+  const submitDraft = (closeAfter = false) => {
     const title = draft.trim();
-    if (!title) return;
+    if (!title) {
+      if (closeAfter) closeComposer();
+      return;
+    }
     addTask({
       title,
       time: reminder?.time,
       date: reminder?.date,
       dueDate: reminder ? formatMedium(reminder.date) : undefined,
     });
-    closeComposer();
+    setDraft("");
+    setReminder(null);
+    if (closeAfter) {
+      closeComposer();
+      return;
+    }
+    const el = draftRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.focus();
+    }
+  };
+
+  const openReminder = () => {
+    if (reminder || !remindersFull) setReminderOpen(true);
+    else setReminderGate(true);
   };
 
   const startAdd = () => {
@@ -166,14 +190,25 @@ export default function TasksPage() {
                   aria-hidden
                   className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] border-2 border-dash bg-paper"
                 />
-                <input
+                <textarea
+                  ref={draftRef}
                   autoFocus
-                  className="flex-1 bg-transparent pt-0.5 text-[14px] font-medium text-ink outline-none placeholder:text-faint"
-                  placeholder={'Tap "Enter" to add this task'}
+                  rows={1}
+                  enterKeyHint="enter"
+                  className="max-h-[132px] flex-1 resize-none bg-transparent pt-0.5 text-[14px] font-medium leading-[1.45] text-ink outline-none placeholder:text-faint"
+                  placeholder="Type a task — Enter adds another"
                   value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
+                  onChange={(e) => {
+                    setDraft(e.target.value);
+                    const el = e.currentTarget;
+                    el.style.height = "auto";
+                    el.style.height = `${Math.min(el.scrollHeight, 132)}px`;
+                  }}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") submitDraft();
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      submitDraft();
+                    }
                     if (e.key === "Escape") closeComposer();
                   }}
                   aria-label="New task title"
@@ -214,19 +249,22 @@ export default function TasksPage() {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => (limits.reminders ? setReminderOpen(true) : setReminderGate(true))}
+                    onClick={openReminder}
                     className="flex items-center gap-1.5 rounded-full bg-cream px-3 py-1.5 text-[11px] font-semibold text-inksoft transition hover:bg-line"
                   >
                     <Bell className="h-3.5 w-3.5" strokeWidth={2.2} /> Set reminder
-                    {!limits.reminders ? <ProBadge className="ml-0.5" /> : null}
+                    {reminderCap != null ? (
+                      <span className="text-[10px] font-semibold text-faint">
+                        {Math.max(0, reminderCap - remindersUsed)} left
+                      </span>
+                    ) : null}
                   </button>
                 )}
 
                 <button
                   type="button"
-                  onClick={submitDraft}
-                  disabled={!draft.trim()}
-                  className="px-1 text-[13px] font-bold text-lime-deep transition enabled:hover:text-ink disabled:text-faint"
+                  onClick={() => submitDraft(true)}
+                  className="px-1 text-[13px] font-bold text-lime-deep transition hover:text-ink"
                 >
                   Done
                 </button>
@@ -249,8 +287,9 @@ export default function TasksPage() {
           <UpgradeModal
             open={reminderGate}
             onClose={() => setReminderGate(false)}
-            feature="Smart reminders"
-            blurb="Pin a precise date and time to any task and let onWard nudge you at the right moment. Included with Pro."
+            feature="Reminders"
+            title={`You've used all ${reminderCap ?? 3} free reminders`}
+            blurb={`Free includes a reminder on ${reminderCap ?? 3} tasks. Go Pro to put a nudge on every task.`}
           />
 
           <section className="mb-5">
