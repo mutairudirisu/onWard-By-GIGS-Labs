@@ -1,0 +1,36 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# next.js
+.next/
+out/
+build/
+dist/
+.vercel/
+
+# env files (never commit real keys)
+.env
+.env*.local
+.env.local
+
+# logs
+*.log
+.dev.log
+npm-debug.log*
+yarn-error.log*
+
+# typescript / caches
+*.tsbuildinfo
+next-env.d.ts
+.turbo/
+
+# qa + capture artifacts
+_qa/
+.screenshots/
+
+# misc
+.DS_Store
+Thumbs.db
+*.pem

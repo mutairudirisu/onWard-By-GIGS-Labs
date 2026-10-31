@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+section[id],
+div[id] {
+  scroll-margin-top: 80px;
+}
+
+body {
+  @apply bg-paper text-ink antialiased;
+}
+
+@layer components {
+  .container-x {
+    @apply mx-auto w-full max-w-6xl px-6 lg:px-8;
+  }
+  .eyebrow {
+    @apply text-[11px] font-bold uppercase tracking-[0.18em] text-lime-deep;
+  }
+  .h-display {
+    @apply text-[40px] font-bold leading-[1.05] tracking-[-0.02em] sm:text-[56px] lg:text-[72px];
+  }
+  .h2 {
+    @apply text-[30px] font-bold leading-[1.1] tracking-[-0.02em] sm:text-[40px] lg:text-[46px];
+  }
+  .h3 {
+    @apply text-[19px] font-bold tracking-[-0.01em] sm:text-[22px];
+  }
+  .lead {
+    @apply text-[16px] leading-relaxed text-muted sm:text-[18px];
+  }
+  .tiny {
+    @apply text-[12px] leading-relaxed text-muted;
+  }
+  .btn-lime {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-lime px-6 py-3 text-[14px] font-semibold text-ink transition hover:bg-lime-deep;
+  }
+  .btn-dark {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-ink px-6 py-3 text-[14px] font-semibold text-paper transition hover:bg-dark;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-line bg-paper px-6 py-3 text-[14px] font-semibold text-ink transition hover:border-ink/30;
+  }
+  .btn-light {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-paper px-6 py-3 text-[14px] font-semibold text-ink transition hover:bg-cream;
+  }
+  .check {
+    @apply mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-lime text-ink;
+  }
+}
+
+/* ————— Infinite logo marquee ————— */
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 12%,
+    black 88%,
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 12%,
+    black 88%,
+    transparent
+  );
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 32s linear infinite;
+}
+
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+
+.scrollbar-x-hide {
+  scrollbar-width: none;
+}
+
+.scrollbar-x-hide::-webkit-scrollbar {
+  display: none;
+}

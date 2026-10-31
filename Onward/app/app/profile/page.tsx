@@ -1,0 +1,254 @@
+"use client";
+
+import Link from "next/link";
+import { HeatLegend, HeatMap } from "@/components/heat-map";
+import { InstallButton } from "@/components/install-button";
+import { PhoneShell } from "@/components/phone-shell";
+import { ShareButton } from "@/components/share-button";
+import { Button, PageHeader, Tag } from "@/components/ui";
+import { ProBadge } from "@/components/pro";
+import { useStore } from "@/components/store";
+import { useCurrentUser } from "@/components/auth";
+import { activeDaysThisYear, skillTests, streak } from "@/lib/data";
+import { BarChart3, Crown, Flame, Pencil, Settings, Share2, Sparkles, Trophy } from "lucide-react";
+
+export default function ProfilePage() {
+  const { skills, onWards, isPro } = useStore();
+  const user = useCurrentUser();
+  const headline = [user.role, user.location].filter(Boolean).join(" · ");
+  const shareText = `I'm on a ${streak.current}-day onWard streak — ${streak.daysUsing} days of showing up and turning small steps into progress.`;
+
+  return (
+    <PhoneShell tab="you" wide>
+      <PageHeader
+        title="Your profile"
+        subtitle={headline || "Set your role to shape your portfolio."}
+        actions={
+          <>
+            <Link
+              href="/settings"
+              aria-label="Settings"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-line text-inksoft transition hover:bg-cream lg:h-10 lg:w-10"
+            >
+              <Settings className="h-[18px] w-[18px]" />
+            </Link>
+            <ShareButton
+              text={shareText}
+              label=""
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-line text-inksoft transition hover:bg-cream lg:h-10 lg:w-10"
+            />
+            <Link
+              href="/profile/edit"
+              aria-label="Edit profile"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-lime text-ink transition hover:bg-lime-deep lg:h-10 lg:w-10"
+            >
+              <Pencil className="h-[17px] w-[17px]" />
+            </Link>
+          </>
+        }
+      />
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-6">
+        {/* Main column */}
+        <div className="space-y-4">
+          <section className="card px-5 py-5">
+            <div className="flex items-start gap-4">
+              <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-lime-soft text-[16px] font-bold text-ink lg:h-20 lg:w-20 lg:text-[20px]">
+                {user.initials}
+              </span>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-[17px] font-bold tracking-tight text-ink lg:text-[22px]">
+                  {user.name}
+                </h2>
+                <p className="text-[11px] font-medium text-inksoft lg:text-[13px]">{user.role}</p>
+                <p className="mt-0.5 text-[10px] text-muted lg:text-[12px]">{user.location}</p>
+              </div>
+              <Link
+                href="/profile/role"
+                className="shrink-0 rounded-full border border-dash bg-paper px-3 py-1.5 text-[10px] font-semibold text-inksoft hover:border-lime-deep lg:text-[12px]"
+              >
+                Set role
+              </Link>
+            </div>
+            <p className="mt-4 max-w-[62ch] text-[12px] leading-[1.65] text-inksoft lg:text-[14px]">
+              {user.bio || "No bio yet — add a line about the work you do and it will head your portfolio."}
+            </p>
+            <div className="mt-5 grid grid-cols-3 divide-x divide-line border-t border-line pt-4 text-center">
+              {[
+                { value: String(onWards.length), label: "onWards" },
+                { value: String(skills.length), label: "skills" },
+                { value: String(skillTests.length), label: "tests" },
+              ].map((s) => (
+                <span key={s.label}>
+                  <span className="block text-[20px] font-bold tracking-tight text-ink lg:text-[26px]">
+                    {s.value}
+                  </span>
+                  <span className="block text-[10px] font-medium text-muted lg:text-[12px]">
+                    {s.label}
+                  </span>
+                </span>
+              ))}
+            </div>
+          </section>
+
+          <Link
+            href="/streaks"
+            className="flex items-center gap-4 rounded-2xl bg-dark px-5 py-4 transition hover:brightness-110"
+          >
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#2B2C24]">
+              <Flame className="h-6 w-6 text-lime" strokeWidth={2.2} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-bold text-paper lg:text-[18px]">
+                {streak.current}-day streak
+              </span>
+              <span className="block text-[10px] text-[#A9AAA0] lg:text-[12px]">
+                {streak.daysUsing} days using onWard · longest {streak.longest}
+              </span>
+            </span>
+            <Share2 className="h-5 w-5 shrink-0 text-[#A9AAA0]" />
+          </Link>
+
+          <section className="card px-5 py-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-[14px] font-bold tracking-tight text-ink lg:text-[17px]">
+                Your last 6 months
+              </h2>
+              <span className="text-[10px] text-muted lg:text-[12px]">
+                {activeDaysThisYear} active days
+              </span>
+            </div>
+            <HeatMap />
+            <div className="mt-3 flex justify-end">
+              <HeatLegend />
+            </div>
+          </section>
+        </div>
+
+        {/* Right rail */}
+        <aside className="space-y-4">
+          <Link
+            href="/upgrade"
+            className={`flex items-center gap-3 rounded-2xl px-5 py-4 transition ${
+              isPro ? "bg-dark text-paper hover:brightness-110" : "bg-lime text-ink hover:bg-lime-deep"
+            }`}
+          >
+            <span
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+                isPro ? "bg-[#2B2C24]" : "bg-ink/10"
+              }`}
+            >
+              {isPro ? <Crown className="h-5 w-5 text-lime" strokeWidth={2.2} /> : <Sparkles className="h-5 w-5" strokeWidth={2.4} />}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-2">
+                <span className="text-[14px] font-bold lg:text-[16px]">
+                  {isPro ? "onWard Pro" : "Upgrade to Pro"}
+                </span>
+                {isPro ? <ProBadge /> : null}
+              </span>
+              <span className={`block text-[10px] lg:text-[12px] ${isPro ? "text-[#A9AAA0]" : "text-ink/70"}`}>
+                {isPro ? "Every capability unlocked" : "Unlimited onWards, reminders & more"}
+              </span>
+            </span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className={isPro ? "text-[#A9AAA0]" : "text-ink/60"} aria-hidden>
+              <path d="m9 6 6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </Link>
+
+          <section className="card px-5 py-4">
+            <div className="mb-2.5 flex items-end justify-between">
+              <h2 className="text-[14px] font-bold tracking-tight text-ink lg:text-[17px]">
+                My skills
+              </h2>
+              <Link href="/profile/edit" className="text-[11px] font-semibold text-muted underline">
+                Edit skills
+              </Link>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {skills.map((s) => (
+                <Tag key={s}>{s}</Tag>
+              ))}
+            </div>
+            <p className="mt-2.5 text-[10px] text-muted lg:text-[11.5px]">
+              Skills are added as you log onWards.
+            </p>
+          </section>
+
+          <section className="card px-5 py-4">
+            <div className="mb-3 flex items-end justify-between">
+              <h2 className="text-[14px] font-bold tracking-tight text-ink lg:text-[17px]">
+                Digital skills results
+              </h2>
+              <button type="button" className="text-[11px] font-semibold text-muted underline">
+                Take a test
+              </button>
+            </div>
+            <div className="space-y-2">
+              {skillTests.map((test) => (
+                <div
+                  key={test.name}
+                  className="flex items-center justify-between rounded-xl border border-line bg-cream px-3.5 py-3"
+                >
+                  <span>
+                    <span className="block text-[12px] font-semibold text-ink lg:text-[13.5px]">
+                      {test.name}
+                    </span>
+                    <span className="block text-[10px] text-muted lg:text-[11px]">{test.meta}</span>
+                  </span>
+                  <span className="text-[15px] font-bold tracking-tight text-ink lg:text-[17px]">
+                    {test.score}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <div className="grid gap-2.5">
+            <Link href="/leaderboard" className="card flex items-center gap-3 px-4 py-3.5">
+              <Trophy className="h-[18px] w-[18px] text-inksoft" />
+              <span className="flex-1 text-[13px] font-semibold text-ink lg:text-[14px]">
+                Team leaderboard
+              </span>
+              <span className="text-[11px] font-semibold text-muted">You&apos;re #3</span>
+            </Link>
+            <Link href="/insights" className="card flex items-center gap-3 px-4 py-3.5">
+              <BarChart3 className="h-[18px] w-[18px] text-inksoft" />
+              <span className="flex-1 text-[13px] font-semibold text-ink lg:text-[14px]">
+                See your insights
+              </span>
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                className="text-muted"
+                aria-hidden
+              >
+                <path
+                  d="m9 6 6 6-6 6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </Link>
+            <Link href="/settings" className="card flex items-center gap-3 px-4 py-3.5">
+              <Settings className="h-[18px] w-[18px] text-inksoft" />
+              <span className="flex-1 text-[13px] font-semibold text-ink lg:text-[14px]">
+                Settings
+              </span>
+              <span className="text-[11px] font-semibold text-muted">Theme, notifications</span>
+            </Link>
+            <InstallButton className="card w-full items-center px-4 py-3.5 text-[13px] font-semibold text-ink lg:text-[14px]" />
+          </div>
+
+          <Button href="/portfolio/share" iconLeft={<Share2 className="h-4 w-4" />}>
+            Share my portfolio
+          </Button>
+        </aside>
+      </div>
+    </PhoneShell>
+  );
+}

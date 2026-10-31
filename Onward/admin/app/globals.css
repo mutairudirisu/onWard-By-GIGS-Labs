@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-canvas text-ink font-sans antialiased;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input,
+textarea,
+select,
+button {
+  font: inherit;
+  color: inherit;
+}
+
+input::placeholder,
+textarea::placeholder {
+  @apply text-faint;
+}
+
+/* thin, quiet scrollbars to match the desktop-console feel */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #d7d7cc transparent;
+}
+.scroll-thin::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: #d7d7cc;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+@layer components {
+  .eyebrow {
+    @apply text-[10px] font-semibold uppercase tracking-[0.14em] text-muted;
+  }
+  .h1 {
+    @apply text-[22px] leading-tight font-bold tracking-[-0.02em] text-ink;
+  }
+  .h2 {
+    @apply text-[15px] font-bold tracking-tight text-ink;
+  }
+  .sub {
+    @apply text-[13px] leading-[1.5] text-muted;
+  }
+  .tiny {
+    @apply text-[11px] leading-[1.45] text-muted;
+  }
+  .label {
+    @apply mb-1.5 block text-[11px] font-semibold text-inksoft;
+  }
+  .panel {
+    @apply rounded-2xl border border-line bg-paper shadow-card;
+  }
+  .field-input {
+    @apply w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13px] font-medium text-ink outline-none transition focus:border-lime-deep focus:ring-2 focus:ring-lime/40;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-btn px-3.5 py-2 text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-ink text-paper hover:bg-dark;
+  }
+  .btn-lime {
+    @apply btn bg-lime text-ink hover:bg-lime-deep;
+  }
+  .btn-ghost {
+    @apply btn border border-line bg-paper text-inksoft hover:border-dash hover:text-ink;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border border-line bg-paper px-3 py-1.5 text-[11px] font-semibold text-inksoft;
+  }
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold;
+  }
+  .th {
+    @apply px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-[0.08em] text-muted;
+  }
+  .td {
+    @apply px-4 py-3 text-[13px] text-inksoft;
+  }
+}

@@ -1,0 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+
+  --page: 236 236 234;
+  --cream: 246 246 240;
+  --paper: 255 255 255;
+  --ink: 29 30 25;
+  --inksoft: 85 86 76;
+  --muted: 139 140 128;
+  --faint: 180 181 169;
+  --line: 231 231 222;
+  --dash: 201 202 188;
+  --lime: 201 242 78;
+  --lime-deep: 180 225 58;
+  --lime-soft: 237 251 198;
+  --lime-pale: 245 251 223;
+  --dark: 32 33 26;
+  --dark-soft: 43 44 35;
+  --tag-bg: 239 239 230;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --page: 18 19 15;
+  --cream: 25 26 21;
+  --paper: 34 35 29;
+  --ink: 243 243 236;
+  --inksoft: 196 197 186;
+  --muted: 150 151 139;
+  --faint: 106 107 98;
+  --line: 46 47 39;
+  --dash: 58 59 50;
+  --lime: 201 242 78;
+  --lime-deep: 180 225 58;
+  --lime-soft: 44 52 28;
+  --lime-pale: 33 40 22;
+  --dark: 15 16 12;
+  --dark-soft: 30 31 25;
+  --tag-bg: 46 47 39;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply text-ink font-sans antialiased;
+  background-color: rgb(var(--page));
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Hide scrollbars app-wide while keeping scroll behaviour */
+html {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+input,
+textarea,
+select,
+button {
+  font: inherit;
+  color: inherit;
+}
+
+input::placeholder,
+textarea::placeholder {
+  @apply text-faint;
+}
+
+@layer components {
+  .eyebrow {
+    @apply text-[10px] font-semibold uppercase tracking-[0.14em] text-muted;
+  }
+  .h1 {
+    @apply text-[28px] leading-[1.12] font-bold tracking-[-0.02em] text-ink;
+  }
+  .sub {
+    @apply text-[13px] leading-[1.45] text-muted;
+  }
+  .tiny {
+    @apply text-[11px] leading-[1.45] text-muted;
+  }
+  .label {
+    @apply mb-1.5 block text-[11px] font-semibold text-inksoft;
+  }
+  .card {
+    @apply rounded-2xl border border-line bg-paper shadow-card;
+  }
+  .field-input {
+    @apply w-full rounded-xl border border-line bg-paper px-3.5 py-3 text-[13px] font-medium text-ink outline-none transition focus:border-lime-deep focus:ring-2 focus:ring-lime/40;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border border-line bg-paper px-3 py-1.5 text-[11px] font-semibold text-inksoft;
+  }
+  .chip-active {
+    @apply border-ink/15 bg-paper text-ink shadow-card;
+  }
+  .tag {
+    @apply inline-flex items-center rounded-md px-2 py-1 text-[10px] font-semibold text-inksoft;
+    background-color: rgb(var(--tag-bg));
+  }
+}
+
+@keyframes onward-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes onward-sheet {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.wheel {
+  scrollbar-width: none;
+}
+.wheel::-webkit-scrollbar {
+  display: none;
+}
