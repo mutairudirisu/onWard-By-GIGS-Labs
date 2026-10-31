@@ -62,9 +62,8 @@ export default function Home() {
               .
             </h1>
             <p className="mt-6 max-w-xl text-[16px] leading-relaxed text-paper/65 sm:text-[18px]">
-              onWard turns the work you already do into a record you can point
-              to: log a win, name the impact, attach the proof — and by review
-              time your portfolio is already written.
+              Plan your day. Capture your wins. Build a story of your work
+              you&apos;re proud to share.
             </p>
             <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
               <Link href="/pricing" className="btn-light">
