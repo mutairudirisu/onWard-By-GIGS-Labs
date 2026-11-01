@@ -90,10 +90,24 @@ body {
   display: flex;
   width: max-content;
   animation: marquee 32s linear infinite;
+  will-change: transform;
 }
 
 .marquee:hover .marquee-track {
   animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .marquee-track {
+    animation: none;
+  }
+  .marquee {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
 }
 
 .scrollbar-x-hide {

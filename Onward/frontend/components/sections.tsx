@@ -23,7 +23,7 @@ export function FeatureSplit({
   return (
     <section id={id} className="container-x py-20 lg:py-28">
       <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
-        <div className={reverse ? "lg:order-2" : ""}>
+        <div className={`min-w-0 ${reverse ? "lg:order-2" : ""}`}>
           <p className="eyebrow">{eyebrow}</p>
           <h2 className="h2 mt-4">{title}</h2>
           <p className="lead mt-5">{body}</p>
@@ -38,7 +38,7 @@ export function FeatureSplit({
             ))}
           </ul>
         </div>
-        <div className={reverse ? "lg:order-1" : ""}>{visual}</div>
+        <div className={`min-w-0 ${reverse ? "lg:order-1" : ""}`}>{visual}</div>
       </div>
     </section>
   );
@@ -55,7 +55,7 @@ export function LimePanel({
 }) {
   return (
     <div
-      className={`relative overflow-hidden rounded-[32px] bg-lime-pale p-8 sm:p-10 ${className}`}
+      className={`relative overflow-hidden rounded-[32px] bg-lime-pale p-5 sm:p-10 ${className}`}
     >
       <span className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-lime/50 blur-[2px]" />
       <span className="absolute -bottom-20 -left-10 h-40 w-40 rounded-full bg-lime-soft" />

@@ -131,15 +131,21 @@ export function StepsShowcase() {
         </div>
       </div>
 
-      {/* mobile: phone below each step is heavy; show single static preview */}
+      {/* mobile: one phone under the steps, cross-fading like the desktop column */}
       <div className="container-x pb-20 lg:hidden">
-        <div className="relative mx-auto aspect-[400/820] w-[280px] overflow-hidden rounded-[40px] border-[6px] border-[#3A3B30] bg-cream shadow-lift">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={STEPS[active].img}
-            alt={STEPS[active].alt}
-            className="absolute left-1/2 top-0 w-[125%] max-w-none -translate-x-1/2"
-          />
+        <div className="relative mx-auto aspect-[400/820] w-full max-w-[280px] overflow-hidden rounded-[40px] border-[6px] border-[#3A3B30] bg-cream shadow-lift">
+          {STEPS.map((s, i) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={s.img}
+              src={s.img}
+              alt={i === active ? s.alt : ""}
+              aria-hidden={i !== active}
+              className={`absolute left-1/2 top-0 w-[125%] max-w-none -translate-x-1/2 transition-opacity duration-500 ${
+                i === active ? "opacity-100" : "opacity-0"
+              }`}
+            />
+          ))}
           <span className="absolute bottom-3 left-1/2 h-[5px] w-28 -translate-x-1/2 rounded-full bg-ink/80" />
         </div>
       </div>

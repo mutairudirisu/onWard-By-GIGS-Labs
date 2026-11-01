@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import { LOGIN_URL } from "@/lib/site";
+import { APP_URL, LOGIN_URL } from "@/lib/site";
 import { Logo } from "./logo";
 
 const LINKS = [
@@ -25,7 +25,9 @@ export function SiteNav() {
   return (
     <header
       className={`fixed inset-x-0 top-0 z-40 transition ${
-        scrolled ? "border-b border-line/70 bg-paper/85 backdrop-blur-md" : ""
+        scrolled
+          ? "border-b border-line/70 bg-paper/95 lg:bg-paper/85 lg:backdrop-blur-md"
+          : ""
       }`}
     >
       <div className="container-x flex h-[68px] items-center justify-between">
@@ -56,8 +58,8 @@ export function SiteNav() {
           >
             Log in
           </a>
-          <Link
-            href="/pricing"
+          <a
+            href={APP_URL}
             className={`inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-[14px] font-semibold transition ${
               scrolled
                 ? "bg-ink text-paper hover:bg-dark"
@@ -66,7 +68,7 @@ export function SiteNav() {
           >
             Get onWard
             <ArrowUpRight className="h-4 w-4" strokeWidth={2.2} />
-          </Link>
+          </a>
         </div>
       </div>
     </header>

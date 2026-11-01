@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LOGIN_URL } from "@/lib/site";
+import { APP_URL, LOGIN_URL } from "@/lib/site";
 import { FooterWordmark } from "./footer-wordmark";
 import { LogoMark } from "./logo";
 
@@ -13,7 +13,7 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
       { label: "How it works", href: "/#how" },
       { label: "Built for your role", href: "/#audiences" },
       { label: "Pricing", href: "/pricing" },
-      { label: "Get onWard", href: "/pricing" },
+      { label: "Get onWard", href: APP_URL, external: true },
     ],
   },
   {

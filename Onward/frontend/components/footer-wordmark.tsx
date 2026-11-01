@@ -16,6 +16,9 @@ export function FooterWordmark() {
   useEffect(() => {
     const wrap = wrapRef.current;
     if (!wrap) return;
+    // Touch screens fire pointermove while scrolling, which would keep this
+    // rAF loop repainting six gradient-clipped glyphs mid-flick. Mouse only.
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const letters = letterRefs.current.filter(Boolean) as HTMLSpanElement[];

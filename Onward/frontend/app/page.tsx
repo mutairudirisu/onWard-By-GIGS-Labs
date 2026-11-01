@@ -89,7 +89,7 @@ export default function Home() {
               <Sprout className="h-3.5 w-3.5 text-lime" strokeWidth={2.4} />
               Today view
             </span>
-            <div className="relative mx-auto mt-6 w-[280px] sm:w-[340px]">
+            <div className="relative mx-auto mt-6 w-full max-w-[280px] sm:max-w-[340px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/app-today.png"
