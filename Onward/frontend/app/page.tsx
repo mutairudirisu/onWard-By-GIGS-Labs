@@ -7,6 +7,7 @@ import { RadialShowcase } from "@/components/radial-showcase";
 import { AudiencesTabs } from "@/components/audiences-tabs";
 import { FeatureAccordion } from "@/components/feature-accordion";
 import { StepsShowcase } from "@/components/steps-showcase";
+import { StudentShowcase } from "@/components/student-showcase";
 import { Testimonials } from "@/components/testimonials";
 import { APP_URL } from "@/lib/site";
 
@@ -231,6 +232,9 @@ export default function Home() {
           <AudiencesTabs />
         </div>
       </section>
+
+      {/* ————— Student showcase ————— */}
+      <StudentShowcase />
 
       {/* ————— Testimonials ————— */}
       <Testimonials />
