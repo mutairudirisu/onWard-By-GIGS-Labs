@@ -31,7 +31,7 @@ const STAGES = [
   {
     term: "Graduation",
     title: "More than a certificate",
-    body: "One shareable link and a PDF, built across four years — ready before anyone asks you for a CV.",
+    body: "One shareable link and a PDF, built year by year through school — ready before anyone asks you for a CV.",
   },
 ];
 
@@ -104,7 +104,7 @@ export function StudentShowcase() {
               <div className="relative">
                 <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-paper/50">
                   <GraduationCap className="h-4 w-4 text-lime" strokeWidth={2.2} />
-                  Four years, documented
+                  Your school years, documented
                 </p>
                 <ol className="mt-7">
                   {STAGES.map((s, i) => (
