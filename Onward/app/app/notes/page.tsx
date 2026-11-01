@@ -102,7 +102,7 @@ export default function NotesPage() {
                 className="flex flex-col rounded-2xl border border-lime-deep/40 bg-lime-pale px-4 py-3.5 transition hover:-translate-y-0.5 hover:shadow-card lg:px-5 lg:py-4"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-[14px] font-bold tracking-tight text-ink lg:text-[16px]">
+                  <h3 className="text-[14px] font-bold tracking-tight text-ink [overflow-wrap:anywhere] lg:text-[16px]">
                     {note.title}
                   </h3>
                   <Pin className="h-4 w-4 shrink-0 fill-lime-deep text-lime-deep" />
@@ -138,7 +138,7 @@ export default function NotesPage() {
                 href={`/notes/${note.id}`}
                 className="card flex flex-col px-4 py-3.5 transition hover:-translate-y-0.5 hover:shadow-card lg:px-5 lg:py-4"
               >
-                <h3 className="text-[14px] font-bold tracking-tight text-ink lg:text-[16px]">
+                <h3 className="text-[14px] font-bold tracking-tight text-ink [overflow-wrap:anywhere] lg:text-[16px]">
                   {note.title}
                 </h3>
                 <p className="mt-1.5 line-clamp-3 flex-1 text-[11px] leading-[1.6] text-muted lg:text-[12.5px]">

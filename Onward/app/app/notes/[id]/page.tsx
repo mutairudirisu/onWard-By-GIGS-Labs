@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { PhoneShell } from "@/components/phone-shell";
 import { ChecklistEditor } from "@/components/checklist-editor";
@@ -11,6 +11,7 @@ import { useStore } from "@/components/store";
 import { appendDictation } from "@/lib/dictation";
 import {
   CHECKLIST_PREFIX,
+  INDENT_PX,
   asChecklist,
   asProse,
   hasChecklist,
@@ -183,6 +184,21 @@ export default function NoteEditorPage() {
   const [shareOpen, setShareOpen] = useState(false);
   const [copied, setCopied] = useState<"text" | "link" | null>(null);
   const keyboardInset = useKeyboardInset();
+  const bodyRef = useRef<HTMLTextAreaElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+
+  // Prose grows with the note instead of hiding the rest behind ten rows.
+  useLayoutEffect(() => {
+    const el = bodyRef.current;
+    if (!el || !editing || checklist) return;
+    el.style.height = "0px";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [body, editing, checklist]);
+
+  const focusBody = () => {
+    const first = listRef.current?.querySelector("textarea") as HTMLTextAreaElement | null;
+    (checklist ? first : bodyRef.current)?.focus();
+  };
 
   useEffect(() => {
     if (!note) return;
@@ -381,6 +397,12 @@ export default function NoteEditorPage() {
             autoFocus
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                focusBody();
+              }
+            }}
             aria-label="Note title"
             placeholder="Untitled note"
             className="w-full bg-transparent text-[27px] font-bold leading-[1.15] tracking-[-0.02em] text-ink outline-none placeholder:text-faint lg:text-[34px]"
@@ -409,15 +431,18 @@ export default function NoteEditorPage() {
             </div>
           </div>
           {checklist ? (
-            <ChecklistEditor lines={parseNote(body)} onChange={(next) => setBody(noteToBody(next))} />
+            <div ref={listRef}>
+              <ChecklistEditor lines={parseNote(body)} onChange={(next) => setBody(noteToBody(next))} />
+            </div>
           ) : (
             <textarea
+              ref={bodyRef}
               value={body}
               onChange={(e) => setBody(e.target.value)}
               aria-label="Note body"
-              rows={10}
+              rows={8}
               placeholder="Start writing…"
-              className="w-full resize-none bg-transparent text-[15px] leading-[1.75] text-inksoft outline-none placeholder:text-faint lg:min-h-[420px] lg:text-[16px] lg:leading-[1.8]"
+              className="min-h-[220px] w-full resize-none bg-transparent text-[15px] leading-[1.75] text-inksoft outline-none [overflow-wrap:anywhere] placeholder:text-faint lg:min-h-[420px] lg:text-[16px] lg:leading-[1.8]"
             />
           )}
           <div className="h-32 lg:hidden" aria-hidden />
@@ -450,7 +475,7 @@ export default function NoteEditorPage() {
           }}
           className="cursor-text rounded-2xl outline-none transition focus-visible:ring-2 focus-visible:ring-lime/50 lg:max-w-[760px]"
         >
-          <h2 className="text-[27px] font-bold leading-[1.15] tracking-[-0.02em] text-ink lg:text-[34px]">
+          <h2 className="text-[27px] font-bold leading-[1.15] tracking-[-0.02em] text-ink [overflow-wrap:anywhere] lg:text-[34px]">
             {note.title}
           </h2>
           <p className="mb-4 mt-2 text-[10px] font-medium text-muted lg:mb-6 lg:text-[11.5px]">
@@ -472,6 +497,7 @@ export default function NoteEditorPage() {
                       tick(index);
                     }}
                     className="group flex w-full items-start gap-2.5 rounded-xl px-2 py-1.5 text-left transition hover:bg-cream"
+                    style={{ paddingLeft: `${(line.depth ?? 0) * INDENT_PX + 8}px` }}
                   >
                     <span
                       className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] border-2 transition ${
@@ -483,7 +509,7 @@ export default function NoteEditorPage() {
                       {line.done ? <Check className="h-3 w-3 text-dark" strokeWidth={3} /> : null}
                     </span>
                     <span
-                      className={`min-w-0 flex-1 text-[15px] leading-[1.6] lg:text-[16px] ${
+                      className={`min-w-0 flex-1 text-[15px] leading-[1.6] [overflow-wrap:anywhere] lg:text-[16px] ${
                         line.done ? "text-faint line-through" : "text-inksoft"
                       }`}
                     >
@@ -493,7 +519,8 @@ export default function NoteEditorPage() {
                 ) : (
                   <p
                     key={index}
-                    className="whitespace-pre-line px-2 text-[15px] leading-[1.75] text-inksoft lg:text-[16px] lg:leading-[1.8]"
+                    className="whitespace-pre-line px-2 text-[15px] leading-[1.75] text-inksoft [overflow-wrap:anywhere] lg:text-[16px] lg:leading-[1.8]"
+                    style={{ paddingLeft: `${(line.depth ?? 0) * INDENT_PX + 8}px` }}
                   >
                     {line.text}
                   </p>

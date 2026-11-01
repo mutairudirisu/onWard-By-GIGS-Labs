@@ -11,6 +11,9 @@ export const CHECKLIST_PREFIX = "- [ ] ";
 /** Two spaces per level, so a nested item keeps its place on the round trip. */
 const INDENT = "  ";
 
+/** What one level of that indent looks like on screen. */
+export const INDENT_PX = 16;
+
 export type NoteLine =
   | { kind: "item"; done: boolean; text: string; depth?: number }
   | { kind: "text"; text: string; depth?: number };

@@ -221,11 +221,6 @@ export default function TasksPage() {
                   }}
                   aria-label="New task and its steps"
                 />
-                <DictateButton
-                  label="Dictate a task"
-                  className="-mr-1 -mt-1"
-                  onText={(text) => setDraft((value) => appendDictation(value, text))}
-                />
                 <button
                   type="button"
                   aria-label="Cancel adding task"
@@ -236,43 +231,50 @@ export default function TasksPage() {
                 </button>
               </div>
 
-              <div className="mt-4 flex items-center justify-between">
-                {reminder ? (
-                  <div className="flex items-center gap-1 rounded-full bg-lime-soft py-1.5 pl-3 pr-1.5 text-[11px] font-semibold text-ink">
-                    <Bell className="h-3.5 w-3.5 shrink-0 text-lime-deep" strokeWidth={2.4} />
+              <div className="mt-4 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  {reminder ? (
+                    <div className="flex items-center gap-1 rounded-full bg-lime-soft py-1.5 pl-3 pr-1.5 text-[11px] font-semibold text-ink">
+                      <Bell className="h-3.5 w-3.5 shrink-0 text-lime-deep" strokeWidth={2.4} />
+                      <button
+                        type="button"
+                        onClick={() => setReminderOpen(true)}
+                        className="flex items-center gap-1"
+                      >
+                        <span>{formatTasksHeader(reminder.date)}</span>
+                        <span className="text-lime-deep">·</span>
+                        <Clock className="h-3 w-3" strokeWidth={2.4} />
+                        <span>{format12(reminder.time)}</span>
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Clear reminder"
+                        onClick={() => setReminder(null)}
+                        className="flex h-5 w-5 items-center justify-center rounded-full transition hover:bg-lime"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
                     <button
                       type="button"
-                      onClick={() => setReminderOpen(true)}
-                      className="flex items-center gap-1"
+                      onClick={openReminder}
+                      className="flex items-center gap-1.5 rounded-full bg-cream px-3 py-1.5 text-[11px] font-semibold text-inksoft transition hover:bg-line"
                     >
-                      <span>{formatTasksHeader(reminder.date)}</span>
-                      <span className="text-lime-deep">·</span>
-                      <Clock className="h-3 w-3" strokeWidth={2.4} />
-                      <span>{format12(reminder.time)}</span>
+                      <Bell className="h-3.5 w-3.5" strokeWidth={2.2} /> Set reminder
+                      {reminderCap != null ? (
+                        <span className="text-[10px] font-semibold text-faint">
+                          {Math.max(0, reminderCap - remindersUsed)} left
+                        </span>
+                      ) : null}
                     </button>
-                    <button
-                      type="button"
-                      aria-label="Clear reminder"
-                      onClick={() => setReminder(null)}
-                      className="flex h-5 w-5 items-center justify-center rounded-full transition hover:bg-lime"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={openReminder}
-                    className="flex items-center gap-1.5 rounded-full bg-cream px-3 py-1.5 text-[11px] font-semibold text-inksoft transition hover:bg-line"
-                  >
-                    <Bell className="h-3.5 w-3.5" strokeWidth={2.2} /> Set reminder
-                    {reminderCap != null ? (
-                      <span className="text-[10px] font-semibold text-faint">
-                        {Math.max(0, reminderCap - remindersUsed)} left
-                      </span>
-                    ) : null}
-                  </button>
-                )}
+                  )}
+
+                  <DictateButton
+                    label="Dictate a task"
+                    onText={(text) => setDraft((value) => appendDictation(value, text))}
+                  />
+                </div>
 
                 <button
                   type="button"

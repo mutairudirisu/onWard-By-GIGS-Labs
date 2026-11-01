@@ -6,7 +6,7 @@ import { PhoneShell } from "@/components/phone-shell";
 import { ChecklistEditor } from "@/components/checklist-editor";
 import { Modal } from "@/components/modal";
 import { ReminderModal } from "@/components/reminder-modal";
-import { BackLink, Button, Chip, Field, TextInput, Toggle } from "@/components/ui";
+import { BackLink, Button, Field, TextInput, Toggle } from "@/components/ui";
 import { useStore } from "@/components/store";
 import { BASE_DATE } from "@/lib/data";
 import { formatClock, formatMedium, formatTasksHeader } from "@/lib/dates";
@@ -24,8 +24,6 @@ import {
   Trash2,
 } from "lucide-react";
 
-const REMINDERS = ["At time", "15 min before", "Custom"];
-
 /** Empty notes read back as one blank text line, which is not a step. */
 function seedSteps(source?: string): NoteLine[] {
   return source?.trim() ? parseNote(source) : [];
@@ -34,15 +32,14 @@ function seedSteps(source?: string): NoteLine[] {
 export default function EditTaskPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { tasks, settings, updateTask, deleteTask, toggleTask, hydrated } = useStore();
+  const { tasks, settings, updateTask, deleteTask, toggleTask, setSelectedDate, hydrated } =
+    useStore();
   const task = tasks.find((t) => t.id === params.id);
 
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(BASE_DATE);
   const [time, setTime] = useState("");
   const [steps, setSteps] = useState<NoteLine[]>([]);
-  const [remind, setRemind] = useState(true);
-  const [reminder, setReminder] = useState("15 min before");
   const [whenOpen, setWhenOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -54,7 +51,6 @@ export default function EditTaskPage() {
     setDate(task.date ?? BASE_DATE);
     setTime(task.time ?? "");
     setSteps(seedSteps(task.steps));
-    setRemind(Boolean(task.time));
   }, [task?.id, hydrated]);
 
   if (!task) {
@@ -86,7 +82,19 @@ export default function EditTaskPage() {
       time: time || undefined,
       steps: stepSource,
     });
+    // The list opens on the day the task was moved to, so it is still there.
+    setSelectedDate(date);
     router.push("/tasks");
+  };
+
+  // A reminder is the task's time: switching on picks one, switching off drops it.
+  const setReminder = (on: boolean) => {
+    if (!on) {
+      setTime("");
+      return;
+    }
+    if (!time) setTime(settings.defaultReminderTime);
+    setWhenOpen(true);
   };
 
   const remove = () => {
@@ -191,24 +199,28 @@ export default function EditTaskPage() {
               <Bell className="h-4 w-4" />
             </span>
             <span className="flex-1 text-[12px] font-bold text-ink">Remind me</span>
-            <Toggle checked={remind} onChange={setRemind} label="Remind me" />
+            <Toggle checked={Boolean(time)} onChange={setReminder} label="Remind me" />
           </div>
-          <div className="mt-3 flex gap-2">
-            {REMINDERS.map((r) => (
-              <Chip
-                key={r}
-                active={reminder === r}
-                onClick={() => setReminder(r)}
-                className={reminder === r ? "bg-cream" : ""}
-              >
-                {r}
-              </Chip>
-            ))}
-          </div>
-          <p className="mt-2.5 flex items-center gap-1 text-[10px] font-medium text-inksoft">
+          {time ? (
+            <button
+              type="button"
+              onClick={() => setWhenOpen(true)}
+              className="mt-3 flex w-full items-center justify-between rounded-xl bg-cream px-3 py-2.5 text-left transition hover:bg-line"
+            >
+              <span className="flex items-center gap-2 text-[12px] font-semibold text-ink">
+                <Clock className="h-3.5 w-3.5 text-lime-deep" strokeWidth={2.4} />
+                {formatTasksHeader(date)} at {formatClock(time)}
+              </span>
+              <span className="text-[10px] font-semibold text-muted">Change</span>
+            </button>
+          ) : (
+            <p className="mt-2.5 text-[10px] font-medium text-inksoft">
+              Switch on to pick when the nudge arrives.
+            </p>
+          )}
+          <p className="mt-2.5 flex items-center gap-1 text-[10px] font-medium text-muted">
             <Check className="h-3 w-3 text-lime-deep" strokeWidth={3} />{" "}
-            {time ? `${formatTasksHeader(date)} at ${formatClock(time)}` : formatTasksHeader(date)}{" "}
-            · Push notification
+            {time ? "Alerts fire while onWard is open" : "No alert for this task"}
           </p>
         </div>
 
