@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { KeyRound, Loader2, ShieldAlert } from "lucide-react";
+import { KeyRound, Loader2, ShieldAlert, ShieldCheck, Sprout } from "lucide-react";
 import { AdminShell } from "@/components/admin-shell";
-import { Wordmark } from "@/components/wordmark";
 import { checkAdmin } from "@/lib/admin-api";
 import { AdminSessionContext, type AdminSession } from "@/lib/admin-session";
 import { supabase } from "@/lib/supabase";
@@ -15,6 +14,77 @@ function initialsOf(value: string) {
 }
 
 type Phase = "loading" | "signed-out" | "denied" | "ready";
+
+/**
+ * Sign-in frame. Mobile: the plain centred card the console has always used.
+ * Large screens: the same dark split the onWard app uses — brand panel left,
+ * form right.
+ */
+function AuthFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-dvh flex-col bg-cream lg:grid lg:grid-cols-[minmax(0,46fr)_minmax(0,54fr)] lg:bg-[#0C0D08]">
+      <aside className="relative hidden overflow-hidden lg:flex lg:flex-col lg:px-14 lg:py-12 xl:px-[84px] xl:py-16">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(125% 85% at 0% 104%, rgba(201,242,78,0.9) 0%, rgba(150,190,45,0.5) 20%, rgba(66,82,24,0.4) 44%, rgba(12,13,8,0) 70%)",
+          }}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-40 -left-28 h-[380px] w-[480px] rounded-full bg-lime/35 blur-[110px]"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage: "radial-gradient(rgba(255,255,255,0.8) 1.1px, transparent 1.3px)",
+            backgroundSize: "54px 54px",
+            opacity: 0.32,
+            maskImage: "linear-gradient(to bottom, black, transparent 58%)",
+            WebkitMaskImage: "linear-gradient(to bottom, black, transparent 58%)",
+          }}
+        />
+
+        <div className="relative flex w-fit items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-lime">
+            <Sprout className="h-5 w-5 text-dark" strokeWidth={2.2} />
+          </span>
+          <span className="text-[19px] font-bold tracking-tight text-white">
+            <span className="text-lime">o</span>nWard
+            <span className="ml-1.5 rounded-md bg-lime px-1.5 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wider text-dark">
+              Admin
+            </span>
+          </span>
+        </div>
+
+        <div className="relative mb-24 mt-auto xl:mb-32">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-lime">
+            Internal console
+          </p>
+          <p className="mt-3 max-w-[19ch] text-balance text-[clamp(28px,2.5vw,40px)] font-bold leading-[1.14] tracking-[-0.02em] text-white">
+            For authorised operators only.
+          </p>
+          <p className="mt-4 max-w-[38ch] text-[13px] leading-[1.6] text-white/50">
+            Everything in here reads live accounts and can reach every user at once. Access is
+            checked against the admin list on each sign-in.
+          </p>
+        </div>
+      </aside>
+
+      <div className="flex flex-1 flex-col px-5 py-10 lg:px-16 lg:py-12 xl:px-24">
+        <div className="mx-auto flex w-full max-w-[400px] flex-1 flex-col justify-center lg:max-w-[430px]">
+          {children}
+        </div>
+        <p className="mt-8 hidden text-center text-[11px] text-white/25 lg:block">
+          © 2026 onWard · A GIGS Labs product
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export function AdminGateway({ children }: { children: React.ReactNode }) {
   const [phase, setPhase] = useState<Phase>("loading");
@@ -137,13 +207,13 @@ export function AdminGateway({ children }: { children: React.ReactNode }) {
 
   if (phase === "denied") {
     return (
-      <main className="grid min-h-dvh place-items-center px-4">
-        <div className="panel w-full max-w-sm p-6 text-center">
+      <AuthFrame>
+        <div className="panel w-full p-6 text-center lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none">
           <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-[#F6E0DC] text-bad">
             <ShieldAlert className="h-5 w-5" />
           </span>
-          <h1 className="h2 mt-4">Admin access only</h1>
-          <p className="tiny mt-2">
+          <h1 className="h2 mt-4 lg:text-white">Admin access only</h1>
+          <p className="tiny mt-2 lg:text-white/50">
             {session?.email ?? "This account"} is signed in but is not on the admin list. Ask the
             platform owner to add it in Supabase.
           </p>
@@ -155,27 +225,32 @@ export function AdminGateway({ children }: { children: React.ReactNode }) {
             Use another account
           </button>
         </div>
-      </main>
+      </AuthFrame>
     );
   }
 
   return (
-    <main className="grid min-h-dvh place-items-center bg-cream px-4">
-      <form onSubmit={submit} className="panel w-full max-w-sm p-6">
-        <Wordmark className="text-[16px]" />
-        <p className="eyebrow mt-5">Admin console</p>
-        <h1 className="h2 mt-1">Sign in to manage onWard.</h1>
-        <p className="tiny mt-2">Use the email and password of an admin account.</p>
+    <AuthFrame>
+      <form
+        onSubmit={submit}
+        className="panel w-full p-6 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none"
+      >
+        <p className="eyebrow lg:text-lime">Authorised users only</p>
+        <h1 className="h2 mt-1 lg:text-white">Sign in to the admin console.</h1>
+        <p className="tiny mt-2 lg:text-white/50">
+          This console reads live onWard accounts and sends notifications to them. Access is checked
+          against the admin list on every sign-in.
+        </p>
 
         <div className="mt-5 space-y-3">
           <div>
-            <label className="label" htmlFor="admin-email">
+            <label className="label lg:text-white/60" htmlFor="admin-email">
               Email
             </label>
             <input
               id="admin-email"
               type="email"
-              className="field-input"
+              className="field-input lg:border-white/15 lg:bg-white/[0.06] lg:text-white lg:placeholder-white/25"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@onward.app"
@@ -184,13 +259,13 @@ export function AdminGateway({ children }: { children: React.ReactNode }) {
             />
           </div>
           <div>
-            <label className="label" htmlFor="admin-password">
+            <label className="label lg:text-white/60" htmlFor="admin-password">
               Password
             </label>
             <input
               id="admin-password"
               type="password"
-              className="field-input"
+              className="field-input lg:border-white/15 lg:bg-white/[0.06] lg:text-white lg:placeholder-white/25"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
@@ -210,7 +285,12 @@ export function AdminGateway({ children }: { children: React.ReactNode }) {
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
           {busy ? "Signing in…" : "Sign in"}
         </button>
+
+        <p className="mt-4 flex items-start gap-2 text-[11px] leading-[1.5] text-muted lg:text-white/40">
+          <ShieldCheck className="mt-px h-3.5 w-3.5 shrink-0 text-lime-deep lg:text-lime" />
+          Not on the list? Nothing here opens — the console signs you straight back out.
+        </p>
       </form>
-    </main>
+    </AuthFrame>
   );
 }
