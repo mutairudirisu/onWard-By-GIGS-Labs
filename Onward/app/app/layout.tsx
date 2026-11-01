@@ -6,6 +6,7 @@ import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { Sidebar } from "@/components/sidebar";
 import { StoreProvider } from "@/components/store";
 import { ThemeManager } from "@/components/theme-manager";
+import { UpdatePrompt } from "@/components/update-prompt";
 
 export const metadata: Metadata = {
   title: "onWard — your everyday, going places",
@@ -52,6 +53,7 @@ export default function RootLayout({
                   </div>
                 </div>
                 <ServiceWorkerRegister />
+                <UpdatePrompt />
               </NotificationsProvider>
             </AuthGate>
           </StoreProvider>

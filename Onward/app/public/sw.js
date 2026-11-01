@@ -2,12 +2,17 @@ const CACHE = "onward-shell-v1";
 const SHELL = ["/", "/today", "/manifest.webmanifest", "/icons/icon.svg"];
 
 self.addEventListener("install", (event) => {
+  // No skipWaiting here: a new bundle stays in the wings until the page asks
+  // for it, which is what makes the "update available" prompt meaningful.
   event.waitUntil(
     caches
       .open(CACHE)
       .then((cache) => cache.addAll(SHELL))
-      .then(() => self.skipWaiting())
   );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {

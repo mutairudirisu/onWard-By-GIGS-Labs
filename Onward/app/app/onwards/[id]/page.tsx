@@ -1,12 +1,14 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import { useState } from "react";
 import Link from "next/link";
 import { PhoneShell } from "@/components/phone-shell";
+import { ShareSheet, wardShareText } from "@/components/share-sheet";
 import { BackLink, Button, Tag } from "@/components/ui";
 import { useStore } from "@/components/store";
 import type { Evidence } from "@/lib/data";
-import { ArrowUpRight, Check, File as FileIcon, Folder, Globe, Image as ImageIcon, TrendingUp } from "lucide-react";
+import { ArrowUpRight, Check, File as FileIcon, Folder, Globe, Image as ImageIcon, Share2, Star, TrendingUp } from "lucide-react";
 
 function EvidenceIcon({ kind }: { kind: Evidence["kind"] }) {
   const cls = "h-[15px] w-[15px]";
@@ -17,7 +19,8 @@ function EvidenceIcon({ kind }: { kind: Evidence["kind"] }) {
 
 export default function OnWardDetailPage() {
   const params = useParams<{ id: string }>();
-  const { onWards, togglePortfolio } = useStore();
+  const { onWards, favourites, togglePortfolio, toggleFavourite } = useStore();
+  const [sharing, setSharing] = useState(false);
   const ward = onWards.find((w) => w.id === params.id);
 
   if (!ward) {
@@ -46,7 +49,24 @@ export default function OnWardDetailPage() {
 
       <div className="mb-3 flex items-center justify-between">
         <span className="tag">{ward.project}</span>
-        <span className="text-[9px] font-medium text-muted">{ward.dateLabel}</span>
+        <span className="flex items-center gap-2">
+          <span className="text-[9px] font-medium text-muted">{ward.dateLabel}</span>
+          <button
+            type="button"
+            aria-pressed={favourites.includes(ward.id)}
+            aria-label={
+              favourites.includes(ward.id) ? "Remove from favourites" : "Add to favourites"
+            }
+            onClick={() => toggleFavourite(ward.id)}
+            className="-mr-1 flex h-8 w-8 items-center justify-center rounded-full active:scale-90"
+          >
+            <Star
+              className={`h-[18px] w-[18px] ${
+                favourites.includes(ward.id) ? "fill-lime-deep text-lime-deep" : "text-faint"
+              }`}
+            />
+          </button>
+        </span>
       </div>
 
       <h2 className="h1 mb-4 text-[24px]">{ward.title}</h2>
@@ -139,9 +159,25 @@ export default function OnWardDetailPage() {
         </button>
       </section>
 
-      <Button href="/portfolio" icon={<ArrowUpRight className="h-4 w-4" strokeWidth={2.2} />}>
-        View in my portfolio
-      </Button>
+      <div className="grid grid-cols-2 gap-2.5">
+        <Button
+          variant="secondary"
+          onClick={() => setSharing(true)}
+          icon={<Share2 className="h-4 w-4" strokeWidth={2.2} />}
+        >
+          Share
+        </Button>
+        <Button href="/portfolio" icon={<ArrowUpRight className="h-4 w-4" strokeWidth={2.2} />}>
+          View in my portfolio
+        </Button>
+      </div>
+
+      <ShareSheet
+        open={sharing}
+        onClose={() => setSharing(false)}
+        defaultText={wardShareText(ward)}
+        url={`${window.location.origin}/onwards/${ward.id}`}
+      />
     </PhoneShell>
   );
 }

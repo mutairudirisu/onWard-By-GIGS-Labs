@@ -6,22 +6,49 @@ import { PhoneShell } from "@/components/phone-shell";
 import { NewButton, PageHeader, Tag } from "@/components/ui";
 import { useStore } from "@/components/store";
 import type { OnWard } from "@/lib/data";
-import { Folder, Star, Search, Trophy, X } from "lucide-react";
+import { Folder, Share2, Star, Search, Trophy, X } from "lucide-react";
+import { ShareSheet, wardShareText } from "@/components/share-sheet";
+import { haptic } from "@/lib/haptics";
 
 const TABS = ["Timeline", "By skill", "Portfolio"] as const;
 type Tab = (typeof TABS)[number];
 
-function WardCard({ ward, highlight }: { ward: OnWard; highlight?: boolean }) {
+function WardCard({
+  ward,
+  favourite,
+  onFavourite,
+  onShare,
+}: {
+  ward: OnWard;
+  favourite: boolean;
+  onFavourite: (id: string) => void;
+  onShare: (ward: OnWard) => void;
+}) {
   return (
-    <Link
-      href={`/onwards/${ward.id}`}
-      className="card flex flex-col px-4 py-3.5 transition hover:-translate-y-0.5 hover:shadow-card lg:px-5 lg:py-4"
-    >
+    <div className="card relative flex flex-col px-4 py-3.5 transition hover:-translate-y-0.5 hover:shadow-card lg:px-5 lg:py-4">
+      {/* Whole card opens the onWard; the two controls sit above this overlay. */}
+      <Link
+        href={`/onwards/${ward.id}`}
+        aria-label={`Open ${ward.title}`}
+        className="absolute inset-0 rounded-[inherit]"
+      />
       <div className="flex items-start justify-between">
         <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">
           {ward.dateLabel}
         </span>
-        {highlight ? <Star className="h-4 w-4 text-lime-deep" /> : null}
+        <button
+          type="button"
+          aria-pressed={favourite}
+          aria-label={favourite ? "Remove from favourites" : "Add to favourites"}
+          onClick={() => onFavourite(ward.id)}
+          className="relative z-10 -mr-1 -mt-1 flex h-8 w-8 items-center justify-center rounded-full transition active:scale-90"
+        >
+          <Star
+            className={`h-4 w-4 ${
+              favourite ? "fill-lime-deep text-lime-deep" : "text-faint"
+            }`}
+          />
+        </button>
       </div>
       <h3 className="mt-1.5 text-[14px] font-bold tracking-tight text-ink lg:text-[16px]">
         {ward.title}
@@ -32,18 +59,34 @@ function WardCard({ ward, highlight }: { ward: OnWard; highlight?: boolean }) {
           <Tag key={s}>{s}</Tag>
         ))}
       </div>
-      <p className="mt-2.5 flex items-center gap-1 text-[10px] font-medium text-muted">
-        <Folder className="h-3 w-3" /> {ward.files} file{ward.files === 1 ? "" : "s"} ·{" "}
-        {ward.inPortfolio ? "In your portfolio" : "Private draft"}
-      </p>
-    </Link>
+      <div className="mt-2.5 flex items-center justify-between gap-2">
+        <p className="flex items-center gap-1 text-[10px] font-medium text-muted">
+          <Folder className="h-3 w-3" /> {ward.files} file{ward.files === 1 ? "" : "s"} ·{" "}
+          {ward.inPortfolio ? "In your portfolio" : "Private draft"}
+        </p>
+        <button
+          type="button"
+          aria-label={`Share ${ward.title}`}
+          onClick={() => onShare(ward)}
+          className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cream text-inksoft transition hover:bg-lime-soft active:scale-90"
+        >
+          <Share2 className="h-[15px] w-[15px]" />
+        </button>
+      </div>
+    </div>
   );
 }
 
 export default function OnWardsPage() {
-  const { onWards } = useStore();
+  const { onWards, favourites, toggleFavourite, settings } = useStore();
   const [tab, setTab] = useState<Tab>("Timeline");
   const [query, setQuery] = useState("");
+  const [sharing, setSharing] = useState<OnWard | null>(null);
+
+  const buzzFavourite = (id: string) => {
+    haptic("tap", settings.haptics);
+    toggleFavourite(id);
+  };
 
   const q = query.trim().toLowerCase();
   const filtered = useMemo(
@@ -136,14 +179,14 @@ export default function OnWardsPage() {
           </div>
           <div className="relative space-y-3 pl-4 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0 lg:pl-0 xl:grid-cols-3">
             <span className="absolute bottom-4 left-[3px] top-2 w-px bg-line lg:hidden" />
-            {filtered.map((ward, i) => (
+            {filtered.map((ward) => (
               <div key={ward.id} className="relative">
-                <span
-                  className={`absolute -left-4 top-4 hidden h-[7px] w-[7px] rounded-full lg:hidden ${
-                    i === 0 ? "bg-lime-deep" : "bg-dash"
-                  }`}
+                <WardCard
+                  ward={ward}
+                  favourite={favourites.includes(ward.id)}
+                  onFavourite={buzzFavourite}
+                  onShare={setSharing}
                 />
-                <WardCard ward={ward} highlight={i === 0} />
               </div>
             ))}
           </div>
@@ -165,7 +208,13 @@ export default function OnWardsPage() {
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {portfolio.map((ward) => (
-                <WardCard key={ward.id} ward={ward} />
+                <WardCard
+                  key={ward.id}
+                  ward={ward}
+                  favourite={favourites.includes(ward.id)}
+                  onFavourite={buzzFavourite}
+                  onShare={setSharing}
+                />
               ))}
             </div>
           )}
@@ -191,7 +240,13 @@ export default function OnWardsPage() {
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {wards.map((ward) => (
-                    <WardCard key={ward.id} ward={ward} />
+                    <WardCard
+                      key={ward.id}
+                      ward={ward}
+                      favourite={favourites.includes(ward.id)}
+                      onFavourite={buzzFavourite}
+                      onShare={setSharing}
+                    />
                   ))}
                 </div>
               </section>
@@ -199,6 +254,15 @@ export default function OnWardsPage() {
           </div>
         </>
       )}
+
+      {sharing ? (
+        <ShareSheet
+          open
+          onClose={() => setSharing(null)}
+          defaultText={wardShareText(sharing)}
+          url={`${window.location.origin}/onwards/${sharing.id}`}
+        />
+      ) : null}
     </PhoneShell>
   );
 }

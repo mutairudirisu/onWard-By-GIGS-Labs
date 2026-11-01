@@ -37,7 +37,12 @@ import {
 } from "@/lib/db";
 import { useAuth } from "./auth";
 
-type State = Workspace & { selectedDate: string };
+type State = Workspace & {
+  selectedDate: string;
+  // Starred onWards. A device marker, not a server column: the workspace cache
+  // below persists it, and it survives a reload but not a new device.
+  favourites: string[];
+};
 
 // Per-account cache so two people on one device never share a first paint.
 const CACHE_PREFIX = "onward.store.v3:";
@@ -49,6 +54,7 @@ function emptyState(): State {
     onWards: [],
     skills: [],
     selectedDate: BASE_DATE,
+    favourites: [],
     settings: { ...DEFAULT_SETTINGS },
     plan: "free",
   };
@@ -99,6 +105,7 @@ type Store = State & {
   togglePin: (id: string) => void;
   addOnWard: (data: NewWard) => string;
   togglePortfolio: (id: string) => void;
+  toggleFavourite: (id: string) => void;
   addSkill: (name: string) => void;
   setSelectedDate: (iso: string) => void;
   setSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
@@ -165,7 +172,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const load = useCallback(async (id: string) => {
     try {
       const workspace = await fetchWorkspace(id);
-      const next: State = { ...workspace, selectedDate: stateRef.current.selectedDate };
+      const next: State = {
+        ...workspace,
+        selectedDate: stateRef.current.selectedDate,
+        favourites: stateRef.current.favourites,
+      };
       stateRef.current = next;
       setState(next);
     } catch {
@@ -428,6 +439,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [commit],
   );
 
+  const toggleFavourite = useCallback(
+    (id: string) =>
+      commit((s) => ({
+        ...s,
+        favourites: s.favourites.includes(id)
+          ? s.favourites.filter((f) => f !== id)
+          : [...s.favourites, id],
+      })),
+    [commit],
+  );
+
   const addSkill = useCallback(
     (name: string) =>
       commit((s) => ({
@@ -477,6 +499,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       togglePin,
       addOnWard,
       togglePortfolio,
+      toggleFavourite,
       addSkill,
       setSelectedDate,
       setSetting,
@@ -501,6 +524,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       togglePin,
       addOnWard,
       togglePortfolio,
+      toggleFavourite,
       addSkill,
       setSelectedDate,
       setSetting,

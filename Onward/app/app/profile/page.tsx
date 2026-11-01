@@ -261,6 +261,10 @@ export default function ProfilePage() {
           <Button href="/portfolio/share" iconLeft={<Share2 className="h-4 w-4" />}>
             Share my portfolio
           </Button>
+
+          <p className="pt-2 text-center text-[9.5px] font-medium tracking-[0.08em] text-faint">
+            onWard v{process.env.NEXT_PUBLIC_APP_VERSION} · by GIGS Labs
+          </p>
         </aside>
       </div>
     </PhoneShell>
