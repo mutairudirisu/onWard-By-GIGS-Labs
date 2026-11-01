@@ -46,6 +46,15 @@ export function AuthBrand({
   );
 }
 
+/** Corner ribbon on the auth option the user last signed in with. */
+export function LastUsedTag() {
+  return (
+    <span className="absolute -top-2 right-3 z-10 rounded-full bg-lime px-2 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.12em] text-dark shadow-card">
+      Last used
+    </span>
+  );
+}
+
 /** Back link used at the very top of the secondary auth screens. */
 export function AuthBack({ href = "/", label = "Back" }: { href?: string; label?: string }) {
   return (

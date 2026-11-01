@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AuthShell } from "@/components/auth-shell";
 import { PhoneShell } from "@/components/phone-shell";
 import { ArrowIcon, Button, Divider, TextInput } from "@/components/ui";
-import { AuthBrand, DotField, GoogleIcon } from "@/components/auth-decor";
-import { useAuth } from "@/components/auth";
+import { AuthBrand, DotField, GoogleIcon, LastUsedTag } from "@/components/auth-decor";
+import { readAuthMethod, useAuth, type AuthMethod } from "@/components/auth";
 import { Check, Mail, Sprout } from "lucide-react";
 
 function StartForm({
@@ -18,6 +18,7 @@ function StartForm({
   busy,
   error,
   emphasis,
+  last,
 }: {
   email: string;
   onEmail: (value: string) => void;
@@ -26,12 +27,16 @@ function StartForm({
   busy: boolean;
   error: string;
   emphasis: "dark" | "primary";
+  last: AuthMethod | null;
 }) {
   return (
     <div className="space-y-3">
-      <Button variant="secondary" onClick={onGoogle} iconLeft={<GoogleIcon />} disabled={busy}>
-        {busy ? "Opening Google…" : "Continue with Google"}
-      </Button>
+      <div className="relative">
+        {last === "google" ? <LastUsedTag /> : null}
+        <Button variant="secondary" onClick={onGoogle} iconLeft={<GoogleIcon />} disabled={busy}>
+          {busy ? "Opening Google…" : "Continue with Google"}
+        </Button>
+      </div>
       <Divider>or</Divider>
       <form onSubmit={onEmailSubmit}>
         <div className="relative">
@@ -45,7 +50,8 @@ function StartForm({
             trailing={<Mail className="h-4 w-4" />}
           />
         </div>
-        <div className="mt-3">
+        <div className="relative mt-3">
+          {last === "email" ? <LastUsedTag /> : null}
           <Button type="submit" variant={emphasis} icon={<ArrowIcon />}>
             Continue with email
           </Button>
@@ -66,6 +72,10 @@ export default function WelcomePage() {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [last, setLast] = useState<AuthMethod | null>(null);
+
+  // localStorage is only readable on the client.
+  useEffect(() => setLast(readAuthMethod()), []);
 
   async function withGoogle() {
     setBusy(true);
@@ -90,6 +100,7 @@ export default function WelcomePage() {
     onGoogle: withGoogle,
     busy,
     error,
+    last,
   };
 
   return (
@@ -158,7 +169,13 @@ export default function WelcomePage() {
 
             <div className="mt-auto">
               <StartForm {...form} emphasis="dark" />
-              <p className="pt-4 text-center text-[9px] text-faint">
+              <p className="pt-3.5 text-center text-[10px] text-muted">
+                Already have an account?{" "}
+                <Link href="/sign-in" className="font-semibold text-ink underline">
+                  Sign in
+                </Link>
+              </p>
+              <p className="pt-2 text-center text-[9px] text-faint">
                 A little more intention. A lot more progress.
               </p>
             </div>
@@ -175,9 +192,9 @@ export default function WelcomePage() {
           </p>
           <StartForm {...form} emphasis="primary" />
           <p className="mt-7 text-center text-[11px] text-muted">
-            New to onWard?{" "}
-            <Link href="/create-account" className="font-semibold text-ink underline">
-              Create an account
+            Already have an account?{" "}
+            <Link href="/sign-in" className="font-semibold text-ink underline">
+              Sign in
             </Link>
           </p>
         </AuthShell>

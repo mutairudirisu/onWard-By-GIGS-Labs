@@ -119,10 +119,25 @@ export function TextInput({
 }
 
 export function TextArea({
+  trailing,
   className = "",
   ...rest
-}: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea className={`field-input min-h-[84px] resize-none leading-[1.5] ${className}`} {...rest} />;
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & { trailing?: ReactNode }) {
+  const box = (
+    <textarea
+      className={`field-input min-h-[84px] resize-none leading-[1.5] ${
+        trailing ? "pr-11" : ""
+      } ${className}`}
+      {...rest}
+    />
+  );
+  if (!trailing) return box;
+  return (
+    <div className="relative">
+      {box}
+      <span className="absolute right-2 top-2 text-muted">{trailing}</span>
+    </div>
+  );
 }
 
 export function Toggle({

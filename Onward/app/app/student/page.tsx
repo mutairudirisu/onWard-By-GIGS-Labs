@@ -114,7 +114,8 @@ export default function StudentSpacePage() {
         Log something you did this week
       </h2>
       <p className="mb-3 text-[10px] leading-[1.5] text-muted">
-        Each card opens a new entry with the label filled in, so it lands in the right bucket.
+        Each card opens a new onWard with that label already in the title, and files it under the
+        same project below.
       </p>
       <div className="mb-6 grid grid-cols-2 gap-2.5 lg:grid-cols-3">
         {STUDENT_LOGS.map((item) => {
@@ -122,7 +123,7 @@ export default function StudentSpacePage() {
           return (
             <Link
               key={item.project}
-              href={`/onwards/new?project=${encodeURIComponent(item.project)}`}
+              href={`/onwards/new?title=${encodeURIComponent(item.title)}&project=${encodeURIComponent(item.project)}`}
               onClick={buzz}
               className="card flex flex-col gap-2 px-3.5 py-3 transition hover:border-lime-deep/60 active:scale-[0.99]"
             >

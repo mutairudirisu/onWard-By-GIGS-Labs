@@ -323,13 +323,13 @@ export function useNotifications(): NotificationsValue {
 }
 
 /** Red dot pinned to the corner of an avatar or icon that sits in a relative box. */
-export function UnreadDot({ ring = "ring-paper" }: { ring?: string }) {
+export function UnreadDot() {
   const { unread } = useNotifications();
   if (unread === 0) return null;
   return (
     <span
       aria-label={`${unread} unread notification${unread === 1 ? "" : "s"}`}
-      className={`absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ${ring}`}
+      className="absolute -right-0.5 -top-1 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"
     />
   );
 }

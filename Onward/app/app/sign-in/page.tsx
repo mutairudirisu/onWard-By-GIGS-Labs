@@ -6,8 +6,8 @@ import Link from "next/link";
 import { AuthHeader } from "@/components/phone-shell";
 import { AuthShell } from "@/components/auth-shell";
 import { ArrowIcon, Button, Divider, Field, TextInput } from "@/components/ui";
-import { useAuth } from "@/components/auth";
-import { GoogleIcon } from "@/components/auth-decor";
+import { useAuth, readAuthMethod, type AuthMethod } from "@/components/auth";
+import { GoogleIcon, LastUsedTag } from "@/components/auth-decor";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 
 function ErrorNote({ children }: { children: React.ReactNode }) {
@@ -25,10 +25,12 @@ export default function SignInPage() {
   const [busy, setBusy] = useState<"email" | "google" | null>(null);
   const [error, setError] = useState("");
   const [email, setEmail] = useState("");
+  const [last, setLast] = useState<AuthMethod | null>(null);
 
   // The welcome screen hands the typed email over in the query string.
   useEffect(() => {
     setEmail(new URLSearchParams(window.location.search).get("email") ?? "");
+    setLast(readAuthMethod());
   }, []);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -104,9 +106,12 @@ export default function SignInPage() {
           </Link>
         </div>
 
-        <Button type="submit" icon={<ArrowIcon />} disabled={busy !== null}>
-          {busy === "email" ? "Signing in…" : "Sign in"}
-        </Button>
+        <div className="relative">
+          {last === "email" ? <LastUsedTag /> : null}
+          <Button type="submit" icon={<ArrowIcon />} disabled={busy !== null}>
+            {busy === "email" ? "Signing in…" : "Sign in"}
+          </Button>
+        </div>
       </form>
 
       {error ? <ErrorNote>{error}</ErrorNote> : null}
@@ -115,9 +120,17 @@ export default function SignInPage() {
         <Divider>or keep it simple</Divider>
       </div>
 
-      <Button variant="secondary" onClick={withGoogle} iconLeft={<GoogleIcon />} disabled={busy !== null}>
-        {busy === "google" ? "Opening Google…" : "Continue with Google"}
-      </Button>
+      <div className="relative">
+        {last === "google" ? <LastUsedTag /> : null}
+        <Button
+          variant="secondary"
+          onClick={withGoogle}
+          iconLeft={<GoogleIcon />}
+          disabled={busy !== null}
+        >
+          {busy === "google" ? "Opening Google…" : "Continue with Google"}
+        </Button>
+      </div>
 
       <p className="mt-7 text-center text-[11px] text-muted">
         New to onWard?{" "}

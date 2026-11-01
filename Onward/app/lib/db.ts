@@ -495,14 +495,17 @@ export async function writeSettings(userId: string, settings: Settings) {
 }
 
 export async function saveProfile(userId: string, patch: Partial<Omit<Profile, "id" | "plan">>) {
-  const row: Record<string, unknown> = { id: userId };
+  const row: Record<string, unknown> = {};
   if (patch.displayName !== undefined) row.display_name = patch.displayName;
   if (patch.initials !== undefined) row.initials = patch.initials;
   if (patch.role !== undefined) row.role = patch.role;
   if (patch.location !== undefined) row.location = patch.location;
   if (patch.bio !== undefined) row.bio = patch.bio;
   if (patch.avatarUrl !== undefined) row.avatar_url = patch.avatarUrl;
-  const { error } = await supabase.from("profiles").upsert(row, { onConflict: "id" });
+  if (!Object.keys(row).length) return;
+  // Update only: an upsert puts `id` in the ON CONFLICT SET list, and the
+  // client role is deliberately not allowed to write that column.
+  const { error } = await supabase.from("profiles").update(row).eq("id", userId);
   if (error) throw new Error(error.message);
 }
 

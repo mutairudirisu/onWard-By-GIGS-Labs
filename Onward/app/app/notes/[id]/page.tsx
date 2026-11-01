@@ -3,16 +3,30 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { PhoneShell } from "@/components/phone-shell";
+import { ChecklistEditor } from "@/components/checklist-editor";
 import { DictateButton } from "@/components/dictate-button";
 import { BackLink, Button } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { useStore } from "@/components/store";
 import { appendDictation } from "@/lib/dictation";
 import {
+  CHECKLIST_PREFIX,
+  asChecklist,
+  asProse,
+  hasChecklist,
+  noteToBody,
+  parseNote,
+  progress,
+  toggleLine,
+} from "@/lib/checklist";
+import { haptic } from "@/lib/haptics";
+import {
+  Check,
   CheckCheck,
   Copy,
   Download,
   Link2,
+  ListChecks,
   MoreHorizontal,
   Pin,
   Share2,
@@ -157,12 +171,13 @@ async function robustCopy(text: string) {
 export default function NoteEditorPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { notes, updateNote, deleteNote, togglePin, hydrated } = useStore();
+  const { notes, updateNote, deleteNote, togglePin, hydrated, settings } = useStore();
   const note = notes.find((n) => n.id === params.id);
 
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [checklist, setChecklist] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [copied, setCopied] = useState<"text" | "link" | null>(null);
@@ -170,8 +185,11 @@ export default function NoteEditorPage() {
 
   useEffect(() => {
     if (!note) return;
+    const text = note.body ?? note.excerpt ?? "";
     setTitle(note.title);
-    setBody(note.body ?? note.excerpt ?? "");
+    setBody(text);
+    // A note nobody has written in yet starts as a list of tickable items.
+    setChecklist(hasChecklist(text) || text.trim() === "");
   }, [note?.id, hydrated]);
 
   if (!note) {
@@ -192,6 +210,7 @@ export default function NoteEditorPage() {
   const savedTitle = note.title;
   const savedBody = note.body ?? note.excerpt ?? "";
   const dirty = title !== savedTitle || body !== savedBody;
+  const done = progress(savedBody);
 
   const startEdit = () => setEditing(true);
 
@@ -199,10 +218,31 @@ export default function NoteEditorPage() {
     updateNote(note.id, {
       title: title.trim() || "Untitled note",
       body,
-      excerpt: body.trim().slice(0, 120) || note.excerpt,
+      excerpt: asProse(body).trim().slice(0, 120) || note.excerpt,
       when: "Edited just now",
     });
     setEditing(false);
+  };
+
+  // Ticking straight from the reading view, the way a subtask is ticked off.
+  const tick = (index: number) => {
+    const next = toggleLine(body, index);
+    if (next === body) return;
+    setBody(next);
+    haptic("success", settings.haptics);
+    updateNote(note.id, {
+      body: next,
+      excerpt: asProse(next).trim().slice(0, 120) || note.excerpt,
+    });
+  };
+
+  const toggleChecklistMode = () => {
+    if (checklist) {
+      setChecklist(false);
+      return;
+    }
+    setChecklist(true);
+    setBody((value) => (value.trim() ? asChecklist(value) : CHECKLIST_PREFIX));
   };
 
   const discard = () => {
@@ -230,7 +270,7 @@ export default function NoteEditorPage() {
     setMenuOpen(false);
   };
 
-  const shareText = `${title}\n\n${body}`.trim();
+  const shareText = `${title}\n\n${asProse(body)}`.trim();
   const noteUrl = typeof window !== "undefined" ? window.location.href : "";
 
   const flashCopied = (kind: "text" | "link") => {
@@ -332,20 +372,37 @@ export default function NoteEditorPage() {
             <p className="text-[10px] font-medium text-muted lg:text-[11.5px]">
               {note.when} · {body.length} characters
             </p>
-            <DictateButton
-              label="Dictate note"
-              className="-mr-1.5"
-              onText={(text) => setBody((value) => appendDictation(value, text))}
-            />
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={toggleChecklistMode}
+                aria-pressed={checklist}
+                title="Enter starts a new item you can tick off"
+                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[10px] font-bold transition ${
+                  checklist ? "bg-lime text-dark" : "bg-cream text-inksoft hover:bg-line"
+                }`}
+              >
+                <ListChecks className="h-3.5 w-3.5" strokeWidth={2.2} />
+                Checklist
+              </button>
+              <DictateButton
+                label="Dictate note"
+                onText={(text) => setBody((value) => appendDictation(value, text))}
+              />
+            </div>
           </div>
-          <textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            aria-label="Note body"
-            rows={10}
-            placeholder="Start writing…"
-            className="w-full resize-none bg-transparent text-[15px] leading-[1.75] text-inksoft outline-none placeholder:text-faint lg:min-h-[420px] lg:text-[16px] lg:leading-[1.8]"
-          />
+          {checklist ? (
+            <ChecklistEditor lines={parseNote(body)} onChange={(next) => setBody(noteToBody(next))} />
+          ) : (
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              aria-label="Note body"
+              rows={10}
+              placeholder="Start writing…"
+              className="w-full resize-none bg-transparent text-[15px] leading-[1.75] text-inksoft outline-none placeholder:text-faint lg:min-h-[420px] lg:text-[16px] lg:leading-[1.8]"
+            />
+          )}
           <div className="h-32 lg:hidden" aria-hidden />
         </div>
         {/* Rides above the on-screen keyboard instead of hiding behind it. */}
@@ -381,11 +438,51 @@ export default function NoteEditorPage() {
           </h2>
           <p className="mb-4 mt-2 text-[10px] font-medium text-muted lg:mb-6 lg:text-[11.5px]">
             {note.when} · {savedBody.length} characters
+            {done ? ` · ${done.done} of ${done.total} done` : ""}
           </p>
           {savedBody ? (
-            <p className="whitespace-pre-line text-[15px] leading-[1.75] text-inksoft lg:text-[16px] lg:leading-[1.8]">
-              {savedBody}
-            </p>
+            <div className="-mx-2 space-y-0.5">
+              {parseNote(savedBody).map((line, index) =>
+                line.kind === "item" ? (
+                  <button
+                    key={index}
+                    type="button"
+                    aria-label={line.done ? `Mark "${line.text}" not done` : `Mark "${line.text}" done`}
+                    aria-pressed={line.done}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      tick(index);
+                    }}
+                    className="group flex w-full items-start gap-2.5 rounded-xl px-2 py-1.5 text-left transition hover:bg-cream"
+                  >
+                    <span
+                      className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] border-2 transition ${
+                        line.done
+                          ? "border-lime-deep bg-lime"
+                          : "border-dash bg-paper group-hover:border-lime-deep"
+                      }`}
+                    >
+                      {line.done ? <Check className="h-3 w-3 text-dark" strokeWidth={3} /> : null}
+                    </span>
+                    <span
+                      className={`min-w-0 flex-1 text-[15px] leading-[1.6] lg:text-[16px] ${
+                        line.done ? "text-faint line-through" : "text-inksoft"
+                      }`}
+                    >
+                      {line.text || "Untitled item"}
+                    </span>
+                  </button>
+                ) : (
+                  <p
+                    key={index}
+                    className="whitespace-pre-line px-2 text-[15px] leading-[1.75] text-inksoft lg:text-[16px] lg:leading-[1.8]"
+                  >
+                    {line.text}
+                  </p>
+                ),
+              )}
+            </div>
           ) : (
             <p className="text-[15px] italic text-faint lg:text-[16px]">Empty note — tap to write.</p>
           )}

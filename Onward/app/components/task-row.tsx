@@ -1,9 +1,34 @@
 "use client";
 
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { AlarmClock, Check } from "lucide-react";
 import { useStore } from "@/components/store";
-import type { Task } from "@/lib/data";
+import { BASE_DATE, type Task } from "@/lib/data";
+import { dueState, formatClock, formatDue } from "@/lib/dates";
+
+/** When the task falls due — the line that replaces the old list name. */
+function DueLine({ task }: { task: Task }) {
+  const iso = task.date ?? BASE_DATE;
+  const state = dueState(iso, task.time);
+  const overdue = state === "Expired" && !task.done;
+  return (
+    <span
+      className={`flex min-w-0 items-center gap-1 overflow-hidden whitespace-nowrap text-[10px] transition-colors ${
+        task.done ? "text-faint/80" : "text-muted"
+      }`}
+    >
+      <span className="shrink-0">
+        {formatDue(iso)}
+        {task.time ? ` ${formatClock(task.time)}` : ""}
+      </span>
+      <span aria-hidden className="shrink-0">
+        ·
+      </span>
+      <span className="shrink-0">{state}</span>
+      {overdue ? <AlarmClock className="h-3 w-3 shrink-0" strokeWidth={2.2} /> : null}
+    </span>
+  );
+}
 
 export function TaskRow({
   task,
@@ -42,19 +67,18 @@ export function TaskRow({
         >
           {task.title}
         </span>
-        <span
-          className={`block truncate text-[10px] transition-colors ${
-            task.done ? "text-faint/80" : "text-muted"
-          }`}
-        >
-          {sub ?? task.meta}
-        </span>
+        {sub ? (
+          <span
+            className={`block truncate text-[10px] transition-colors ${
+              task.done ? "text-faint/80" : "text-muted"
+            }`}
+          >
+            {sub}
+          </span>
+        ) : (
+          <DueLine task={task} />
+        )}
       </span>
-      {task.time ? (
-        <span className={`text-[10px] font-semibold ${task.done ? "text-faint" : "text-muted"}`}>
-          {task.time}
-        </span>
-      ) : null}
     </>
   );
 

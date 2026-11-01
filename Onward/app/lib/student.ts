@@ -87,7 +87,7 @@ export function placementReadiness({ user, onWards, skills, streak }: ReadinessS
       label: "Evidence attached",
       detail: evidence ? `${evidence} file, link or screenshot.` : "A screenshot or link proves it.",
       done: evidence > 0,
-      href: "/onwards",
+      href: "/onwards/new",
       cta: "Attach evidence",
     },
     {
@@ -95,7 +95,7 @@ export function placementReadiness({ user, onWards, skills, streak }: ReadinessS
       label: "Three skills tagged",
       detail: `${skills.length} tagged so far.`,
       done: skills.length >= 3,
-      href: "/onwards",
+      href: "/onwards/new",
       cta: "Tag your skills",
     },
     {

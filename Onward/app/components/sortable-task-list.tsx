@@ -239,7 +239,7 @@ export function SortableTaskList({ tasks }: { tasks: Task[] }) {
                 boxShadow: isDrag ? "0 12px 28px rgba(16,17,8,0.18)" : undefined,
               }}
             >
-              <TaskRow task={task} sub={task.meta} />
+              <TaskRow task={task} />
             </div>
           </div>
         );

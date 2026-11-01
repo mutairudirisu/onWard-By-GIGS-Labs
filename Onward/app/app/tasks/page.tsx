@@ -366,7 +366,7 @@ export default function TasksPage() {
                 {archived.map((task) => (
                   <div key={task.id} className="flex items-center gap-2">
                     <div className="min-w-0 flex-1">
-                      <TaskRow task={task} sub={task.meta} />
+                      <TaskRow task={task} />
                     </div>
                     <button
                       type="button"

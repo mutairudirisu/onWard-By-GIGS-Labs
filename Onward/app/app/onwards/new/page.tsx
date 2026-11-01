@@ -52,14 +52,22 @@ export default function LogOnWardPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLInputElement>(null);
 
-  // Quick-log cards arrive as /onwards/new?project=Coursework.
+  // Student cards arrive as /onwards/new?title=Coursework&project=Coursework.
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
     const presetProject = query.get("project");
     const presetTitle = query.get("title");
     if (!presetProject && !presetTitle) return;
     if (presetProject) setProject(presetProject);
-    if (presetTitle) setTitle(presetTitle);
+    if (presetTitle) {
+      setTitle(presetTitle);
+      // Selected, so typing replaces the label; End or → keeps it and continues.
+      requestAnimationFrame(() => {
+        const field = document.getElementById("ward-title") as HTMLInputElement | null;
+        field?.focus();
+        field?.select();
+      });
+    }
     window.history.replaceState(null, "", window.location.pathname);
   }, []);
 
@@ -107,6 +115,7 @@ export default function LogOnWardPage() {
   const removeEvidence = (id: string) => setEvidence((e) => e.filter((x) => x.id !== id));
 
   const canSave = title.trim().length > 0 && impact.trim().length > 0;
+  const canAttach = limits.evidencePerWard == null || limits.evidencePerWard > 0;
 
   const save = () => {
     if (!canSave) return;
@@ -160,6 +169,7 @@ export default function LogOnWardPage() {
       <div className="space-y-4">
         <Field label="Give your work a title">
           <TextInput
+            id="ward-title"
             autoFocus
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -191,34 +201,36 @@ export default function LogOnWardPage() {
           </Field>
         </div>
 
-        <div>
-          <div className="mb-1.5 flex items-center justify-between gap-2">
-            <span className="text-[11px] font-semibold text-inksoft">What did you do?</span>
-            <DictateButton
-              label="Dictate what you did"
-              className="-my-1 -mr-1"
-              onText={(text) => setBody((value) => appendDictation(value, text))}
-            />
-          </div>
-          <TextArea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Describe the work behind the win." />
-        </div>
+        <Field label="What did you do?">
+          <TextArea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Describe the work behind the win."
+            trailing={
+              <DictateButton
+                label="Dictate what you did"
+                onText={(text) => setBody((value) => appendDictation(value, text))}
+              />
+            }
+          />
+        </Field>
 
-        <div>
-          <div className="mb-1.5 flex items-center justify-between gap-2">
-            <span className="text-[11px] font-semibold text-inksoft">
-              What changed because of your work?
-            </span>
-            <DictateButton
-              label="Dictate the result"
-              className="-my-1 -mr-1"
-              onText={(text) => setImpact((value) => appendDictation(value, text))}
-            />
-          </div>
-          <TextArea value={impact} onChange={(e) => setImpact(e.target.value)} placeholder="The specific result." />
+        <Field label="What changed because of your work?">
+          <TextArea
+            value={impact}
+            onChange={(e) => setImpact(e.target.value)}
+            placeholder="The specific result."
+            trailing={
+              <DictateButton
+                label="Dictate the result"
+                onText={(text) => setImpact((value) => appendDictation(value, text))}
+              />
+            }
+          />
           <p className="mt-1.5 text-[9px] text-muted">
             Specific results turn a busy day into credible evidence.
           </p>
-        </div>
+        </Field>
 
         <div>
           <span className="label">Skills you used</span>
@@ -278,23 +290,37 @@ export default function LogOnWardPage() {
         <div>
           <div className="mb-2 flex items-end justify-between">
             <h2 className="text-[13px] font-bold tracking-tight text-ink">Evidence</h2>
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={() => fileRef.current?.click()} className="flex items-center gap-1 text-[10px] font-semibold text-muted underline">
-                File
+            {canAttach ? (
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => fileRef.current?.click()} className="flex items-center gap-1 text-[10px] font-semibold text-muted underline">
+                  File
+                </button>
+                <button type="button" onClick={() => imageRef.current?.click()} className="flex items-center gap-1 text-[10px] font-semibold text-muted underline">
+                  Image
+                </button>
+                <button type="button" onClick={() => setShowUrlInput((v) => !v)} className="flex items-center gap-1 text-[10px] font-semibold text-muted underline">
+                  <Link2 className="h-3 w-3" /> URL
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEvidenceGate(true)}
+                className="flex items-center gap-1.5 text-[10px] font-bold text-lime-deep hover:text-ink"
+              >
+                <ProBadge /> Pro feature
               </button>
-              <button type="button" onClick={() => imageRef.current?.click()} className="flex items-center gap-1 text-[10px] font-semibold text-muted underline">
-                Image
-              </button>
-              <button type="button" onClick={() => setShowUrlInput((v) => !v)} className="flex items-center gap-1 text-[10px] font-semibold text-muted underline">
-                <Link2 className="h-3 w-3" /> URL
-              </button>
-            </div>
+            )}
           </div>
 
-          <input ref={fileRef} type="file" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) addFileLike(f, "file"); e.target.value = ""; }} />
-          <input ref={imageRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) addFileLike(f, "image"); e.target.value = ""; }} />
+          {canAttach ? (
+            <>
+              <input ref={fileRef} type="file" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) addFileLike(f, "file"); e.target.value = ""; }} />
+              <input ref={imageRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) addFileLike(f, "image"); e.target.value = ""; }} />
+            </>
+          ) : null}
 
-          {showUrlInput ? (
+          {canAttach && showUrlInput ? (
             <div className="mb-2 flex items-center gap-2">
               <input
                 autoFocus
@@ -312,9 +338,15 @@ export default function LogOnWardPage() {
           ) : null}
 
           {evidence.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-dash px-3.5 py-3 text-center text-[10px] text-muted">
-              Attach a file, image or link to back up this win.
-            </p>
+            <button
+              type="button"
+              onClick={() => { if (!canAttach) setEvidenceGate(true); }}
+              className={`w-full rounded-xl border border-dashed border-dash px-3.5 py-3 text-center text-[10px] text-muted ${canAttach ? "cursor-default" : "hover:border-lime-deep"}`}
+            >
+              {canAttach
+                ? "Attach a file, image or link to back up this win."
+                : "Attachments are Pro. The onWard still saves without one."}
+            </button>
           ) : (
             <div className="space-y-2">
               {evidence.map((ev) => (
@@ -334,9 +366,11 @@ export default function LogOnWardPage() {
             </div>
           )}
 
-          <p className="mt-1.5 text-[9px] leading-[1.5] text-muted">
-            Only attach work you have permission to share. Remove confidential details before adding it to your portfolio.
-          </p>
+          {canAttach ? (
+            <p className="mt-1.5 text-[9px] leading-[1.5] text-muted">
+              Only attach work you have permission to share. Remove confidential details before adding it to your portfolio.
+            </p>
+          ) : null}
         </div>
 
         <div>
@@ -366,8 +400,8 @@ export default function LogOnWardPage() {
       <UpgradeModal
         open={evidenceGate}
         onClose={() => setEvidenceGate(false)}
-        feature="Rich evidence"
-        blurb="Free onWards hold one piece of evidence each. Pro lets you attach unlimited files, images and links to back up every win."
+        feature="Attachments and evidence"
+        blurb="Files, screenshots and links are a Pro feature. Free onWards still capture the title, the result, your skills and the portfolio toggle - nothing is lost by saving now."
       />
     </PhoneShell>
   );

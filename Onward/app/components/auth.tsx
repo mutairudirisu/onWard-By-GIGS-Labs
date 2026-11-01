@@ -70,6 +70,21 @@ function fallbackProfile(user: User): Profile {
   };
 }
 
+/** Which entry the last successful sign-in used, so the buttons can say "Last used". */
+export type AuthMethod = "email" | "google";
+
+const LAST_AUTH_KEY = "onward.lastAuth";
+
+export function readAuthMethod(): AuthMethod | null {
+  if (typeof window === "undefined") return null;
+  const stored = window.localStorage.getItem(LAST_AUTH_KEY);
+  return stored === "google" || stored === "email" ? stored : null;
+}
+
+function rememberAuthMethod(method: AuthMethod) {
+  window.localStorage.setItem(LAST_AUTH_KEY, method);
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -165,6 +180,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       });
       if (error) return { error: message(error) };
+      rememberAuthMethod("email");
       return { needsConfirmation: !data.session };
     },
     [],
@@ -173,6 +189,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = useCallback<AuthValue["signIn"]>(async (email, password) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: message(error) };
+    rememberAuthMethod("email");
     return {};
   }, []);
 
@@ -182,6 +199,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       options: { redirectTo: `${window.location.origin}/today` },
     });
     if (error) return { error: message(error) };
+    // The browser leaves for Google right after this, so record before it does.
+    rememberAuthMethod("google");
     return {};
   }, []);
 

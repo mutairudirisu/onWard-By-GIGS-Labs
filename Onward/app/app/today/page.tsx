@@ -43,7 +43,7 @@ export default function TodayPage() {
                 className="relative flex h-8 w-8 items-center justify-center rounded-full bg-lime-soft text-[10px] font-bold text-ink"
               >
                 {user.initials}
-                <UnreadDot ring="ring-cream" />
+                <UnreadDot />
               </Link>
               <Link
                 href="/notifications"
@@ -51,7 +51,7 @@ export default function TodayPage() {
                 className="relative flex h-8 w-8 items-center justify-center rounded-full text-inksoft transition hover:bg-cream"
               >
                 <Bell className="h-[18px] w-[18px]" />
-                <UnreadDot ring="ring-cream" />
+                <UnreadDot />
               </Link>
             </div>
           </div>
@@ -96,14 +96,10 @@ export default function TodayPage() {
           ) : (
             <div className="space-y-2">
               {open.map((task) => (
-                <TaskRow
-                  key={task.id}
-                  task={task}
-                  sub={task.todaySub ?? `Work · ${task.meta.split(" · ")[0]}`}
-                />
+                <TaskRow key={task.id} task={task} />
               ))}
               {done.map((task) => (
-                <TaskRow key={task.id} task={task} sub={task.meta} />
+                <TaskRow key={task.id} task={task} />
               ))}
             </div>
           )}

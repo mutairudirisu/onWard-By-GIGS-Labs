@@ -50,7 +50,7 @@ export const DEFAULT_SETTINGS: Settings = {
 
 export type Plan = "free" | "pro";
 
-// null means "unlimited" for that dimension.
+// null means "unlimited" for that dimension, 0 means "not on this plan".
 export type PlanLimits = {
   wardsPerMonth: number | null;
   evidencePerWard: number | null;
@@ -64,7 +64,7 @@ export type PlanLimits = {
 export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
   free: {
     wardsPerMonth: 3,
-    evidencePerWard: 1,
+    evidencePerWard: 0,
     portfolioShares: 1,
     reminderTasks: 3,
     verifiedSkills: false,
@@ -104,7 +104,7 @@ export type PlanFeature = {
 export const PLAN_FEATURES: PlanFeature[] = [
   { label: "Tasks & notes", free: "Unlimited", pro: "Unlimited" },
   { label: "onWards per month", free: "3", pro: "Unlimited" },
-  { label: "Evidence per onWard", free: "1 file", pro: "Unlimited" },
+  { label: "Attachments per onWard", free: "None", pro: "Unlimited" },
   { label: "Task reminders", free: "3 tasks", pro: "Unlimited" },
   { label: "Portfolio share links", free: "1", pro: "Unlimited" },
   { label: "Verified skill snapshots", free: false, pro: true },

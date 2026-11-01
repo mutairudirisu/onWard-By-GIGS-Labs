@@ -78,7 +78,7 @@ export function BottomNav({ active }: { active: TabId }) {
               >
                 <span className="relative flex">
                   <Icon className="h-4 w-4 text-lime-deep" strokeWidth={2.2} />
-                  {id === "you" ? <UnreadDot ring="ring-line" /> : null}
+                  {id === "you" ? <UnreadDot /> : null}
                 </span>
                 <span className="text-[10px] font-bold text-lime-deep">{label}</span>
               </Link>

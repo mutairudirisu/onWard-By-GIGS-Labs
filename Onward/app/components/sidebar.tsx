@@ -88,7 +88,7 @@ function NavGroup({
               />
               {label}
               {badge && unread > 0 ? (
-                <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
                   {unread > 99 ? "99+" : unread}
                 </span>
               ) : null}

@@ -65,6 +65,36 @@ export function formatTasksHeader(iso: string) {
   return `${wd}, ${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)}`;
 }
 
+/** "26 Oct" — the day a task falls due, short enough to sit under a title. */
+export function formatDue(iso: string) {
+  const d = parseISO(iso);
+  return `${String(d.getDate()).padStart(2, "0")} ${MONTHS[d.getMonth()].slice(0, 3)}`;
+}
+
+/** "07:45 am" from the stored 24-hour "07:45". */
+export function formatClock(time: string) {
+  const [h, m] = time.split(":").map(Number);
+  const ap = h >= 12 ? "pm" : "am";
+  return `${String(h % 12 === 0 ? 12 : h % 12).padStart(2, "0")}:${String(m ?? 0).padStart(2, "0")} ${ap}`;
+}
+
+export type DueState = "Expired" | "Due today" | "Tomorrow" | "Upcoming";
+
+/** Where a due date sits against the real clock, not the mock "today". */
+export function dueState(iso: string, time?: string, now = new Date()): DueState {
+  const today = toISO(now);
+  if (iso < today) return "Expired";
+  if (iso === today) {
+    if (time) {
+      const [h, m] = time.split(":").map(Number);
+      if (h * 60 + (m ?? 0) < now.getHours() * 60 + now.getMinutes()) return "Expired";
+    }
+    return "Due today";
+  }
+  if (iso === addDays(today, 1)) return "Tomorrow";
+  return "Upcoming";
+}
+
 // onWard timeline label relative to the mock "today".
 export function wardDateLabel(iso: string) {
   const d = parseISO(iso);

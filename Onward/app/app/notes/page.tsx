@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { PhoneShell } from "@/components/phone-shell";
 import { Chip, NewButton, PageHeader } from "@/components/ui";
 import { useStore } from "@/components/store";
+import { asProse } from "@/lib/checklist";
 import { Pin, Search, X } from "lucide-react";
 
 export default function NotesPage() {
@@ -102,7 +103,7 @@ export default function NotesPage() {
                   <Pin className="h-4 w-4 shrink-0 fill-lime-deep text-lime-deep" />
                 </div>
                 <p className="mt-1.5 line-clamp-3 flex-1 text-[11px] leading-[1.6] text-inksoft lg:text-[12.5px]">
-                  {note.excerpt || note.body}
+                  {note.excerpt || asProse(note.body ?? "")}
                 </p>
                 <div className="mt-3 flex items-center justify-between">
                   <span className="tag bg-lime-soft">{note.tag}</span>
@@ -139,7 +140,7 @@ export default function NotesPage() {
                   {note.title}
                 </h3>
                 <p className="mt-1.5 line-clamp-3 flex-1 text-[11px] leading-[1.6] text-muted lg:text-[12.5px]">
-                  {note.excerpt || note.body}
+                  {note.excerpt || asProse(note.body ?? "")}
                 </p>
                 <div className="mt-3 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
