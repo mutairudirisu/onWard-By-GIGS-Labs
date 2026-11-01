@@ -8,7 +8,7 @@ const ITEM = /^(\s*)-\s*\[([ xX])\]\s?(.*)$/;
 
 export const CHECKLIST_PREFIX = "- [ ] ";
 
-/** Two spaces per level, which is also how the mind map nests a branch. */
+/** Two spaces per level, so a nested item keeps its place on the round trip. */
 const INDENT = "  ";
 
 export type NoteLine =

@@ -29,7 +29,6 @@ import {
   Link2,
   ListChecks,
   MoreHorizontal,
-  Network,
   Pin,
   Share2,
   Sprout,
@@ -393,15 +392,6 @@ export default function NoteEditorPage() {
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => router.push(`/notes/${note.id}/map`)}
-                title="See this note as a mind map"
-                className="flex items-center gap-1.5 rounded-full bg-cream px-2.5 py-1.5 text-[10px] font-bold text-inksoft transition hover:bg-line"
-              >
-                <Network className="h-3.5 w-3.5" strokeWidth={2.2} />
-                Mind map
-              </button>
-              <button
-                type="button"
                 onClick={toggleChecklistMode}
                 aria-pressed={checklist}
                 title="Enter starts a new item you can tick off"
@@ -540,17 +530,6 @@ export default function NoteEditorPage() {
           >
             <Sprout className="h-[18px] w-[18px] text-lime-deep" />
             <span className="text-[13px] font-semibold text-ink">Turn into an onWard</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setMenuOpen(false);
-              router.push(`/notes/${note.id}/map`);
-            }}
-            className="flex items-center gap-3 rounded-xl px-2 py-3 text-left transition hover:bg-cream"
-          >
-            <Network className="h-[18px] w-[18px] text-lime-deep" />
-            <span className="text-[13px] font-semibold text-ink">Open as a mind map</span>
           </button>
           <button
             type="button"
