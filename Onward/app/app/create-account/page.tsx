@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AuthHeader } from "@/components/phone-shell";
 import { AuthShell } from "@/components/auth-shell";
-import { ArrowIcon, Button, Field, TextInput } from "@/components/ui";
+import { ArrowIcon, Button, Divider, Field, TextInput } from "@/components/ui";
 import { useAuth } from "@/components/auth";
+import { GoogleAuthButton } from "@/components/auth-decor";
 import { Check, Eye, EyeOff, Mail, MailCheck } from "lucide-react";
 
 function strengthOf(password: string) {
@@ -23,7 +24,7 @@ const STRENGTH_LABEL = ["Too short", "Weak", "Fair", "Good", "Strong"];
 
 export default function CreateAccountPage() {
   const router = useRouter();
-  const { signUp } = useAuth();
+  const { signUp, signInWithGoogle } = useAuth();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -31,6 +32,7 @@ export default function CreateAccountPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState("");
   const [sentTo, setSentTo] = useState("");
 
@@ -70,6 +72,16 @@ export default function CreateAccountPage() {
       return;
     }
     router.push("/today");
+  }
+
+  async function withGoogle() {
+    setGoogleBusy(true);
+    setError("");
+    const result = await signInWithGoogle();
+    if (result.error) {
+      setError(result.error);
+      setGoogleBusy(false);
+    }
   }
 
   if (sentTo) {
@@ -209,6 +221,12 @@ export default function CreateAccountPage() {
         </Button>
       </div>
       </form>
+
+      <div className="my-5">
+        <Divider>or keep it simple</Divider>
+      </div>
+
+      <GoogleAuthButton onClick={withGoogle} busy={googleBusy} />
 
       <p className="mt-7 text-center text-[11px] text-muted">
         Already growing with us?{" "}

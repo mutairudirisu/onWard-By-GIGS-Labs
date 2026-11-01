@@ -22,6 +22,8 @@ import {
 } from "@/lib/data";
 import { formatMedium, wardDateLabel } from "@/lib/dates";
 import { haptic } from "@/lib/haptics";
+import { setAllDone, stepProgress } from "@/lib/checklist";
+import { toastError, toastSuccess } from "@/components/toast";
 import { emitNotice } from "@/lib/notices";
 import {
   deleteRow,
@@ -117,6 +119,9 @@ type Store = State & {
 
 const StoreCtx = createContext<Store | null>(null);
 
+/** What a server write reports back through the toast host. */
+type Notice = { ok: string; fail: string };
+
 // One pass over each collection turns a state change into the smallest set of
 // row writes; position changes are writes too because tasks carry manual order.
 async function sync(userId: string, prev: State, next: State) {
@@ -208,18 +213,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [state, hydrated, userId]);
 
   const commit = useCallback(
-    (update: (prev: State) => State) => {
+    (update: (prev: State) => State, notice?: Notice) => {
       const prev = stateRef.current;
       const next = update(prev);
       if (next === prev) return;
       stateRef.current = next;
       setState(next);
       if (!userId) return;
-      void sync(userId, prev, next).catch(() => {
-        // the server is the source of truth: pull it back rather than keep a
-        // local edit that failed to land.
-        void load(userId);
-      });
+      void sync(userId, prev, next)
+        .then(() => {
+          if (notice) toastSuccess(notice.ok);
+        })
+        .catch(() => {
+          // the server is the source of truth: pull it back rather than keep a
+          // local edit that failed to land.
+          if (notice) toastError(notice.fail);
+          void load(userId);
+        });
     },
     [userId, load],
   );
@@ -227,12 +237,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const toggleTask = useCallback(
     (id: string) => {
       const before = stateRef.current.tasks.find((t) => t.id === id);
-      commit((s) => ({
-        ...s,
-        tasks: s.tasks.map((t) => (t.id === id ? { ...t, done: !t.done } : t)),
-      }));
+      const nowDone = Boolean(before && !before.done);
+      commit(
+        (s) => ({
+          ...s,
+          tasks: s.tasks.map((t) =>
+            t.id === id
+              ? {
+                  ...t,
+                  done: nowDone,
+                  // Ticking the task settles its steps, and vice versa.
+                  steps: t.steps ? setAllDone(t.steps, nowDone) : t.steps,
+                }
+              : t,
+          ),
+        }),
+        {
+          ok: nowDone ? "Task done" : "Task reopened",
+          fail: "Couldn't update the task",
+        },
+      );
       const hapticsOn = stateRef.current.settings.haptics;
-      haptic(before && !before.done ? "success" : "tap", hapticsOn);
+      haptic(nowDone ? "success" : "tap", hapticsOn);
       if (userId && before && !before.done) {
         emitNotice({
           kind: "task",
@@ -251,25 +277,29 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const addTask = useCallback(
     (data: NewTask) => {
       const id = uuid();
-      commit((s) => ({
-        ...s,
-        tasks: [
-          {
-            id,
-            title: data.title,
-            meta: data.meta ?? "Personal",
-            todaySub: data.todaySub ?? data.list ?? "Personal",
-            time: data.time,
-            notes: data.notes,
-            dueDate: data.dueDate ?? formatMedium(s.selectedDate),
-            list: data.list ?? "Personal",
-            priority: data.priority ?? "Medium",
-            done: false,
-            date: data.date ?? s.selectedDate,
-          },
-          ...s.tasks,
-        ],
-      }));
+      commit(
+        (s) => ({
+          ...s,
+          tasks: [
+            {
+              id,
+              title: data.title,
+              meta: data.meta ?? "Personal",
+              todaySub: data.todaySub ?? data.list ?? "Personal",
+              time: data.time,
+              notes: data.notes,
+              steps: data.steps,
+              dueDate: data.dueDate ?? formatMedium(s.selectedDate),
+              list: data.list ?? "Personal",
+              priority: data.priority ?? "Medium",
+              done: false,
+              date: data.date ?? s.selectedDate,
+            },
+            ...s.tasks,
+          ],
+        }),
+        { ok: "Task added", fail: "Couldn't add the task" },
+      );
       haptic("tap", stateRef.current.settings.haptics);
       return id;
     },
@@ -278,33 +308,53 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const updateTask = useCallback(
     (id: string, patch: Partial<Task>) =>
-      commit((s) => ({
-        ...s,
-        tasks: s.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)),
-      })),
+      commit(
+        (s) => ({
+          ...s,
+          tasks: s.tasks.map((t) => {
+            if (t.id !== id) return t;
+            const merged = { ...t, ...patch };
+            if (patch.steps === undefined || patch.done !== undefined) return merged;
+            // Steps decide the tick unless the caller set it deliberately.
+            const steps = stepProgress(merged.steps);
+            return { ...merged, done: steps ? steps.done === steps.total : merged.done };
+          }),
+        }),
+        { ok: "Task updated", fail: "Couldn't update the task" },
+      ),
     [commit],
   );
 
   const deleteTask = useCallback(
-    (id: string) => commit((s) => ({ ...s, tasks: s.tasks.filter((t) => t.id !== id) })),
+    (id: string) =>
+      commit((s) => ({ ...s, tasks: s.tasks.filter((t) => t.id !== id) }), {
+        ok: "Task deleted",
+        fail: "Couldn't delete the task",
+      }),
     [commit],
   );
 
   const archiveTask = useCallback(
     (id: string) =>
-      commit((s) => ({
-        ...s,
-        tasks: s.tasks.map((t) => (t.id === id ? { ...t, archived: true } : t)),
-      })),
+      commit(
+        (s) => ({
+          ...s,
+          tasks: s.tasks.map((t) => (t.id === id ? { ...t, archived: true } : t)),
+        }),
+        { ok: "Task archived", fail: "Couldn't archive the task" },
+      ),
     [commit],
   );
 
   const restoreTask = useCallback(
     (id: string) =>
-      commit((s) => ({
-        ...s,
-        tasks: s.tasks.map((t) => (t.id === id ? { ...t, archived: false } : t)),
-      })),
+      commit(
+        (s) => ({
+          ...s,
+          tasks: s.tasks.map((t) => (t.id === id ? { ...t, archived: false } : t)),
+        }),
+        { ok: "Task restored", fail: "Couldn't restore the task" },
+      ),
     [commit],
   );
 
@@ -332,22 +382,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const addNote = useCallback(
     (data: NewNote = {}) => {
       const id = uuid();
-      commit((s) => ({
-        ...s,
-        notes: [
-          {
-            id,
-            title: data.title?.trim() || "Untitled note",
-            excerpt: data.excerpt ?? "",
-            body: data.body ?? "",
-            tag: data.tag ?? "Personal",
-            when: "Just now",
-            pinned: false,
-            priority: data.priority ?? "Medium",
-          },
-          ...s.notes,
-        ],
-      }));
+      commit(
+        (s) => ({
+          ...s,
+          notes: [
+            {
+              id,
+              title: data.title?.trim() || "Untitled note",
+              excerpt: data.excerpt ?? "",
+              body: data.body ?? "",
+              tag: data.tag ?? "Personal",
+              when: "Just now",
+              createdAt: new Date().toISOString(),
+              pinned: false,
+              priority: data.priority ?? "Medium",
+            },
+            ...s.notes,
+          ],
+        }),
+        { ok: "Note created", fail: "Couldn't create the note" },
+      );
       haptic("tap", stateRef.current.settings.haptics);
       if (userId) {
         void recordActivity("note").catch(() => {
@@ -361,24 +415,39 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const updateNote = useCallback(
     (id: string, patch: Partial<Note>) =>
-      commit((s) => ({
-        ...s,
-        notes: s.notes.map((n) => (n.id === id ? { ...n, ...patch } : n)),
-      })),
+      commit(
+        (s) => ({
+          ...s,
+          notes: s.notes.map((n) => (n.id === id ? { ...n, ...patch } : n)),
+        }),
+        { ok: "Note saved", fail: "Couldn't save the note" },
+      ),
     [commit],
   );
 
   const deleteNote = useCallback(
-    (id: string) => commit((s) => ({ ...s, notes: s.notes.filter((n) => n.id !== id) })),
+    (id: string) =>
+      commit((s) => ({ ...s, notes: s.notes.filter((n) => n.id !== id) }), {
+        ok: "Note deleted",
+        fail: "Couldn't delete the note",
+      }),
     [commit],
   );
 
   const togglePin = useCallback(
-    (id: string) =>
-      commit((s) => ({
-        ...s,
-        notes: s.notes.map((n) => (n.id === id ? { ...n, pinned: !n.pinned } : n)),
-      })),
+    (id: string) => {
+      const before = stateRef.current.notes.find((n) => n.id === id);
+      commit(
+        (s) => ({
+          ...s,
+          notes: s.notes.map((n) => (n.id === id ? { ...n, pinned: !n.pinned } : n)),
+        }),
+        {
+          ok: before?.pinned ? "Unpinned" : "Pinned to the top",
+          fail: "Couldn't update the pin",
+        },
+      );
+    },
     [commit],
   );
 
@@ -386,31 +455,34 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     (data: NewWard) => {
       const id = uuid();
       const date = data.date ?? BASE_DATE;
-      commit((s) => ({
-        ...s,
-        onWards: [
-          {
-            id,
-            date,
-            dateLabel: wardDateLabel(date),
-            title: data.title,
-            impact: data.impact,
-            body: data.body,
-            project: data.project,
-            skills: data.skills,
-            evidence: data.evidence,
-            files: data.evidence.length,
-            inPortfolio: data.inPortfolio,
-          },
-          ...s.onWards,
-        ],
-        skills: [
-          ...new Set([
-            ...s.skills,
-            ...data.skills.filter((x) => !s.skills.includes(x)),
-          ]),
-        ],
-      }));
+      commit(
+        (s) => ({
+          ...s,
+          onWards: [
+            {
+              id,
+              date,
+              dateLabel: wardDateLabel(date),
+              title: data.title,
+              impact: data.impact,
+              body: data.body,
+              project: data.project,
+              skills: data.skills,
+              evidence: data.evidence,
+              files: data.evidence.length,
+              inPortfolio: data.inPortfolio,
+            },
+            ...s.onWards,
+          ],
+          skills: [
+            ...new Set([
+              ...s.skills,
+              ...data.skills.filter((x) => !s.skills.includes(x)),
+            ]),
+          ],
+        }),
+        { ok: "onWard captured", fail: "Couldn't save the onWard" },
+      );
       haptic("success", stateRef.current.settings.haptics);
       emitNotice({
         kind: "win",
@@ -429,13 +501,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const togglePortfolio = useCallback(
-    (id: string) =>
-      commit((s) => ({
-        ...s,
-        onWards: s.onWards.map((w) =>
-          w.id === id ? { ...w, inPortfolio: !w.inPortfolio } : w,
-        ),
-      })),
+    (id: string) => {
+      const before = stateRef.current.onWards.find((w) => w.id === id);
+      commit(
+        (s) => ({
+          ...s,
+          onWards: s.onWards.map((w) =>
+            w.id === id ? { ...w, inPortfolio: !w.inPortfolio } : w,
+          ),
+        }),
+        {
+          ok: before?.inPortfolio ? "Removed from portfolio" : "Added to your portfolio",
+          fail: "Couldn't update the portfolio",
+        },
+      );
+    },
     [commit],
   );
 
@@ -452,10 +532,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const addSkill = useCallback(
     (name: string) =>
-      commit((s) => ({
-        ...s,
-        skills: s.skills.includes(name) ? s.skills : [...s.skills, name],
-      })),
+      commit(
+        (s) => ({
+          ...s,
+          skills: s.skills.includes(name) ? s.skills : [...s.skills, name],
+        }),
+        { ok: "Skill added", fail: "Couldn't add the skill" },
+      ),
     [commit],
   );
 
@@ -466,7 +549,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const setSetting = useCallback(
     <K extends keyof Settings>(key: K, value: Settings[K]) =>
-      commit((s) => ({ ...s, settings: { ...s.settings, [key]: value } })),
+      commit((s) => ({ ...s, settings: { ...s.settings, [key]: value } }), {
+        ok: "Preference saved",
+        fail: "Couldn't save the preference",
+      }),
     [commit],
   );
 

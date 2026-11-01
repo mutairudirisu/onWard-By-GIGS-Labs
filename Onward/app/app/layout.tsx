@@ -6,6 +6,7 @@ import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { Sidebar } from "@/components/sidebar";
 import { StoreProvider } from "@/components/store";
 import { ThemeManager } from "@/components/theme-manager";
+import { ToastHost } from "@/components/toast";
 import { UpdatePrompt } from "@/components/update-prompt";
 
 export const metadata: Metadata = {
@@ -54,6 +55,7 @@ export default function RootLayout({
                 </div>
                 <ServiceWorkerRegister />
                 <UpdatePrompt />
+                <ToastHost />
               </NotificationsProvider>
             </AuthGate>
           </StoreProvider>

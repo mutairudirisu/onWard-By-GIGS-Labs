@@ -61,7 +61,7 @@ export default function TodayPage() {
           <DateStrip />
         </div>
 
-        <section className="lg:col-start-2 lg:row-start-2">
+        <section className="mb-6 lg:col-start-2 lg:row-start-2 lg:mb-0">
           <GoalGauge
             percent={percent}
             doneCount={done.length}

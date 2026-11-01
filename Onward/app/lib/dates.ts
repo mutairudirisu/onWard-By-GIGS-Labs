@@ -71,11 +71,26 @@ export function formatDue(iso: string) {
   return `${String(d.getDate()).padStart(2, "0")} ${MONTHS[d.getMonth()].slice(0, 3)}`;
 }
 
-/** "07:45 am" from the stored 24-hour "07:45". */
+/** "9:15 PM" from the stored 24-hour "09:15". */
 export function formatClock(time: string) {
   const [h, m] = time.split(":").map(Number);
-  const ap = h >= 12 ? "pm" : "am";
-  return `${String(h % 12 === 0 ? 12 : h % 12).padStart(2, "0")}:${String(m ?? 0).padStart(2, "0")} ${ap}`;
+  const ap = h >= 12 ? "PM" : "AM";
+  return `${h % 12 === 0 ? 12 : h % 12}:${String(m ?? 0).padStart(2, "0")} ${ap}`;
+}
+
+/** When the task stops being doable — a known hour, or the end of its day. */
+export function formatExpiry(iso: string, time?: string) {
+  return `${formatDue(iso)} · ${time ? formatClock(time) : "by end of day"}`;
+}
+
+/** "1 Nov 2026 · 9:19 AM" from a full ISO timestamp. */
+export function formatStamp(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const h = d.getHours();
+  const ap = h >= 12 ? "PM" : "AM";
+  const time = `${h % 12 === 0 ? 12 : h % 12}:${String(d.getMinutes()).padStart(2, "0")} ${ap}`;
+  return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()} · ${time}`;
 }
 
 export type DueState = "Expired" | "Due today" | "Tomorrow" | "Upcoming";

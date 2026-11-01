@@ -7,6 +7,7 @@ import { PhoneShell } from "@/components/phone-shell";
 import { Chip, NewButton, PageHeader } from "@/components/ui";
 import { useStore } from "@/components/store";
 import { asProse } from "@/lib/checklist";
+import { formatStamp } from "@/lib/dates";
 import { Pin, Search, X } from "lucide-react";
 
 export default function NotesPage() {
@@ -39,6 +40,10 @@ export default function NotesPage() {
     const id = addNote({ tag: filter === "All" ? "Personal" : filter });
     router.push(`/notes/${id}`);
   };
+
+  // Cards say when the note was written, not which list it belongs to.
+  const addedLabel = (n: (typeof notes)[number]) =>
+    (n.createdAt && formatStamp(n.createdAt)) || n.when;
 
   return (
     <PhoneShell tab="notes" wide>
@@ -105,10 +110,7 @@ export default function NotesPage() {
                 <p className="mt-1.5 line-clamp-3 flex-1 text-[11px] leading-[1.6] text-inksoft lg:text-[12.5px]">
                   {note.excerpt || asProse(note.body ?? "")}
                 </p>
-                <div className="mt-3 flex items-center justify-between">
-                  <span className="tag bg-lime-soft">{note.tag}</span>
-                  <span className="text-[10px] font-medium text-muted">{note.when}</span>
-                </div>
+                <p className="mt-3 text-[10px] font-medium text-muted">{addedLabel(note)}</p>
               </Link>
             ))}
           </div>
@@ -142,12 +144,7 @@ export default function NotesPage() {
                 <p className="mt-1.5 line-clamp-3 flex-1 text-[11px] leading-[1.6] text-muted lg:text-[12.5px]">
                   {note.excerpt || asProse(note.body ?? "")}
                 </p>
-                <div className="mt-3 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <span className="tag">{note.tag}</span>
-                  </span>
-                  <span className="text-[10px] font-medium text-muted">{note.when}</span>
-                </div>
+                <p className="mt-3 text-[10px] font-medium text-muted">{addedLabel(note)}</p>
               </Link>
             ))}
           </div>

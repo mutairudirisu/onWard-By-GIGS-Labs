@@ -1,3 +1,5 @@
+"use client";
+
 import { Sprout } from "lucide-react";
 import Link from "next/link";
 import { Wordmark } from "./wordmark";
@@ -23,6 +25,32 @@ export function GoogleIcon({ className = "" }: { className?: string }) {
         d="M12 4.8c1.7 0 3.2.6 4.4 1.7L19.7 3A11.9 11.9 0 0 0 1.8 7.1l3.8 3c.9-2.7 3.4-5.3 6.4-5.3Z"
       />
     </svg>
+  );
+}
+
+/**
+ * The Google option on the auth screens. It keeps its own surface on hover —
+ * only the edge and shadow answer the cursor — so it never flashes a fill.
+ */
+export function GoogleAuthButton({
+  onClick,
+  busy = false,
+  label = "Continue with Google",
+}: {
+  onClick: () => void;
+  busy?: boolean;
+  label?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={busy}
+      className="flex w-full items-center justify-center gap-2 rounded-btn border border-line bg-paper px-4 py-3 text-[13px] font-semibold text-ink transition hover:border-dash hover:shadow-card active:scale-[0.99] disabled:opacity-60"
+    >
+      <GoogleIcon />
+      {busy ? "Opening Google…" : label}
+    </button>
   );
 }
 

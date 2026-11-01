@@ -128,6 +128,9 @@ export type Task = {
   priority?: string;
   date?: string; // yyyy-mm-dd the task belongs to
   archived?: boolean;
+  // Sub-steps, held as markdown task items ("- [ ] call Priya") in the same
+  // column as the old free-text notes. The task is done when they all are.
+  steps?: string;
 };
 
 export const tasks: Task[] = [
@@ -190,6 +193,7 @@ export type Note = {
   pinned?: boolean;
   body?: string;
   priority?: string;
+  createdAt?: string; // ISO instant the note was first added
 };
 
 export const notes: Note[] = [

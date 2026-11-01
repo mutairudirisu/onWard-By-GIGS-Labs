@@ -13,7 +13,7 @@ import { useStore } from "@/components/store";
 import { BASE_DATE, type Task } from "@/lib/data";
 import { formatMedium, formatTasksHeader } from "@/lib/dates";
 import { appendDictation } from "@/lib/dictation";
-import { Bell, Clock, ListChecks, Search, X } from "lucide-react";
+import { Bell, Check, Clock, ListChecks, Search, X } from "lucide-react";
 
 const FILTERS = ["Today", "Upcoming", "All tasks"] as const;
 type Filter = (typeof FILTERS)[number];
@@ -68,7 +68,7 @@ export default function TasksPage() {
     const el = draftRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 132)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   }, [draft, adding]);
 
   const q = query.trim().toLowerCase();
@@ -95,30 +95,24 @@ export default function TasksPage() {
     setReminder(null);
   };
 
-  // Enter keeps the composer open so the next task can be typed straight away.
-  const submitDraft = (closeAfter = false) => {
-    const title = draft.trim();
-    if (!title) {
-      if (closeAfter) closeComposer();
+  // Enter drops to a new step; the task and its steps land together on Add task.
+  const submitDraft = () => {
+    const lines = draft
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (!lines.length) {
+      closeComposer();
       return;
     }
     addTask({
-      title,
+      title: lines[0],
+      steps: lines.length > 1 ? lines.slice(1).map((l) => `- [ ] ${l}`).join("\n") : undefined,
       time: reminder?.time,
       date: reminder?.date,
       dueDate: reminder ? formatMedium(reminder.date) : undefined,
     });
-    setDraft("");
-    setReminder(null);
-    if (closeAfter) {
-      closeComposer();
-      return;
-    }
-    const el = draftRef.current;
-    if (el) {
-      el.style.height = "auto";
-      el.focus();
-    }
+    closeComposer();
   };
 
   const openReminder = () => {
@@ -213,23 +207,19 @@ export default function TasksPage() {
                   autoFocus
                   rows={1}
                   enterKeyHint="enter"
-                  className="max-h-[132px] flex-1 resize-none bg-transparent pt-0.5 text-[14px] font-medium leading-[1.45] text-ink outline-none placeholder:text-faint"
-                  placeholder="Type a task — Enter adds another"
+                  className="max-h-[200px] flex-1 resize-none bg-transparent pt-0.5 text-[14px] font-medium leading-[1.45] text-ink outline-none placeholder:text-faint"
+                  placeholder="Type a task — Enter adds a step"
                   value={draft}
                   onChange={(e) => {
                     setDraft(e.target.value);
                     const el = e.currentTarget;
                     el.style.height = "auto";
-                    el.style.height = `${Math.min(el.scrollHeight, 132)}px`;
+                    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
                   }}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      submitDraft();
-                    }
                     if (e.key === "Escape") closeComposer();
                   }}
-                  aria-label="New task title"
+                  aria-label="New task and its steps"
                 />
                 <DictateButton
                   label="Dictate a task"
@@ -286,10 +276,11 @@ export default function TasksPage() {
 
                 <button
                   type="button"
-                  onClick={() => submitDraft(true)}
-                  className="px-1 text-[13px] font-bold text-lime-deep transition hover:text-ink"
+                  onClick={submitDraft}
+                  className="flex items-center gap-1.5 rounded-full bg-lime px-3.5 py-1.5 text-[12px] font-bold text-dark transition hover:bg-lime-deep active:scale-[0.98]"
                 >
-                  Done
+                  <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                  Add task
                 </button>
               </div>
             </div>

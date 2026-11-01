@@ -7,7 +7,7 @@ import { AuthHeader } from "@/components/phone-shell";
 import { AuthShell } from "@/components/auth-shell";
 import { ArrowIcon, Button, Divider, Field, TextInput } from "@/components/ui";
 import { useAuth, readAuthMethod, type AuthMethod } from "@/components/auth";
-import { GoogleIcon, LastUsedTag } from "@/components/auth-decor";
+import { GoogleAuthButton, LastUsedTag } from "@/components/auth-decor";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 
 function ErrorNote({ children }: { children: React.ReactNode }) {
@@ -122,14 +122,7 @@ export default function SignInPage() {
 
       <div className="relative">
         {last === "google" ? <LastUsedTag /> : null}
-        <Button
-          variant="secondary"
-          onClick={withGoogle}
-          iconLeft={<GoogleIcon />}
-          disabled={busy !== null}
-        >
-          {busy === "google" ? "Opening Google…" : "Continue with Google"}
-        </Button>
+        <GoogleAuthButton onClick={withGoogle} busy={busy === "google"} />
       </div>
 
       <p className="mt-7 text-center text-[11px] text-muted">

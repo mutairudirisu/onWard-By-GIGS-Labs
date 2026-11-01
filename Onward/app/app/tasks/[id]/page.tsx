@@ -3,12 +3,15 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { PhoneShell } from "@/components/phone-shell";
+import { ChecklistEditor } from "@/components/checklist-editor";
 import { Modal } from "@/components/modal";
 import { ReminderModal } from "@/components/reminder-modal";
 import { BackLink, Button, Chip, Field, TextInput, Toggle } from "@/components/ui";
 import { useStore } from "@/components/store";
 import { BASE_DATE } from "@/lib/data";
 import { formatClock, formatMedium, formatTasksHeader } from "@/lib/dates";
+import { noteToBody, parseNote, progress } from "@/lib/checklist";
+import type { NoteLine } from "@/lib/checklist";
 import {
   Bell,
   CalendarDays,
@@ -16,11 +19,17 @@ import {
   Clock,
   MoreHorizontal,
   Pencil,
+  Plus,
   Share2,
   Trash2,
 } from "lucide-react";
 
 const REMINDERS = ["At time", "15 min before", "Custom"];
+
+/** Empty notes read back as one blank text line, which is not a step. */
+function seedSteps(source?: string): NoteLine[] {
+  return source?.trim() ? parseNote(source) : [];
+}
 
 export default function EditTaskPage() {
   const params = useParams<{ id: string }>();
@@ -31,6 +40,7 @@ export default function EditTaskPage() {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(BASE_DATE);
   const [time, setTime] = useState("");
+  const [steps, setSteps] = useState<NoteLine[]>([]);
   const [remind, setRemind] = useState(true);
   const [reminder, setReminder] = useState("15 min before");
   const [whenOpen, setWhenOpen] = useState(false);
@@ -43,6 +53,7 @@ export default function EditTaskPage() {
     setTitle(task.title);
     setDate(task.date ?? BASE_DATE);
     setTime(task.time ?? "");
+    setSteps(seedSteps(task.steps));
     setRemind(Boolean(task.time));
   }, [task?.id, hydrated]);
 
@@ -64,6 +75,8 @@ export default function EditTaskPage() {
   }
 
   const whenLabel = time ? `${formatMedium(date)} · ${formatClock(time)}` : formatMedium(date);
+  const stepSource = noteToBody(steps);
+  const stepCount = progress(stepSource);
 
   const save = () => {
     updateTask(task.id, {
@@ -71,6 +84,7 @@ export default function EditTaskPage() {
       date,
       dueDate: formatMedium(date),
       time: time || undefined,
+      steps: stepSource,
     });
     router.push("/tasks");
   };
@@ -145,6 +159,31 @@ export default function EditTaskPage() {
             <Clock className="h-4 w-4 text-muted" />
           </button>
         </Field>
+
+        <div className="card px-3.5 py-3">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-[12px] font-bold text-ink">Steps</span>
+            {stepCount ? (
+              <span className="text-[10px] font-semibold text-muted">
+                {stepCount.done} of {stepCount.total} done
+              </span>
+            ) : null}
+          </div>
+          {steps.length ? (
+            <ChecklistEditor lines={steps} onChange={setSteps} placeholder="A small next move…" />
+          ) : (
+            <p className="py-1 text-[11px] leading-[1.55] text-muted">
+              Break the task into steps. Tick the last one and the task completes itself.
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => setSteps([...steps, { kind: "item", done: false, text: "" }])}
+            className="mt-1.5 flex items-center gap-1.5 rounded-full bg-cream px-3 py-1.5 text-[11px] font-semibold text-inksoft transition hover:bg-line"
+          >
+            <Plus className="h-3.5 w-3.5" strokeWidth={2.4} /> Add a step
+          </button>
+        </div>
 
         <div className="card px-3.5 py-3">
           <div className="flex items-center gap-2.5">

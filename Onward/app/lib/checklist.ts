@@ -4,26 +4,39 @@
  * the .md export and the search box working without another table.
  */
 
-const ITEM = /^\s*-\s*\[([ xX])\]\s?(.*)$/;
+const ITEM = /^(\s*)-\s*\[([ xX])\]\s?(.*)$/;
 
 export const CHECKLIST_PREFIX = "- [ ] ";
 
+/** Two spaces per level, which is also how the mind map nests a branch. */
+const INDENT = "  ";
+
 export type NoteLine =
-  | { kind: "item"; done: boolean; text: string }
-  | { kind: "text"; text: string };
+  | { kind: "item"; done: boolean; text: string; depth?: number }
+  | { kind: "text"; text: string; depth?: number };
+
+function depthOf(leading: string) {
+  return Math.floor(leading.length / INDENT.length);
+}
 
 export function parseNote(body: string): NoteLine[] {
   return body.split("\n").map((raw) => {
     const match = ITEM.exec(raw);
     return match
-      ? { kind: "item", done: match[1] !== " ", text: match[2] }
-      : { kind: "text", text: raw };
+      ? {
+          kind: "item",
+          done: match[2] !== " ",
+          text: match[3],
+          depth: depthOf(match[1]),
+        }
+      : { kind: "text", text: raw.trimStart(), depth: depthOf(/^\s*/.exec(raw)?.[0] ?? "") };
   });
 }
 
 export function lineToSource(line: NoteLine): string {
-  if (line.kind !== "item") return line.text;
-  return `- [${line.done ? "x" : " "}] ${line.text}`;
+  const pad = INDENT.repeat(Math.max(0, line.depth ?? 0));
+  if (line.kind !== "item") return `${pad}${line.text}`;
+  return `${pad}- [${line.done ? "x" : " "}] ${line.text}`;
 }
 
 export function noteToBody(lines: NoteLine[]): string {
@@ -65,4 +78,17 @@ export function asProse(body: string): string {
       line.kind === "item" ? `${line.done ? "☑" : "☐"} ${line.text}` : line.text,
     )
     .join("\n");
+}
+
+/** Tick or clear every item — how a task and its steps stay in agreement. */
+export function setAllDone(source: string, done: boolean): string {
+  return noteToBody(parseNote(source).map((line) => (line.kind === "item" ? { ...line, done } : line)));
+}
+
+/** How far through a task's steps it is, or null when it has none. */
+export function stepProgress(steps?: string): { done: number; total: number } | null {
+  if (!steps?.trim()) return null;
+  const items = parseNote(steps).filter((line) => line.kind === "item" && line.text.trim());
+  if (!items.length) return null;
+  return { done: items.filter((line) => line.kind === "item" && line.done).length, total: items.length };
 }

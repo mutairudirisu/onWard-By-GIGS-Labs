@@ -242,9 +242,7 @@ export function PageHeader({
 }) {
   return (
     <div className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 lg:mb-8">
-      {eyebrow ? (
-        <p className="eyebrow col-start-1 mb-1 self-center">{eyebrow}</p>
-      ) : null}
+      {eyebrow ? <p className="eyebrow col-span-2 mb-1">{eyebrow}</p> : null}
       <h1 className="col-start-1 row-start-2 self-center text-[22px] font-bold leading-tight tracking-tight text-ink lg:text-[30px]">
         {title}
       </h1>

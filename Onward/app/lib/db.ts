@@ -9,6 +9,7 @@ import {
   type Task,
 } from "./data";
 import { formatMedium, toISO, wardDateLabel } from "./dates";
+import { hasChecklist } from "./checklist";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -99,6 +100,7 @@ type NoteRow = {
   tag: string | null;
   priority: string | null;
   pinned: boolean;
+  created_at: string;
   updated_at: string;
 };
 
@@ -285,6 +287,9 @@ export async function fetchWorkspace(userId: string): Promise<Workspace> {
 }
 
 function taskFromRow(row: TaskRow): Task {
+  // One column carries both shapes: markdown items are steps, anything else is
+  // the free-text note that used to live there.
+  const steps = row.notes && hasChecklist(row.notes) ? row.notes : undefined;
   return {
     id: row.id,
     title: row.title,
@@ -292,7 +297,8 @@ function taskFromRow(row: TaskRow): Task {
     todaySub: row.list ?? undefined,
     time: row.time ?? undefined,
     done: row.done,
-    notes: row.notes ?? undefined,
+    notes: steps ? undefined : row.notes ?? undefined,
+    steps,
     dueDate: row.due_date ? formatMedium(row.due_date) : undefined,
     list: row.list ?? undefined,
     priority: row.priority ?? undefined,
@@ -309,6 +315,7 @@ function noteFromRow(row: NoteRow): Note {
     body: row.body,
     tag: row.tag ?? "Personal",
     when: relativeWhen(row.updated_at),
+    createdAt: row.created_at,
     pinned: row.pinned,
     priority: row.priority ?? undefined,
   };
@@ -357,7 +364,7 @@ export async function writeTask(userId: string, task: Task, sortOrder: number) {
       user_id: userId,
       title: task.title,
       meta: task.meta ?? "",
-      notes: task.notes ?? null,
+      notes: task.steps ?? task.notes ?? null,
       time: task.time ?? null,
       day: task.date ?? null,
       due_date: toIsoDate(task.dueDate),

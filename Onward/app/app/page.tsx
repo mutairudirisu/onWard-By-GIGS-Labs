@@ -6,7 +6,7 @@ import Link from "next/link";
 import { AuthShell } from "@/components/auth-shell";
 import { PhoneShell } from "@/components/phone-shell";
 import { ArrowIcon, Button, Divider, TextInput } from "@/components/ui";
-import { AuthBrand, DotField, GoogleIcon, LastUsedTag } from "@/components/auth-decor";
+import { AuthBrand, DotField, GoogleAuthButton, LastUsedTag } from "@/components/auth-decor";
 import { readAuthMethod, useAuth, type AuthMethod } from "@/components/auth";
 import { Check, Mail, Sprout } from "lucide-react";
 
@@ -33,9 +33,7 @@ function StartForm({
     <div className="space-y-3">
       <div className="relative">
         {last === "google" ? <LastUsedTag /> : null}
-        <Button variant="secondary" onClick={onGoogle} iconLeft={<GoogleIcon />} disabled={busy}>
-          {busy ? "Opening Google…" : "Continue with Google"}
-        </Button>
+        <GoogleAuthButton onClick={onGoogle} busy={busy} />
       </div>
       <Divider>or</Divider>
       <form onSubmit={onEmailSubmit}>

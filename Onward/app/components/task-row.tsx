@@ -4,7 +4,8 @@ import Link from "next/link";
 import { AlarmClock, Check } from "lucide-react";
 import { useStore } from "@/components/store";
 import { BASE_DATE, type Task } from "@/lib/data";
-import { dueState, formatClock, formatDue } from "@/lib/dates";
+import { dueState, formatExpiry } from "@/lib/dates";
+import { stepProgress } from "@/lib/checklist";
 
 /** When the task falls due — the line that replaces the old list name. */
 function DueLine({ task }: { task: Task }) {
@@ -17,10 +18,7 @@ function DueLine({ task }: { task: Task }) {
         task.done ? "text-faint/80" : "text-muted"
       }`}
     >
-      <span className="shrink-0">
-        {formatDue(iso)}
-        {task.time ? ` ${formatClock(task.time)}` : ""}
-      </span>
+      <span className="shrink-0">{formatExpiry(iso, task.time)}</span>
       <span aria-hidden className="shrink-0">
         ·
       </span>
@@ -41,6 +39,7 @@ export function TaskRow({
 }) {
   const { toggleTask } = useStore();
   const to = href ?? `/tasks/${task.id}`;
+  const steps = stepProgress(task.steps);
 
   const inner = (
     <>
@@ -79,6 +78,19 @@ export function TaskRow({
           <DueLine task={task} />
         )}
       </span>
+      {steps ? (
+        <span
+          className={`shrink-0 self-center rounded-full px-2 py-1 text-[10px] font-bold tabular-nums ${
+            steps.done === steps.total
+              ? "bg-lime text-dark"
+              : task.done
+                ? "bg-cream text-faint"
+                : "bg-lime-soft text-inksoft"
+          }`}
+        >
+          {steps.done}/{steps.total}
+        </span>
+      ) : null}
     </>
   );
 

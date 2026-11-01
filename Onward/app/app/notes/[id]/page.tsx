@@ -20,6 +20,7 @@ import {
   toggleLine,
 } from "@/lib/checklist";
 import { haptic } from "@/lib/haptics";
+import { formatStamp } from "@/lib/dates";
 import {
   Check,
   CheckCheck,
@@ -28,6 +29,7 @@ import {
   Link2,
   ListChecks,
   MoreHorizontal,
+  Network,
   Pin,
   Share2,
   Sprout,
@@ -211,6 +213,8 @@ export default function NoteEditorPage() {
   const savedBody = note.body ?? note.excerpt ?? "";
   const dirty = title !== savedTitle || body !== savedBody;
   const done = progress(savedBody);
+  // When it was first written down, not the relative "3d ago" the list uses.
+  const addedAt = (note.createdAt && formatStamp(note.createdAt)) || note.when;
 
   const startEdit = () => setEditing(true);
 
@@ -253,6 +257,12 @@ export default function NoteEditorPage() {
 
   const remove = () => {
     deleteNote(note.id);
+    router.push("/notes");
+  };
+
+  // The one control that closes the note, keeping any edits on the way out.
+  const doneAndLeave = () => {
+    if (editing && dirty) save();
     router.push("/notes");
   };
 
@@ -327,6 +337,14 @@ export default function NoteEditorPage() {
         <div className="flex items-center gap-1">
           <button
             type="button"
+            onClick={doneAndLeave}
+            className="flex items-center gap-1.5 rounded-full bg-lime px-3 py-1.5 text-[12px] font-bold text-dark transition hover:bg-lime-deep active:scale-[0.98]"
+          >
+            <Check className="h-3.5 w-3.5" strokeWidth={3} />
+            Done
+          </button>
+          <button
+            type="button"
             aria-label={note.pinned ? "Unpin note" : "Pin note"}
             aria-pressed={note.pinned}
             onClick={() => togglePin(note.id)}
@@ -370,9 +388,18 @@ export default function NoteEditorPage() {
           />
           <div className="mb-4 mt-2 flex items-center justify-between gap-2 lg:mb-5">
             <p className="text-[10px] font-medium text-muted lg:text-[11.5px]">
-              {note.when} · {body.length} characters
+              {addedAt} · {body.length} characters
             </p>
             <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => router.push(`/notes/${note.id}/map`)}
+                title="See this note as a mind map"
+                className="flex items-center gap-1.5 rounded-full bg-cream px-2.5 py-1.5 text-[10px] font-bold text-inksoft transition hover:bg-line"
+              >
+                <Network className="h-3.5 w-3.5" strokeWidth={2.2} />
+                Mind map
+              </button>
               <button
                 type="button"
                 onClick={toggleChecklistMode}
@@ -437,7 +464,7 @@ export default function NoteEditorPage() {
             {note.title}
           </h2>
           <p className="mb-4 mt-2 text-[10px] font-medium text-muted lg:mb-6 lg:text-[11.5px]">
-            {note.when} · {savedBody.length} characters
+            Added {addedAt} · {savedBody.length} characters
             {done ? ` · ${done.done} of ${done.total} done` : ""}
           </p>
           {savedBody ? (
@@ -513,6 +540,17 @@ export default function NoteEditorPage() {
           >
             <Sprout className="h-[18px] w-[18px] text-lime-deep" />
             <span className="text-[13px] font-semibold text-ink">Turn into an onWard</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpen(false);
+              router.push(`/notes/${note.id}/map`);
+            }}
+            className="flex items-center gap-3 rounded-xl px-2 py-3 text-left transition hover:bg-cream"
+          >
+            <Network className="h-[18px] w-[18px] text-lime-deep" />
+            <span className="text-[13px] font-semibold text-ink">Open as a mind map</span>
           </button>
           <button
             type="button"
