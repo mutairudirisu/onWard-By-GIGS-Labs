@@ -108,7 +108,7 @@ export default function TodayPage() {
         <aside className="lg:col-start-2 lg:row-start-3 lg:mt-0 lg:space-y-4">
           {isBase ? (
             <Link
-              href="/tasks/review-project-milestones"
+              href="/tasks"
               className="mt-5 flex items-center gap-3 rounded-2xl border border-lime-deep/50 bg-lime-pale px-3.5 py-3 lg:mt-0"
             >
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-paper text-inksoft">

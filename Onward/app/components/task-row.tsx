@@ -1,11 +1,13 @@
 "use client";
 
-import Link from "next/link";
-import { AlarmClock, Check, X } from "lucide-react";
+import { useState } from "react";
+import { AlarmClock, Check, ChevronDown, X } from "lucide-react";
 import { useStore } from "@/components/store";
+import { useTaskComposer } from "@/components/task-composer";
 import { BASE_DATE, type Task } from "@/lib/data";
 import { dueState, formatExpiry } from "@/lib/dates";
-import { stepProgress } from "@/lib/checklist";
+import { INDENT_PX, parseNote, stepProgress, toggleLine } from "@/lib/checklist";
+import { haptic } from "@/lib/haptics";
 
 /** When the task falls due — the line that replaces the old list name. */
 function DueLine({ task }: { task: Task }) {
@@ -49,18 +51,25 @@ function DueLine({ task }: { task: Task }) {
   );
 }
 
-export function TaskRow({
-  task,
-  sub,
-  href,
-}: {
-  task: Task;
-  sub?: string;
-  href?: string;
-}) {
-  const { toggleTask } = useStore();
-  const to = href ?? `/tasks/${task.id}`;
+export function TaskRow({ task }: { task: Task }) {
+  const { toggleTask, updateTask, settings } = useStore();
+  const composer = useTaskComposer();
   const steps = stepProgress(task.steps);
+  // Each step keeps its own index in the source, so ticking one rewrites exactly
+  // that line rather than the nth item of a list that may hold blanks.
+  const items = parseNote(task.steps ?? "").flatMap((line, index) =>
+    line.kind === "item" && line.text.trim() ? [{ index, line }] : [],
+  );
+  // One step is already visible in the count, so only a real list is worth
+  // unfolding — and folding back keeps the list short.
+  const foldable = Boolean(steps && steps.total > 1);
+  const [open, setOpen] = useState(false);
+
+  const tickStep = (index: number) => {
+    if (!task.steps) return;
+    updateTask(task.id, { steps: toggleLine(task.steps, index) }, { fail: "Couldn't save the step" });
+    haptic("success", settings.haptics);
+  };
 
   const inner = (
     <>
@@ -87,17 +96,7 @@ export function TaskRow({
         >
           {task.title}
         </span>
-        {sub ? (
-          <span
-            className={`block truncate text-[10px] transition-colors ${
-              task.done ? "text-faint/80" : "text-muted"
-            }`}
-          >
-            {sub}
-          </span>
-        ) : (
-          <DueLine task={task} />
-        )}
+        <DueLine task={task} />
       </span>
       {steps ? (
         <span
@@ -112,15 +111,92 @@ export function TaskRow({
           {steps.done}/{steps.total}
         </span>
       ) : null}
+      {foldable ? (
+        <button
+          type="button"
+          aria-label={
+            open
+              ? `Hide the subtasks of ${task.title}`
+              : `Show the ${steps?.total} subtasks of ${task.title}`
+          }
+          aria-expanded={open}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setOpen((value) => !value);
+          }}
+          className={`-mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition hover:bg-cream ${
+            open ? "text-ink" : "text-muted"
+          }`}
+        >
+          <ChevronDown
+            className={`h-4 w-4 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+            strokeWidth={2.2}
+          />
+        </button>
+      ) : null}
     </>
   );
 
   return (
-    <Link
-      href={to}
-      className="card flex items-center gap-3 px-3.5 py-3 transition active:scale-[0.995]"
-    >
-      {inner}
-    </Link>
+    <div className="card transition active:scale-[0.995]">
+      {/* The card opens the composer sheet, the same one New task brings up. */}
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label={`Edit ${task.title}`}
+        onClick={() => composer.open(task.id)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            composer.open(task.id);
+          }
+        }}
+        className="flex cursor-pointer items-center gap-3 px-3.5 py-3"
+      >
+        {inner}
+      </div>
+      {foldable && open ? (
+        <div className="mx-3.5 mb-1 mt-0.5 space-y-0.5 border-t border-line pt-2">
+          {items.map(({ index, line }) => (
+            <button
+              key={index}
+              type="button"
+              aria-label={
+                line.done
+                  ? `Mark "${line.text}" not done`
+                  : `Mark "${line.text}" done`
+              }
+              aria-pressed={line.done}
+              onClick={(e) => {
+                e.preventDefault();
+                tickStep(index);
+              }}
+              className="group flex w-full items-start gap-2.5 rounded-lg px-1 py-1 text-left transition hover:bg-cream"
+              style={{ paddingLeft: `${(line.depth ?? 0) * INDENT_PX + 4}px` }}
+            >
+              <span
+                className={`mt-[3px] flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-[5px] border-2 transition ${
+                  line.done
+                    ? "border-lime-deep bg-lime"
+                    : "border-dash bg-paper group-hover:border-lime-deep"
+                }`}
+              >
+                {line.done ? (
+                  <Check className="h-2.5 w-2.5 text-dark" strokeWidth={3} />
+                ) : null}
+              </span>
+              <span
+                className={`min-w-0 flex-1 text-[11.5px] leading-[1.55] [overflow-wrap:anywhere] ${
+                  line.done ? "text-faint line-through" : "text-inksoft"
+                }`}
+              >
+                {line.text}
+              </span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
