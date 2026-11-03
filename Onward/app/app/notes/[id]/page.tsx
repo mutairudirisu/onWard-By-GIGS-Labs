@@ -24,6 +24,7 @@ import {
   type LineShape,
 } from "@/lib/checklist";
 import { haptic } from "@/lib/haptics";
+import { useKeyboardInset } from "@/lib/keyboard";
 import {
   formatReminderBrief,
   formatStamp,
@@ -50,28 +51,6 @@ import {
   Type,
   X,
 } from "lucide-react";
-
-// Distance the on-screen keyboard takes at the bottom of the screen. The visual
-// viewport's own scroll offset is deliberately ignored: including it made the
-// bar climb while the note was scrolled.
-function useKeyboardInset() {
-  const [inset, setInset] = useState(0);
-
-  useEffect(() => {
-    const viewport = window.visualViewport;
-    if (!viewport) return;
-    const update = () => setInset(Math.max(0, Math.round(window.innerHeight - viewport.height)));
-    update();
-    viewport.addEventListener("resize", update);
-    viewport.addEventListener("scroll", update);
-    return () => {
-      viewport.removeEventListener("resize", update);
-      viewport.removeEventListener("scroll", update);
-    };
-  }, []);
-
-  return inset;
-}
 
 function ToolButton({
   label,
@@ -449,8 +428,15 @@ export default function NoteEditorPage() {
   };
 
   return (
-    <PhoneShell indicator={!editing}>
-      <div className="mb-3 flex items-center justify-between">
+    <PhoneShell indicator={!editing} fill>
+      {/* Header and toolbar hold their ground; only the middle scrolls. The
+          keyboard lifts the whole column by padding rather than by chasing the
+          visual viewport with fixed positioning. */}
+      <div
+        className="flex min-h-0 flex-1 flex-col lg:max-w-[760px]"
+        style={{ paddingBottom: keyboardInset }}
+      >
+      <div className="mb-3 flex shrink-0 items-center justify-between">
         <div className="flex items-center gap-1">
           <BackLink href="/notes" label="Back to notes" onClick={editing ? leave : undefined} />
           <h1 className="text-[17px] font-bold tracking-tight text-ink">Note</h1>
@@ -496,7 +482,7 @@ export default function NoteEditorPage() {
 
       {editing ? (
         <>
-        <div className="lg:max-w-[760px]">
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-4">
           <input
             autoFocus
             value={title}
@@ -534,14 +520,11 @@ export default function NoteEditorPage() {
               className="min-h-[220px] w-full resize-none bg-transparent text-[15px] leading-[1.75] text-inksoft outline-none [overflow-wrap:anywhere] placeholder:text-faint lg:min-h-[420px] lg:text-[16px] lg:leading-[1.8]"
             />
           )}
-          <div className="h-44 lg:hidden" aria-hidden />
         </div>
-        {/* Rides above the on-screen keyboard instead of hiding behind it. */}
-        <div
-          className="fixed inset-x-0 z-40 mx-auto w-full max-w-[400px] border-t border-line/70 bg-paper/95 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-2 backdrop-blur transition-[bottom] duration-150 md:max-w-[680px] lg:static lg:mx-0 lg:mt-6 lg:max-w-[760px] lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none"
-          style={{ bottom: keyboardInset }}
-        >
-          <div className="mb-1.5 flex items-center justify-center gap-1 lg:justify-start">
+        <div className="shrink-0 border-t border-line/70 pb-[max(4px,env(safe-area-inset-bottom))] pt-2 lg:pb-2 lg:pt-3">
+          {/* One tool per beat across the width of the note, so a thumb reaches
+              each of them without picking at a cluster. */}
+          <div className="mb-2 flex items-center justify-between lg:mb-1.5 lg:justify-start lg:gap-2">
             <DictateButton
               label="Dictate note"
               onText={(text) => setBody((value) => appendDictation(value, text))}
@@ -605,7 +588,7 @@ export default function NoteEditorPage() {
               startEdit();
             }
           }}
-          className="cursor-text rounded-2xl outline-none transition focus-visible:ring-2 focus-visible:ring-lime/50 lg:max-w-[760px]"
+          className="cursor-text min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-2xl pb-12 outline-none transition focus-visible:ring-2 focus-visible:ring-lime/50"
         >
           <h2 className="text-[27px] font-bold leading-[1.15] tracking-[-0.02em] text-ink [overflow-wrap:anywhere] lg:text-[34px]">
             {note.title}
@@ -706,6 +689,7 @@ export default function NoteEditorPage() {
           </p>
         </div>
       )}
+      </div>
 
       <Modal open={menuOpen} onClose={() => setMenuOpen(false)} title="Note options">
         <div className="-mx-1 flex flex-col">

@@ -44,21 +44,20 @@ function NoteCard({ note, pale = false }: { note: Note; pale?: boolean }) {
   return (
     <Link
       href={`/notes/${note.id}`}
-      className={`flex flex-col rounded-[22px] border px-4 py-4 shadow-card transition hover:-translate-y-0.5 hover:shadow-lift lg:px-5 lg:py-5 ${
+      className={`flex h-[164px] flex-col rounded-[22px] border px-4 py-4 shadow-card transition hover:-translate-y-0.5 hover:shadow-lift lg:h-[196px] lg:px-5 lg:py-5 ${
         pale ? "border-lime-deep/40 bg-lime-pale" : "border-line bg-paper"
       }`}
     >
       <div className="flex items-start justify-between gap-3">
-        <p className="text-[11px] font-semibold text-muted">{note.tag}</p>
+        <h3 className="line-clamp-2 text-[15px] font-bold tracking-tight text-ink [overflow-wrap:anywhere] lg:text-[17px]">
+          {note.title}
+        </h3>
         {pale ? <Pin className="h-4 w-4 shrink-0 fill-lime-deep text-lime-deep" /> : null}
       </div>
-      <h3 className="mt-1 text-[15px] font-bold tracking-tight text-ink [overflow-wrap:anywhere] lg:text-[17px]">
-        {note.title}
-      </h3>
-      <p className="mt-1.5 line-clamp-3 flex-1 whitespace-pre-line text-[11.5px] leading-[1.65] text-inksoft lg:text-[13px]">
+      <p className="mt-1.5 line-clamp-3 whitespace-pre-line text-[11.5px] leading-[1.65] text-inksoft lg:text-[13px]">
         {note.excerpt || asProse(note.body ?? "")}
       </p>
-      <div className="mt-3.5 flex items-center justify-between gap-3">
+      <div className="mt-auto flex items-center justify-between gap-3 pt-3.5">
         <span className="text-[10.5px] font-semibold text-muted">
           {list ? `${list.done} of ${list.total} done` : ""}
         </span>
