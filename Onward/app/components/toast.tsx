@@ -50,7 +50,7 @@ export function ToastHost() {
   return (
     <div
       aria-live="polite"
-      className="pointer-events-none fixed inset-x-0 bottom-[92px] z-[80] mx-auto flex w-full max-w-[400px] flex-col items-center gap-2 px-5 md:bottom-8 md:max-w-[560px]"
+      className="pointer-events-none fixed inset-x-0 bottom-[108px] z-[80] mx-auto flex w-full max-w-[400px] flex-col items-center gap-2 px-5 md:bottom-8 md:max-w-[560px]"
     >
       {items.map((toast) => (
         <div

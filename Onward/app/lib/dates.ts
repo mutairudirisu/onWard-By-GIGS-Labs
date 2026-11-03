@@ -83,14 +83,80 @@ export function formatExpiry(iso: string, time?: string) {
   return `${formatDue(iso)} · ${time ? formatClock(time) : "by end of day"}`;
 }
 
-/** "1 Nov 2026 · 9:19 AM" from a full ISO timestamp. */
-export function formatStamp(iso: string) {
+/** "9:19 AM" on its own — enough for the pill in the corner of a card. */
+export function formatTimeOf(iso: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   const h = d.getHours();
   const ap = h >= 12 ? "PM" : "AM";
-  const time = `${h % 12 === 0 ? 12 : h % 12}:${String(d.getMinutes()).padStart(2, "0")} ${ap}`;
+  return `${h % 12 === 0 ? 12 : h % 12}:${String(d.getMinutes()).padStart(2, "0")} ${ap}`;
+}
+
+/** "1 Nov 2026 · 9:19 AM" from a full ISO timestamp. */
+export function formatStamp(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const time = formatTimeOf(iso);
   return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()} · ${time}`;
+}
+
+/**
+ * The heading a day of entries sits under: "Today, 3 Nov", "Yesterday, 2 Nov",
+ * "Mon, 27 Oct" while the week is still in reach, then the plain date.
+ */
+export function dayHeading(iso: string, now = new Date()) {
+  const d = parseISO(iso);
+  const short = `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)}`;
+  const today = toISO(now);
+  if (iso === today) return `Today, ${short}`;
+  if (iso === addDays(today, -1)) return `Yesterday, ${short}`;
+  if (iso > addDays(today, -8)) return `${WD[d.getDay()]}, ${short}`;
+  return d.getFullYear() === now.getFullYear() ? short : `${short} ${d.getFullYear()}`;
+}
+
+/**
+ * The instant a wall-clock reminder actually falls due, as UTC ISO. A reminder is
+ * picked as "Fri, 6 Nov at 9:45 AM", and AM means *this device's* morning — so the
+ * conversion belongs on the device. The server only compares the result to now().
+ */
+export function reminderInstant(date?: string | null, time?: string | null): string | null {
+  if (!date || !time) return null;
+  const ms = Date.parse(`${date}T${time}:00`);
+  return Number.isNaN(ms) ? null : new Date(ms).toISOString();
+}
+
+/** A stored instant split back into the { date, time } the picker shows. */
+export function reminderParts(iso?: string | null): { date: string; time: string } | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const time = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return { date: toISO(d), time };
+}
+
+/** "Fri, 6 Nov · 9:45 AM" — the one line a stored reminder is shown as. */
+export function formatReminder(iso: string) {
+  const parts = reminderParts(iso);
+  return parts ? `${formatTasksHeader(parts.date)} · ${formatClock(parts.time)}` : "";
+}
+
+/** "9:45 AM" when it falls today, "06 Nov · 9:45 AM" otherwise — short enough for a pill. */
+export function formatReminderBrief(iso: string, now = new Date()) {
+  const parts = reminderParts(iso);
+  if (!parts) return "";
+  const time = formatTimeOf(iso);
+  return parts.date === toISO(now) ? time : `${formatDue(parts.date)} · ${time}`;
+}
+
+export function reminderPassed(iso: string, now = new Date()) {
+  const at = Date.parse(iso);
+  return !Number.isNaN(at) && at <= now.getTime();
+}
+
+/** The same reminder pushed forward by n minutes. */
+export function laterInstant(iso: string, minutes: number): string {
+  const at = Date.parse(iso);
+  return Number.isNaN(at) ? iso : new Date(at + minutes * 60_000).toISOString();
 }
 
 export type DueState = "Expired" | "Due today" | "Tomorrow" | "Upcoming";

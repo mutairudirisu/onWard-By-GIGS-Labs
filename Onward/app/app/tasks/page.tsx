@@ -36,7 +36,8 @@ function format12(t: string) {
 
 export default function TasksPage() {
   const router = useRouter();
-  const { tasks, selectedDate, settings, addTask, restoreTask, limits } = useStore();
+  const { tasks, selectedDate, settings, addTask, restoreTask, limits, remindersUsed, remindersFull } =
+    useStore();
   const [filter, setFilter] = useState<Filter>("Today");
   const [query, setQuery] = useState("");
   const [adding, setAdding] = useState(false);
@@ -85,9 +86,8 @@ export default function TasksPage() {
   const doneCount = scoped.filter((t) => t.done).length;
   const percent = total ? Math.round((doneCount / total) * 100) : 0;
 
+  // remindersUsed counts notes too — the store owns the shared allowance.
   const reminderCap = limits.reminderTasks;
-  const remindersUsed = tasks.filter((t) => t.time && !t.archived).length;
-  const remindersFull = reminderCap != null && remindersUsed >= reminderCap;
 
   const closeComposer = () => {
     setAdding(false);
@@ -305,7 +305,7 @@ export default function TasksPage() {
             onClose={() => setReminderGate(false)}
             feature="Reminders"
             title={`You've used all ${reminderCap ?? 3} free reminders`}
-            blurb={`Free includes a reminder on ${reminderCap ?? 3} tasks. Go Pro to put a nudge on every task.`}
+            blurb={`Free includes ${reminderCap ?? 3} reminders across tasks and notes. Go Pro to put a nudge on everything.`}
           />
 
           <section className="mb-5">

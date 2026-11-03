@@ -9,17 +9,23 @@ import {
   useRef,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "./auth";
 import { useStore } from "./store";
+import { ReminderAlert, type DueReminder } from "./reminder-alert";
 import { useActivity } from "@/lib/activity";
-import { formatMedium, toISO } from "@/lib/dates";
+import { formatMedium, formatReminder, laterInstant, reminderParts, toISO } from "@/lib/dates";
 import { NOTICE_EVENT, type AppNotice, type NoticeInput } from "@/lib/notices";
 
 const FEED_KEY = "onward.notices.v1";
 const READ_KEY = "onward.notices.read.v1";
+const ACK_KEY = "onward.reminders.ack";
 const MAX_STORED = 30;
 const MAX_FEED = 40;
 const DAY_MS = 24 * 60 * 60 * 1000;
+/** How far back a nudge nobody answered is still worth asking about. */
+const MISS_WINDOW_MS = 12 * 60 * 60 * 1000;
+const REMINDER_PREFIX = "reminder-";
 
 type AlertPermission = "unsupported" | "default" | "granted" | "denied";
 
@@ -58,6 +64,16 @@ function writeStored(key: string, value: unknown) {
   }
 }
 
+/** A reminder is acknowledged per instant, so a snooze can still go unanswered. */
+function ackKey(id: string, at: string) {
+  return `${id}:${at}`;
+}
+
+function readAcks(userId: string): string[] {
+  const raw = readStored(`${ACK_KEY}:${userId}`);
+  return Array.isArray(raw) ? (raw as string[]) : [];
+}
+
 function currentPermission(): AlertPermission {
   if (typeof window === "undefined" || typeof Notification === "undefined") return "unsupported";
   return Notification.permission as AlertPermission;
@@ -66,23 +82,41 @@ function currentPermission(): AlertPermission {
 /** Reminders, streak nudges and the welcome note the user never has to create. */
 function derivedNotices(
   tasks: { id: string; title: string; time?: string; date?: string; done: boolean; archived?: boolean }[],
+  notes: { id: string; title: string; remindAt?: string }[],
   streakCurrent: number,
   signedUpAt: string | null,
 ): AppNotice[] {
   const today = toISO(new Date());
+  const oldestMiss = Date.now() - MISS_WINDOW_MS;
   const out: AppNotice[] = [];
 
   for (const task of tasks) {
-    if (task.archived || !task.time || !task.date || task.date < today) continue;
-    const at = new Date(`${task.date}T${task.time}:00`);
-    if (Number.isNaN(at.getTime())) continue;
+    if (task.archived || task.done || !task.time || !task.date) continue;
+    const ms = new Date(`${task.date}T${task.time}:00`).getTime();
+    // A reminder is kept in the feed only until it is a day behind you: an old
+    // one is history, not a nudge.
+    if (Number.isNaN(ms) || ms < oldestMiss) continue;
     out.push({
-      id: `reminder-${task.id}`,
+      id: `${REMINDER_PREFIX}${task.id}`,
       kind: "reminder",
       title: `Reminder · ${task.title}`,
       body: `${formatMedium(task.date)} at ${task.time}`,
       href: `/tasks/${task.id}`,
-      at: at.toISOString(),
+      at: new Date(ms).toISOString(),
+    });
+  }
+
+  for (const note of notes) {
+    if (!note.remindAt) continue;
+    const ms = Date.parse(note.remindAt);
+    if (Number.isNaN(ms) || ms < oldestMiss) continue;
+    out.push({
+      id: `${REMINDER_PREFIX}${note.id}`,
+      kind: "reminder",
+      title: `Reminder · ${note.title}`,
+      body: formatReminder(note.remindAt),
+      href: `/notes/${note.id}`,
+      at: note.remindAt,
     });
   }
 
@@ -112,8 +146,9 @@ function derivedNotices(
 }
 
 export function NotificationsProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const { user } = useAuth();
-  const { tasks, settings } = useStore();
+  const { tasks, notes, settings, toggleTask, updateTask, updateNote } = useStore();
   const { streak } = useActivity();
   const userId = user?.id ?? null;
 
@@ -121,12 +156,15 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   const [readIds, setReadIds] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
   const [permission, setPermission] = useState<AlertPermission>("unsupported");
+  const [dueNow, setDueNow] = useState<DueReminder | null>(null);
 
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
   const permissionRef = useRef<AlertPermission>("unsupported");
   const firedRef = useRef<Set<string>>(new Set());
   const timersRef = useRef<number[]>([]);
+  // Only the newest missed nudge is asked about per visit; the rest wait in the feed.
+  const caughtUpRef = useRef(false);
 
   const showAlert = useCallback((notice: Omit<AppNotice, "at">) => {
     if (permissionRef.current !== "granted" || !settingsRef.current.notifications) return;
@@ -202,7 +240,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
 
   const items = useMemo(() => {
     const derived = userId
-      ? derivedNotices(tasks, streak.current, user?.created_at ?? null)
+      ? derivedNotices(tasks, notes, streak.current, user?.created_at ?? null)
       : [];
     const seen = new Set<string>();
     const merged: AppNotice[] = [];
@@ -214,7 +252,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     return merged
       .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0))
       .slice(0, MAX_FEED);
-  }, [stored, tasks, streak.current, user?.created_at, userId]);
+  }, [stored, tasks, notes, streak.current, user?.created_at, userId]);
 
   const readSet = useMemo(() => new Set(readIds), [readIds]);
   const unreadIds = useMemo(
@@ -256,11 +294,85 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     });
   }, [unread]);
 
-  // Fire browser alerts for reminders still ahead of us today.
+  // Which collection a reminder notice belongs to, and what it is now called.
+  const describe = useCallback(
+    (id: string, at: string, missed: boolean): DueReminder | null => {
+      const task = tasks.find((t) => t.id === id);
+      if (task) {
+        return { kind: "task", id, title: task.title, at, missed, href: `/tasks/${id}` };
+      }
+      const note = notes.find((n) => n.id === id);
+      if (note) {
+        return { kind: "note", id, title: note.title, at, missed, href: `/notes/${id}` };
+      }
+      return null;
+    },
+    [tasks, notes],
+  );
+
+  const acknowledge = useCallback(() => {
+    if (!dueNow) return;
+    if (userId) {
+      const acks = readAcks(userId);
+      writeStored(`${ACK_KEY}:${userId}`, [...acks, ackKey(`${REMINDER_PREFIX}${dueNow.id}`, dueNow.at)].slice(-60));
+    }
+    setDueNow(null);
+  }, [dueNow, userId]);
+
+  const snoozeReminder = useCallback(() => {
+    if (!dueNow) return;
+    const nextAt = laterInstant(dueNow.at, 10);
+    if (dueNow.kind === "task") {
+      const parts = reminderParts(nextAt);
+      if (parts) {
+        updateTask(dueNow.id, { date: parts.date, time: parts.time }, {
+          ok: "Snoozed for 10 minutes",
+          fail: "Couldn't snooze the reminder",
+        });
+      }
+    } else {
+      updateNote(dueNow.id, { remindAt: nextAt }, {
+        ok: "Snoozed for 10 minutes",
+        fail: "Couldn't snooze the reminder",
+      });
+    }
+    // The new instant has not been shown yet, and the item is no longer fired —
+    // otherwise a snooze would be the last one the app ever raises.
+    firedRef.current.delete(`${REMINDER_PREFIX}${dueNow.id}`);
+    caughtUpRef.current = false;
+    acknowledge();
+  }, [acknowledge, dueNow, updateNote, updateTask]);
+
+  const silenceReminder = useCallback(() => {
+    if (!dueNow) return;
+    if (dueNow.kind === "task") {
+      // The task keeps its due date; only the nudge goes quiet.
+      updateTask(dueNow.id, { time: undefined }, {
+        ok: "Reminder silenced",
+        fail: "Couldn't silence the reminder",
+      });
+    } else {
+      updateNote(dueNow.id, { remindAt: undefined }, {
+        ok: "Reminder silenced",
+        fail: "Couldn't silence the reminder",
+      });
+    }
+    acknowledge();
+  }, [acknowledge, dueNow, updateNote, updateTask]);
+
+  const finishReminder = useCallback(() => {
+    if (!dueNow) return;
+    if (dueNow.kind === "task") toggleTask(dueNow.id);
+    else router.push(dueNow.href);
+    acknowledge();
+  }, [acknowledge, dueNow, router, toggleTask]);
+
+  // Fire the moment a reminder lands: the native alert if the browser will carry
+  // it, and the in-app modal whenever onWard itself is open.
   useEffect(() => {
     timersRef.current.forEach((t) => window.clearTimeout(t));
     timersRef.current = [];
-    if (permission !== "granted" || !settings.notifications) return;
+    if (!settings.notifications) return;
     const now = Date.now();
     for (const notice of items) {
       if (notice.kind !== "reminder" || firedRef.current.has(notice.id)) continue;
@@ -269,6 +381,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       const timer = window.setTimeout(() => {
         firedRef.current.add(notice.id);
         showAlert(notice);
+        setDueNow(describe(notice.id.slice(REMINDER_PREFIX.length), notice.at, false));
       }, delay);
       timersRef.current.push(timer);
     }
@@ -276,7 +389,26 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       timersRef.current.forEach((t) => window.clearTimeout(t));
       timersRef.current = [];
     };
-  }, [items, permission, settings.notifications, showAlert]);
+  }, [items, settings.notifications, showAlert, describe]);
+
+  // A nudge that went off while the app was closed still deserves a moment, so
+  // the most recent unanswered one is asked about once this visit.
+  useEffect(() => {
+    if (!userId || !ready || !settings.notifications || caughtUpRef.current) return;
+    const now = Date.now();
+    const acks = readAcks(userId);
+    const missed = items
+      .filter((n) => n.kind === "reminder")
+      .map((n) => ({ notice: n, ms: new Date(n.at).getTime() }))
+      .filter(
+        ({ notice, ms }) =>
+          ms <= now && ms > now - MISS_WINDOW_MS && !acks.includes(ackKey(notice.id, notice.at)),
+      )
+      .sort((a, b) => (a.ms < b.ms ? 1 : -1))[0];
+    if (!missed) return;
+    caughtUpRef.current = true;
+    setDueNow(describe(missed.notice.id.slice(REMINDER_PREFIX.length), missed.notice.at, true));
+  }, [items, ready, settings.notifications, userId, describe]);
 
   const enableAlerts = useCallback(async () => {
     if (typeof Notification === "undefined") {
@@ -313,7 +445,18 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     [items, unread, unreadIds, ready, permission, settings.notifications, markRead, markAllRead, enableAlerts],
   );
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={value}>
+      {children}
+      <ReminderAlert
+        due={dueNow}
+        onDone={finishReminder}
+        onSnooze={snoozeReminder}
+        onSilence={silenceReminder}
+        onAcknowledge={acknowledge}
+      />
+    </Ctx.Provider>
+  );
 }
 
 export function useNotifications(): NotificationsValue {

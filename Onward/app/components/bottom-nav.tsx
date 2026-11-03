@@ -52,7 +52,7 @@ export function BottomNav({ active }: { active: TabId }) {
   };
 
   return (
-    <nav className="relative z-40 bg-cream px-4 pb-2 pt-2">
+    <nav className="relative z-40 bg-cream px-4 pb-2.5 pt-2.5">
       {open ? (
         <button
           type="button"
@@ -66,7 +66,7 @@ export function BottomNav({ active }: { active: TabId }) {
       ) : null}
 
       <div className="flex items-center gap-2.5">
-        <div className="flex flex-1 items-center justify-between rounded-full bg-paper py-1.5 pl-1.5 pr-1.5 shadow-[0_10px_30px_rgba(16,17,8,0.08)]">
+        <div className="flex flex-1 items-center justify-between rounded-full bg-paper px-2 py-2 shadow-[0_10px_30px_rgba(16,17,8,0.08)]">
           {TABS.map(({ id, label, href, Icon }) =>
             id === active ? (
               <Link
@@ -74,13 +74,13 @@ export function BottomNav({ active }: { active: TabId }) {
                 href={href}
                 aria-current="page"
                 onClick={() => buzz("tap")}
-                className="flex items-center gap-1.5 rounded-full bg-line py-2 pl-3 pr-3.5"
+                className="flex items-center gap-1.5 rounded-full bg-line py-2.5 pl-3.5 pr-4"
               >
                 <span className="relative flex">
-                  <Icon className="h-4 w-4 text-lime-deep" strokeWidth={2.2} />
+                  <Icon className="h-[18px] w-[18px] text-lime-deep" strokeWidth={2.2} />
                   {id === "you" ? <UnreadDot /> : null}
                 </span>
-                <span className="text-[10px] font-bold text-lime-deep">{label}</span>
+                <span className="text-[11px] font-bold text-lime-deep">{label}</span>
               </Link>
             ) : (
               <Link
@@ -88,10 +88,10 @@ export function BottomNav({ active }: { active: TabId }) {
                 href={href}
                 aria-label={label}
                 onClick={() => buzz("tap")}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-faint transition hover:text-lime-deep"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-faint transition hover:text-lime-deep"
               >
                 <span className="relative flex">
-                  <Icon className="h-4 w-4" strokeWidth={2} />
+                  <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
                   {id === "you" ? <UnreadDot /> : null}
                 </span>
               </Link>
@@ -133,12 +133,12 @@ export function BottomNav({ active }: { active: TabId }) {
               setOpen((o) => !o);
               buzz("tap");
             }}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-lime text-dark shadow-[0_10px_30px_rgba(16,17,8,0.15)] transition active:scale-95"
+            className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-lime text-dark shadow-[0_10px_30px_rgba(16,17,8,0.15)] transition active:scale-95"
           >
             {open ? (
-              <X className="h-5 w-5" strokeWidth={2.4} />
+              <X className="h-[22px] w-[22px]" strokeWidth={2.4} />
             ) : (
-              <Plus className="h-5 w-5" strokeWidth={2.4} />
+              <Plus className="h-[22px] w-[22px]" strokeWidth={2.4} />
             )}
           </button>
         </div>

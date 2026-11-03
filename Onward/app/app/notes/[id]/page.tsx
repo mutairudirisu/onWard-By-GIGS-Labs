@@ -3,49 +3,64 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { PhoneShell } from "@/components/phone-shell";
-import { ChecklistEditor } from "@/components/checklist-editor";
+import { ChecklistEditor, type ChecklistEditorHandle } from "@/components/checklist-editor";
 import { DictateButton } from "@/components/dictate-button";
 import { BackLink, Button } from "@/components/ui";
 import { Modal } from "@/components/modal";
+import { ReminderModal, type ReminderValue } from "@/components/reminder-modal";
+import { UpgradeModal } from "@/components/pro";
 import { useStore } from "@/components/store";
 import { appendDictation } from "@/lib/dictation";
 import {
-  CHECKLIST_PREFIX,
   INDENT_PX,
-  asChecklist,
   asProse,
   hasChecklist,
   noteToBody,
+  orderedNumber,
   parseNote,
   progress,
+  shapeLine,
   toggleLine,
+  type LineShape,
 } from "@/lib/checklist";
 import { haptic } from "@/lib/haptics";
-import { formatStamp } from "@/lib/dates";
 import {
+  formatReminderBrief,
+  formatStamp,
+  reminderInstant,
+  reminderPassed,
+  reminderParts,
+  toISO,
+} from "@/lib/dates";
+import {
+  Bell,
+  BellRing,
   Check,
   CheckCheck,
   Copy,
   Download,
   Link2,
-  ListChecks,
+  ListOrdered,
   MoreHorizontal,
   Pin,
   Share2,
   Sprout,
+  SquareCheck,
   Trash2,
+  Type,
+  X,
 } from "lucide-react";
 
-// Distance between the layout viewport and the visual viewport — the on-screen
-// keyboard. zero when it is closed.
+// Distance the on-screen keyboard takes at the bottom of the screen. The visual
+// viewport's own scroll offset is deliberately ignored: including it made the
+// bar climb while the note was scrolled.
 function useKeyboardInset() {
   const [inset, setInset] = useState(0);
 
   useEffect(() => {
     const viewport = window.visualViewport;
     if (!viewport) return;
-    const update = () =>
-      setInset(Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop)));
+    const update = () => setInset(Math.max(0, Math.round(window.innerHeight - viewport.height)));
     update();
     viewport.addEventListener("resize", update);
     viewport.addEventListener("scroll", update);
@@ -56,6 +71,28 @@ function useKeyboardInset() {
   }, []);
 
   return inset;
+}
+
+function ToolButton({
+  label,
+  onClick,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      className="flex h-8 w-8 items-center justify-center rounded-full text-inksoft transition hover:bg-cream active:scale-95"
+    >
+      {children}
+    </button>
+  );
 }
 
 function slugify(s: string) {
@@ -173,7 +210,8 @@ async function robustCopy(text: string) {
 export default function NoteEditorPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { notes, updateNote, deleteNote, togglePin, hydrated, settings } = useStore();
+  const { notes, updateNote, deleteNote, togglePin, hydrated, settings, remindersFull, limits } =
+    useStore();
   const note = notes.find((n) => n.id === params.id);
 
   const [editing, setEditing] = useState(false);
@@ -182,10 +220,16 @@ export default function NoteEditorPage() {
   const [checklist, setChecklist] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [reminderOpen, setReminderOpen] = useState(false);
+  const [reminderGate, setReminderGate] = useState(false);
   const [copied, setCopied] = useState<"text" | "link" | null>(null);
   const keyboardInset = useKeyboardInset();
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const editorRef = useRef<ChecklistEditorHandle | null>(null);
+  // Which line the toolbar just shaped, so switching to the list editor hands
+  // the caret back to it rather than to the top of the note.
+  const [focusLine, setFocusLine] = useState<number | null>(null);
 
   // Prose grows with the note instead of hiding the rest behind ten rows.
   useLayoutEffect(() => {
@@ -230,8 +274,14 @@ export default function NoteEditorPage() {
   const done = progress(savedBody);
   // When it was first written down, not the relative "3d ago" the list uses.
   const addedAt = (note.createdAt && formatStamp(note.createdAt)) || note.when;
+  // A nudge whose moment has gone is red and can be silenced; one still ahead
+  // is just information.
+  const reminderLate = Boolean(note.remindAt && reminderPassed(note.remindAt));
 
-  const startEdit = () => setEditing(true);
+  const startEdit = () => {
+    setFocusLine(null);
+    setEditing(true);
+  };
 
   const save = () => {
     updateNote(note.id, {
@@ -240,6 +290,7 @@ export default function NoteEditorPage() {
       excerpt: asProse(body).trim().slice(0, 120) || note.excerpt,
       when: "Edited just now",
     });
+    setFocusLine(null);
     setEditing(false);
   };
 
@@ -249,24 +300,85 @@ export default function NoteEditorPage() {
     if (next === body) return;
     setBody(next);
     haptic("success", settings.haptics);
-    updateNote(note.id, {
-      body: next,
-      excerpt: asProse(next).trim().slice(0, 120) || note.excerpt,
-    });
+    const tally = progress(next);
+    // One item out of ten going green is not news. The one that empties the
+    // list is, so that — and only that — earns a toast.
+    const complete = Boolean(tally && tally.done === tally.total);
+    updateNote(
+      note.id,
+      {
+        body: next,
+        excerpt: asProse(next).trim().slice(0, 120) || note.excerpt,
+      },
+      complete
+        ? { ok: "Note complete", fail: "Couldn't save the note" }
+        : { fail: "Couldn't save the note" },
+    );
   };
 
-  const toggleChecklistMode = () => {
+  // A note carries one reminder, and the allowance is shared with tasks — so a
+  // note that has no nudge yet only gets one if the plan still has a slot free.
+  const openReminder = () => {
+    if (note.remindAt || !remindersFull) setReminderOpen(true);
+    else setReminderGate(true);
+  };
+
+  const saveReminder = (value: ReminderValue) => {
+    updateNote(
+      note.id,
+      { remindAt: reminderInstant(value.date, value.time) ?? undefined },
+      { ok: "Reminder set", fail: "Couldn't set the reminder" },
+    );
+    setReminderOpen(false);
+  };
+
+  const silenceReminder = () => {
+    updateNote(
+      note.id,
+      { remindAt: undefined },
+      { ok: "Reminder silenced", fail: "Couldn't silence the reminder" },
+    );
+  };
+
+  // The toolbar shapes the line the caret is on. In the list editor the line is
+  // a row of its own; in prose it has to be found inside the one textarea.
+  const applyShape = (shape: LineShape) => {
     if (checklist) {
-      setChecklist(false);
+      editorRef.current?.applyShape(shape);
+      return;
+    }
+    const el = bodyRef.current;
+    const caretAt = el?.selectionStart ?? body.length;
+    const raw = body.split("\n");
+    let index = 0;
+    let lineStart = 0;
+    let pos = 0;
+    for (let i = 0; i < raw.length; i++) {
+      index = i;
+      lineStart = pos;
+      pos += raw[i].length + 1;
+      if (caretAt < pos) break;
+    }
+    const lines = parseNote(body);
+    const shaped = shapeLine(lines[index], shape, orderedNumber(lines, index));
+    lines[index] = shaped;
+    setBody(noteToBody(lines));
+    if (shape === "plain") {
+      const at = lineStart + shaped.text.length;
+      requestAnimationFrame(() => {
+        el?.focus();
+        el?.setSelectionRange(at, at);
+      });
       return;
     }
     setChecklist(true);
-    setBody((value) => (value.trim() ? asChecklist(value) : CHECKLIST_PREFIX));
+    setFocusLine(index);
   };
 
   const discard = () => {
     setTitle(savedTitle);
     setBody(savedBody);
+    setFocusLine(null);
     setEditing(false);
   };
 
@@ -275,8 +387,8 @@ export default function NoteEditorPage() {
     router.push("/notes");
   };
 
-  // The one control that closes the note, keeping any edits on the way out.
-  const doneAndLeave = () => {
+  // Leaving keeps any edits, the way the Done button used to before it went.
+  const leave = () => {
     if (editing && dirty) save();
     router.push("/notes");
   };
@@ -340,7 +452,7 @@ export default function NoteEditorPage() {
     <PhoneShell indicator={!editing}>
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-1">
-          <BackLink href="/notes" label="Back to notes" />
+          <BackLink href="/notes" label="Back to notes" onClick={editing ? leave : undefined} />
           <h1 className="text-[17px] font-bold tracking-tight text-ink">Note</h1>
           {editing && dirty ? (
             <span className="ml-1 flex items-center gap-1 text-[9px] font-semibold text-lime-deep">
@@ -350,14 +462,6 @@ export default function NoteEditorPage() {
           ) : null}
         </div>
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={doneAndLeave}
-            className="flex items-center gap-1.5 rounded-full bg-lime px-3 py-1.5 text-[12px] font-bold text-dark transition hover:bg-lime-deep active:scale-[0.98]"
-          >
-            <Check className="h-3.5 w-3.5" strokeWidth={3} />
-            Done
-          </button>
           <button
             type="button"
             aria-label={note.pinned ? "Unpin note" : "Pin note"}
@@ -407,32 +511,17 @@ export default function NoteEditorPage() {
             placeholder="Untitled note"
             className="w-full bg-transparent text-[27px] font-bold leading-[1.15] tracking-[-0.02em] text-ink outline-none placeholder:text-faint lg:text-[34px]"
           />
-          <div className="mb-4 mt-2 flex items-center justify-between gap-2 lg:mb-5">
-            <p className="text-[10px] font-medium text-muted lg:text-[11.5px]">
-              {addedAt} · {body.length} characters
-            </p>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={toggleChecklistMode}
-                aria-pressed={checklist}
-                title="Enter starts a new item you can tick off"
-                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[10px] font-bold transition ${
-                  checklist ? "bg-lime text-dark" : "bg-cream text-inksoft hover:bg-line"
-                }`}
-              >
-                <ListChecks className="h-3.5 w-3.5" strokeWidth={2.2} />
-                Checklist
-              </button>
-              <DictateButton
-                label="Dictate note"
-                onText={(text) => setBody((value) => appendDictation(value, text))}
-              />
-            </div>
-          </div>
+          <p className="mb-4 mt-2 text-[10px] font-medium text-muted lg:mb-5 lg:text-[11.5px]">
+            {addedAt} · {body.length} characters
+          </p>
           {checklist ? (
             <div ref={listRef}>
-              <ChecklistEditor lines={parseNote(body)} onChange={(next) => setBody(noteToBody(next))} />
+              <ChecklistEditor
+                ref={editorRef}
+                lines={parseNote(body)}
+                focusIndex={focusLine}
+                onChange={(next) => setBody(noteToBody(next))}
+              />
             </div>
           ) : (
             <textarea
@@ -445,13 +534,56 @@ export default function NoteEditorPage() {
               className="min-h-[220px] w-full resize-none bg-transparent text-[15px] leading-[1.75] text-inksoft outline-none [overflow-wrap:anywhere] placeholder:text-faint lg:min-h-[420px] lg:text-[16px] lg:leading-[1.8]"
             />
           )}
-          <div className="h-32 lg:hidden" aria-hidden />
+          <div className="h-44 lg:hidden" aria-hidden />
         </div>
         {/* Rides above the on-screen keyboard instead of hiding behind it. */}
         <div
-          className="fixed inset-x-0 z-40 mx-auto w-full max-w-[400px] border-t border-line/70 bg-cream/95 px-5 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur transition-[bottom] duration-150 md:max-w-[680px] lg:static lg:mx-0 lg:mt-6 lg:max-w-[760px] lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none"
+          className="fixed inset-x-0 z-40 mx-auto w-full max-w-[400px] border-t border-line/70 bg-paper/95 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-2 backdrop-blur transition-[bottom] duration-150 md:max-w-[680px] lg:static lg:mx-0 lg:mt-6 lg:max-w-[760px] lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none"
           style={{ bottom: keyboardInset }}
         >
+          <div className="mb-1.5 flex items-center justify-center gap-1 lg:justify-start">
+            <DictateButton
+              label="Dictate note"
+              onText={(text) => setBody((value) => appendDictation(value, text))}
+            />
+            <ToolButton label="Tickable item" onClick={() => applyShape("item")}>
+              <SquareCheck className="h-[18px] w-[18px]" strokeWidth={2} />
+            </ToolButton>
+            <ToolButton label="Numbered line" onClick={() => applyShape("ordered")}>
+              <ListOrdered className="h-[18px] w-[18px]" strokeWidth={2} />
+            </ToolButton>
+            <ToolButton label="Plain line" onClick={() => applyShape("plain")}>
+              <Type className="h-[18px] w-[18px]" strokeWidth={2} />
+            </ToolButton>
+            {/* Nudge lives on the note itself, so it sits with the shapes rather
+                than in the 3-dot menu nobody looks in. */}
+            <button
+              type="button"
+              aria-label={
+                note.remindAt
+                  ? `Reminder set for ${formatReminderBrief(note.remindAt)}`
+                  : "Set reminder"
+              }
+              title={
+                note.remindAt ? formatReminderBrief(note.remindAt) : "Set reminder"
+              }
+              onClick={openReminder}
+              className={`flex h-8 max-w-[112px] items-center gap-1 rounded-full px-2 transition active:scale-95 ${
+                note.remindAt ? "bg-lime-soft text-lime-deep" : "text-inksoft hover:bg-cream"
+              }`}
+            >
+              {note.remindAt ? (
+                <BellRing className="h-[18px] w-[18px] shrink-0" strokeWidth={2} />
+              ) : (
+                <Bell className="h-[18px] w-[18px] shrink-0" strokeWidth={2} />
+              )}
+              {note.remindAt ? (
+                <span className="min-w-0 truncate text-[10px] font-semibold tabular-nums">
+                  {formatReminderBrief(note.remindAt)}
+                </span>
+              ) : null}
+            </button>
+          </div>
           <div className="flex gap-2">
             <Button onClick={save} iconLeft={<CheckCheck className="h-4 w-4" />} className="flex-1">
               Save note
@@ -481,6 +613,36 @@ export default function NoteEditorPage() {
           <p className="mb-4 mt-2 text-[10px] font-medium text-muted lg:mb-6 lg:text-[11.5px]">
             Added {addedAt} · {savedBody.length} characters
             {done ? ` · ${done.done} of ${done.total} done` : ""}
+            {note.remindAt ? (
+              <>
+                {" · "}
+                <span
+                  className={
+                    reminderLate
+                      ? "font-semibold text-[#E5484D]"
+                      : "font-semibold text-inksoft"
+                  }
+                >
+                  {reminderLate
+                    ? "Reminder missed"
+                    : `Reminds ${formatReminderBrief(note.remindAt)}`}
+                </span>
+                {reminderLate ? (
+                  <button
+                    type="button"
+                    aria-label="Silence the reminder"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      silenceReminder();
+                    }}
+                    className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full align-middle text-[#E5484D] transition hover:bg-[#E5484D]/10"
+                  >
+                    <X className="h-3 w-3" strokeWidth={2.6} />
+                  </button>
+                ) : null}
+              </>
+            ) : null}
           </p>
           {savedBody ? (
             <div className="-mx-2 space-y-0.5">
@@ -674,6 +836,23 @@ export default function NoteEditorPage() {
           </button>
         </div>
       </Modal>
+
+      <ReminderModal
+        open={reminderOpen}
+        onClose={() => setReminderOpen(false)}
+        onSave={saveReminder}
+        initial={reminderParts(note.remindAt)}
+        defaultDate={toISO(new Date())}
+        defaultTime={settings.defaultReminderTime}
+      />
+
+      <UpgradeModal
+        open={reminderGate}
+        onClose={() => setReminderGate(false)}
+        feature="Reminders"
+        title={`You've used all ${limits.reminderTasks ?? 3} free reminders`}
+        blurb={`Free includes ${limits.reminderTasks ?? 3} reminders across tasks and notes. Go Pro to put a nudge on everything.`}
+      />
     </PhoneShell>
   );
 }

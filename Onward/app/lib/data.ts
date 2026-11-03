@@ -194,6 +194,7 @@ export type Note = {
   body?: string;
   priority?: string;
   createdAt?: string; // ISO instant the note was first added
+  remindAt?: string; // UTC ISO the note asks to be nudged about
 };
 
 export const notes: Note[] = [

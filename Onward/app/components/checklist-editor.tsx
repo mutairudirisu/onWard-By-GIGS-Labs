@@ -1,32 +1,55 @@
 "use client";
 
-import { useLayoutEffect, useRef } from "react";
+import { forwardRef, useImperativeHandle, useLayoutEffect, useRef } from "react";
 import { Check } from "lucide-react";
-import type { NoteLine } from "@/lib/checklist";
-import { INDENT_PX } from "@/lib/checklist";
-
-const ORDERED = /^(\d+)([.)])\s*/;
+import {
+  INDENT_PX,
+  ORDERED_PATTERN,
+  orderedNumber,
+  shapeLine,
+  type LineShape,
+  type NoteLine,
+} from "@/lib/checklist";
 
 type Caret = { index: number; at: number | "end" };
+
+export type ChecklistEditorHandle = {
+  /** Rewrite the line the caret is on — or the last one, if nothing is focused. */
+  applyShape: (shape: LineShape) => void;
+};
 
 /**
  * A note body where every line carries its own checkbox, so Enter makes the
  * next item instead of a wrapped paragraph. Prose lines stay editable too; they
  * simply have no box beside them.
  */
-export function ChecklistEditor({
-  lines,
-  onChange,
-  autoFocus = false,
-  placeholder = "Add an item…",
-}: {
+export const ChecklistEditor = forwardRef<ChecklistEditorHandle, {
   lines: NoteLine[];
   onChange: (lines: NoteLine[]) => void;
   autoFocus?: boolean;
+  focusIndex?: number | null;
   placeholder?: string;
-}) {
+}>(function ChecklistEditor(
+  {
+    lines,
+    onChange,
+    autoFocus = false,
+    focusIndex = null,
+    placeholder = "Add an item…",
+  },
+  ref,
+) {
   const rows = useRef<(HTMLTextAreaElement | null)[]>([]);
-  const caret = useRef<Caret | null>(autoFocus ? { index: 0, at: "end" } : null);
+  // The row the caret was in last. Tapping a toolbar button moves focus to that
+  // button, so activeElement alone would shape the wrong line on a phone.
+  const active = useRef<number | null>(null);
+  const caret = useRef<Caret | null>(
+    autoFocus
+      ? { index: 0, at: "end" }
+      : focusIndex !== null
+        ? { index: focusIndex, at: "end" }
+        : null,
+  );
 
   useLayoutEffect(() => {
     rows.current.forEach((el) => {
@@ -44,6 +67,23 @@ export function ChecklistEditor({
     }
     caret.current = null;
   }, [lines]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      applyShape(shape) {
+        const focused = rows.current.findIndex((row) => row !== null && row === document.activeElement);
+        const index = focused >= 0 ? focused : (active.current ?? Math.max(0, lines.length - 1));
+        const line = lines[index];
+        if (!line) return;
+        const next = lines.slice();
+        next[index] = shapeLine(line, shape, orderedNumber(lines, index));
+        caret.current = { index, at: "end" };
+        onChange(next);
+      },
+    }),
+    [lines, onChange],
+  );
 
   const write = (index: number, patch: Partial<NoteLine>) => {
     const next = lines.slice();
@@ -98,8 +138,8 @@ export function ChecklistEditor({
     }
 
     // "1. walk" + Enter hands "2. " to the line below.
-    const ordered = ORDERED.exec(head);
-    const marker = ordered ? `${Number(ordered[1]) + 1}${ordered[2]} ` : "";
+    const ordered = ORDERED_PATTERN.exec(head);
+    const marker = ordered ? `${Number(ordered[2]) + 1}${ordered[3]} ` : "";
     cut(index, head, { kind: "text", text: marker + tail, depth }, { index: index + 1, at: marker.length });
   };
 
@@ -128,11 +168,11 @@ export function ChecklistEditor({
   };
 
   return (
-    <div className="space-y-0.5">
+    <div className="space-y-1.5">
       {lines.map((line, index) => (
         <div
           key={index}
-          className="group flex items-start gap-2.5 rounded-xl px-1 py-1"
+          className="group flex items-start gap-2.5 rounded-xl px-1"
           style={{ paddingLeft: `${(line.depth ?? 0) * INDENT_PX + 4}px` }}
         >
           {line.kind === "item" ? (
@@ -158,6 +198,9 @@ export function ChecklistEditor({
             }}
             value={line.text}
             rows={1}
+            onFocus={() => {
+              active.current = index;
+            }}
             aria-label={line.kind === "item" ? `Item ${index + 1}` : `Line ${index + 1}`}
             placeholder={line.kind === "item" ? placeholder : "Keep writing…"}
             onChange={(e) =>
@@ -193,4 +236,4 @@ export function ChecklistEditor({
       ))}
     </div>
   );
-}
+});

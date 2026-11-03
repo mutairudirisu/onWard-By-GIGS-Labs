@@ -149,7 +149,7 @@ export default function ProfilePage() {
           >
             <span
               className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
-                isPro ? "bg-[#2B2C24]" : "bg-ink/10"
+                isPro ? "bg-[#2B2C24]" : "bg-dark/10"
               }`}
             >
               {isPro ? <Crown className="h-5 w-5 text-lime" strokeWidth={2.2} /> : <Sparkles className="h-5 w-5" strokeWidth={2.4} />}
@@ -161,11 +161,11 @@ export default function ProfilePage() {
                 </span>
                 {isPro ? <ProBadge /> : null}
               </span>
-              <span className={`block text-[10px] lg:text-[12px] ${isPro ? "text-[#A9AAA0]" : "text-ink/70"}`}>
+              <span className={`block text-[10px] lg:text-[12px] ${isPro ? "text-[#A9AAA0]" : "text-dark/70"}`}>
                 {isPro ? "Every capability unlocked" : "Unlimited onWards, unlimited reminders & more"}
               </span>
             </span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className={isPro ? "text-[#A9AAA0]" : "text-ink/60"} aria-hidden>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className={isPro ? "text-[#A9AAA0]" : "text-dark/60"} aria-hidden>
               <path d="m9 6 6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </Link>

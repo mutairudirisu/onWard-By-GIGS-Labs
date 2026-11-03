@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AlarmClock, Check } from "lucide-react";
+import { AlarmClock, Check, X } from "lucide-react";
 import { useStore } from "@/components/store";
 import { BASE_DATE, type Task } from "@/lib/data";
 import { dueState, formatExpiry } from "@/lib/dates";
@@ -9,13 +9,16 @@ import { stepProgress } from "@/lib/checklist";
 
 /** When the task falls due — the line that replaces the old list name. */
 function DueLine({ task }: { task: Task }) {
+  const { updateTask } = useStore();
   const iso = task.date ?? BASE_DATE;
   const state = dueState(iso, task.time);
-  const overdue = state === "Expired" && !task.done;
+  // Red means a nudge was missed. A task with no time is merely late, so it stays
+  // muted and offers nothing to silence.
+  const missed = state === "Expired" && !task.done && Boolean(task.time);
   return (
     <span
       className={`flex min-w-0 items-center gap-1 overflow-hidden whitespace-nowrap text-[10px] transition-colors ${
-        task.done ? "text-faint/80" : "text-muted"
+        missed ? "font-semibold text-[#E5484D]" : task.done ? "text-faint/80" : "text-muted"
       }`}
     >
       <span className="shrink-0">{formatExpiry(iso, task.time)}</span>
@@ -23,7 +26,25 @@ function DueLine({ task }: { task: Task }) {
         ·
       </span>
       <span className="shrink-0">{state}</span>
-      {overdue ? <AlarmClock className="h-3 w-3 shrink-0" strokeWidth={2.2} /> : null}
+      {missed ? <AlarmClock className="h-3 w-3 shrink-0" strokeWidth={2.2} /> : null}
+      {missed ? (
+        <button
+          type="button"
+          aria-label={`Silence the reminder for ${task.title}`}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            updateTask(
+              task.id,
+              { time: undefined },
+              { ok: "Reminder silenced", fail: "Couldn't silence the reminder" },
+            );
+          }}
+          className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full transition hover:bg-[#E5484D]/10"
+        >
+          <X className="h-3 w-3" strokeWidth={2.6} />
+        </button>
+      ) : null}
     </span>
   );
 }

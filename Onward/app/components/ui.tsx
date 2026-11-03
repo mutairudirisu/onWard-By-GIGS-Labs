@@ -135,7 +135,7 @@ export function TextArea({
   return (
     <div className="relative">
       {box}
-      <span className="absolute right-2 top-2 text-muted">{trailing}</span>
+      <span className="absolute right-2 bottom-2 text-muted">{trailing}</span>
     </div>
   );
 }
@@ -290,12 +290,33 @@ export function NewButton({
   );
 }
 
-export function BackLink({ href, label }: { href: string; label: string }) {
+export function BackLink({
+  href,
+  label,
+  onClick,
+}: {
+  href: string;
+  label: string;
+  /** Replaces the navigation when leaving has to save something first. */
+  onClick?: () => void;
+}) {
+  const arrow = (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M15 5 8 12l7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+  const className =
+    "-ml-1 flex h-8 w-8 items-center justify-center rounded-full text-inksoft hover:bg-cream";
+  if (onClick) {
+    return (
+      <button type="button" aria-label={label} onClick={onClick} className={className}>
+        {arrow}
+      </button>
+    );
+  }
   return (
-    <Link href={href} aria-label={label} className="-ml-1 flex h-8 w-8 items-center justify-center rounded-full text-inksoft hover:bg-cream">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden>
-        <path d="M15 5 8 12l7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+    <Link href={href} aria-label={label} className={className}>
+      {arrow}
     </Link>
   );
 }

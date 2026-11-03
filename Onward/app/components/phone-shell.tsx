@@ -28,7 +28,7 @@ export function PhoneShell({
     <div className="flex min-h-dvh flex-col">
       <main
         className={`flex-1 px-5 pt-5 md:px-8 md:pt-8 lg:px-10 lg:pt-10 xl:px-14 ${
-          showNav ? "pb-32 md:pb-12" : indicator ? "pb-16 md:pb-12" : "pb-6"
+          showNav ? "pb-36 md:pb-12" : indicator ? "pb-16 md:pb-12" : "pb-6"
         }`}
       >
         <div

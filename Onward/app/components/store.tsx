@@ -96,13 +96,13 @@ type Store = State & {
   hydrated: boolean;
   toggleTask: (id: string) => void;
   addTask: (data: NewTask) => string;
-  updateTask: (id: string, patch: Partial<Task>) => void;
+  updateTask: (id: string, patch: Partial<Task>, notice?: Notice) => void;
   deleteTask: (id: string) => void;
   archiveTask: (id: string) => void;
   restoreTask: (id: string) => void;
   reorderTasks: (orderedIds: string[]) => void;
   addNote: (data?: NewNote) => string;
-  updateNote: (id: string, patch: Partial<Note>) => void;
+  updateNote: (id: string, patch: Partial<Note>, notice?: Notice) => void;
   deleteNote: (id: string) => void;
   togglePin: (id: string) => void;
   addOnWard: (data: NewWard) => string;
@@ -115,12 +115,17 @@ type Store = State & {
   isPro: boolean;
   limits: PlanLimits;
   wardsThisMonth: number;
+  remindersUsed: number;
+  remindersFull: boolean;
 };
 
 const StoreCtx = createContext<Store | null>(null);
 
-/** What a server write reports back through the toast host. */
-type Notice = { ok: string; fail: string };
+/**
+ * What a server write reports back through the toast host. A write with no `ok`
+ * still lands, it just stays quiet — ticking one item out of ten is not news.
+ */
+export type Notice = { ok?: string; fail: string };
 
 // One pass over each collection turns a state change into the smallest set of
 // row writes; position changes are writes too because tasks carry manual order.
@@ -222,7 +227,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (!userId) return;
       void sync(userId, prev, next)
         .then(() => {
-          if (notice) toastSuccess(notice.ok);
+          if (notice?.ok) toastSuccess(notice.ok);
         })
         .catch(() => {
           // the server is the source of truth: pull it back rather than keep a
@@ -307,7 +312,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const updateTask = useCallback(
-    (id: string, patch: Partial<Task>) =>
+    (id: string, patch: Partial<Task>, notice?: Notice) =>
       commit(
         (s) => ({
           ...s,
@@ -320,7 +325,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             return { ...merged, done: steps ? steps.done === steps.total : merged.done };
           }),
         }),
-        { ok: "Task updated", fail: "Couldn't update the task" },
+        notice ?? { ok: "Task updated", fail: "Couldn't update the task" },
       ),
     [commit],
   );
@@ -396,11 +401,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
               createdAt: new Date().toISOString(),
               pinned: false,
               priority: data.priority ?? "Medium",
+              remindAt: data.remindAt,
             },
             ...s.notes,
           ],
         }),
-        { ok: "Note created", fail: "Couldn't create the note" },
+        // Opening a note is not news — the save that follows is.
+        { fail: "Couldn't create the note" },
       );
       haptic("tap", stateRef.current.settings.haptics);
       if (userId) {
@@ -414,13 +421,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const updateNote = useCallback(
-    (id: string, patch: Partial<Note>) =>
+    (id: string, patch: Partial<Note>, notice?: Notice) =>
       commit(
         (s) => ({
           ...s,
           notes: s.notes.map((n) => (n.id === id ? { ...n, ...patch } : n)),
         }),
-        { ok: "Note saved", fail: "Couldn't save the note" },
+        notice ?? { ok: "Note saved", fail: "Couldn't save the note" },
       ),
     [commit],
   );
@@ -568,6 +575,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     (w.date ?? "").slice(0, 7) === monthKey,
   ).length;
 
+  // One allowance for both kinds of nudge: a reminder is a reminder whether it
+  // sits on a task or on a note.
+  const remindersUsed =
+    state.tasks.filter((t) => t.time && !t.archived).length +
+    state.notes.filter((n) => n.remindAt).length;
+  const reminderCap = PLAN_LIMITS[state.plan].reminderTasks;
+  const remindersFull = reminderCap != null && remindersUsed >= reminderCap;
+
   const value = useMemo<Store>(
     () => ({
       ...state,
@@ -593,6 +608,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       isPro: state.plan === "pro",
       limits: PLAN_LIMITS[state.plan],
       wardsThisMonth,
+      remindersUsed,
+      remindersFull,
     }),
     [
       state,

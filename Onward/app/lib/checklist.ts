@@ -5,8 +5,11 @@
  */
 
 const ITEM = /^(\s*)-\s*\[([ xX])\]\s?(.*)$/;
+/** `1. ` or `1) `, with whatever indent the line carries. */
+export const ORDERED_PATTERN = /^(\s*)(\d+)([.)])\s+(.*)$/;
 
-export const CHECKLIST_PREFIX = "- [ ] ";
+/** What the toolbar makes a line into. */
+export type LineShape = "item" | "ordered" | "plain";
 
 /** Two spaces per level, so a nested item keeps its place on the round trip. */
 const INDENT = "  ";
@@ -66,12 +69,29 @@ export function progress(body: string): { done: number; total: number } | null {
   return { done: items.filter((i) => i.done).length, total: items.length };
 }
 
-/** Turn a plain note into a checklist, leaving existing items alone. */
-export function asChecklist(body: string): string {
-  return body
-    .split("\n")
-    .map((line) => (ITEM.test(line) || !line.trim() ? line : `${CHECKLIST_PREFIX}${line}`))
-    .join("\n");
+/** The line's own words, with any list marker taken off. */
+export function stripMarker(text: string): string {
+  const item = ITEM.exec(text);
+  if (item) return item[3];
+  const ordered = ORDERED_PATTERN.exec(text);
+  if (ordered) return ordered[4];
+  return text.trimStart();
+}
+
+/** The number a marker at this position should carry, so the list stays in order. */
+export function orderedNumber(lines: NoteLine[], index: number): number {
+  return lines.slice(0, index).filter((l) => l.kind === "text" && ORDERED_PATTERN.test(l.text)).length + 1;
+}
+
+/** The same line rewritten as a tickable item, a numbered line, or prose. */
+export function shapeLine(line: NoteLine, shape: LineShape, number: number): NoteLine {
+  const text = stripMarker(line.text);
+  const depth = line.depth ?? 0;
+  if (shape === "item") {
+    return { kind: "item", done: line.kind === "item" ? line.done : false, text, depth };
+  }
+  if (shape === "ordered") return { kind: "text", text: number ? `${number}. ${text}` : text, depth };
+  return { kind: "text", text, depth };
 }
 
 /** Strip the task markers, keeping the tick state as a glyph. */

@@ -8,7 +8,7 @@ import {
   type Settings,
   type Task,
 } from "./data";
-import { formatMedium, toISO, wardDateLabel } from "./dates";
+import { formatMedium, reminderInstant, toISO, wardDateLabel } from "./dates";
 import { hasChecklist } from "./checklist";
 
 const MONTHS = [
@@ -100,6 +100,7 @@ type NoteRow = {
   tag: string | null;
   priority: string | null;
   pinned: boolean;
+  reminder_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -318,6 +319,7 @@ function noteFromRow(row: NoteRow): Note {
     createdAt: row.created_at,
     pinned: row.pinned,
     priority: row.priority ?? undefined,
+    remindAt: row.reminder_at ?? undefined,
   };
 }
 
@@ -372,6 +374,9 @@ export async function writeTask(userId: string, task: Task, sortOrder: number) {
       priority: task.priority ?? null,
       done: task.done,
       archived: task.archived ?? false,
+      // Derived, never hand-set: the instant the device meant by date+time, so the
+      // server can compare it to now() without knowing anything about zones.
+      reminder_at: reminderInstant(task.date, task.time),
       sort_order: sortOrder,
     },
     { onConflict: "id" },
@@ -400,6 +405,7 @@ export async function writeNote(userId: string, note: Note) {
       tag: note.tag,
       priority: note.priority ?? null,
       pinned: note.pinned ?? false,
+      reminder_at: note.remindAt ?? null,
     },
     { onConflict: "id" },
   );
