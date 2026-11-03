@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { PageHero } from "@/components/page-hero";
 import { ContactForm } from "@/components/contact-form";
-import { APP_URL } from "@/lib/site";
+import { APP_URL, emailFor } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Contact — GIGS Labs",
@@ -23,25 +23,25 @@ const CHANNELS = [
   {
     icon: Mail,
     label: "General enquiries",
-    email: "hello@gigslabs.example",
+    email: emailFor("hello"),
     blurb: "Questions, ideas, feedback, partnerships.",
   },
   {
     icon: LifeBuoy,
     label: "Product support",
-    email: "support@gigslabs.example",
+    email: emailFor("support"),
     blurb: "Something broken or confusing in the app.",
   },
   {
     icon: Newspaper,
     label: "Press & media",
-    email: "press@gigslabs.example",
+    email: emailFor("press"),
     blurb: "Interviews, fact checks, the press kit.",
   },
   {
     icon: Users,
     label: "Careers",
-    email: "careers@gigslabs.example",
+    email: emailFor("careers"),
     blurb: "Roles are coming soon — say hi meanwhile.",
   },
 ];

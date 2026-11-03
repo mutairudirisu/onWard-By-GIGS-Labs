@@ -2,88 +2,81 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, MessageCircle } from "lucide-react";
 import { Starfield } from "@/components/starfield";
-import { PricingBlock } from "@/components/pricing-plans";
+import { ComparisonTable, PricingBlock } from "@/components/pricing-plans";
 
 export const metadata: Metadata = {
   title: "Pricing — onWard by GIGS Labs",
   description:
-    "Start free and upgrade when your momentum outgrows the plan. onWard pricing for individuals, job seekers, freelancers and teams.",
+    "Start free and upgrade when the limits start to bite. onWard pricing for students, job seekers, freelancers and working people who log their growth.",
 };
 
+/* Every answer here describes behaviour that exists in Onward/app today.
+ * When a claim needs a feature that is not shipped, the claim goes. */
 const FAQS = [
   {
     q: "What exactly is an onWard?",
-    a: "An onWard is a logged piece of growth — a finished task chain, a milestone, a skill demo — that lands on your timeline and can be bundled into your shareable portfolio. Tasks and notes stay unlimited on every plan; onWards are the proof layer.",
+    a: "An onWard is a piece of finished work you log on purpose — the fix you shipped, the project you submitted, the skill you practised. It carries its own date, tags and (on Pro) the evidence behind it, and it is what your portfolio page is built out of.",
   },
   {
     q: "Is my timeline private?",
-    a: "Yes. Everything is private by default. Only the milestones you explicitly add to a share link leave your account, and you can revoke any link in one tap.",
+    a: "Yes, and there is nothing to publish by accident. There is no feed and no public profile — the portfolio is a page inside your account that downloads as a PDF when you decide to hand it to someone.",
+  },
+  {
+    q: "What happens when I hit a Free limit?",
+    a: "The app counts them for you: three onWards a month and reminders on three tasks or notes, shown as \"2 of 3 free onWards used this month\" while you are still writing. When you reach the last one it asks before it stops you, and the half-written entry stays exactly where you left it.",
+  },
+  {
+    q: "Do tasks and notes cost anything?",
+    a: "No. Tasks, notes and the steps inside them are unlimited on every plan, forever. The plan you are on only changes how much of that work you can promote into an onWard, how much evidence you can attach, and how many things you can set a reminder on.",
   },
   {
     q: "Does the app work offline?",
-    a: "onWard is an offline-first PWA. Log tasks, notes and onWards on a train or a plane; everything syncs when you reconnect. The website plans here are the only part that needs a connection.",
-  },
-  {
-    q: "Can I cancel anytime?",
-    a: "Anytime, in two taps from the app. Your Free plan keeps your full history and export rights forever — upgrading adds capability, it never holds your growth hostage.",
+    a: "It installs from the browser as an app, and the shell is cached, so the screens still open with no signal. Saving needs a connection — your logs go to your own account, not to a queue on the device.",
   },
   {
     q: "Do you offer a student discount?",
-    a: "Yes — half price while you study. Set your role to Student in the app and Pro drops to ₦750/mo (₦600 billed yearly). We do not ask for a student ID; the rate stays with you as long as your role says Student.",
+    a: "Half price while you study. Set your role to Student in the app and Pro drops to ₦750/mo (₦600 billed yearly). We do not ask for a student ID; the rate stays with you as long as your role says Student.",
+  },
+  {
+    q: "How does billing work?",
+    a: "You change plans from the upgrade screen inside the app. Card checkout is not wired up yet, so nothing is charged automatically today — the numbers on this page are the ones the app already shows, and they are what billing will use.",
   },
 ];
 
 export default function Pricing() {
   return (
     <main>
-      <section className="relative overflow-hidden bg-night pb-32 pt-[110px] text-paper sm:pt-[140px]">
+      <section className="relative overflow-hidden bg-night pb-28 pt-[104px] text-paper sm:pt-[132px]">
         <Starfield />
         <div className="container-x relative text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-paper/15 bg-paper/5 px-4 py-1.5 text-[12.5px] font-semibold text-paper/85">
             Pricing
           </span>
-          <h1 className="h-display mt-6 text-[36px] sm:text-[52px] lg:text-[60px]">
-            Momentum has a plan for every stage.
+          <h1 className="h-page mx-auto mt-6 max-w-3xl">
+            Two plans. Both keep your history.
           </h1>
           <p className="lead mx-auto mt-5 max-w-xl text-paper/60">
-            Start free, stay free if that is enough. Upgrade only when your
-            onWards outgrow the plan.
+            Free is a working app, not a trial. Upgrade when the onWard cap or the
+            reminder cap starts deciding what you can log.
           </p>
           <PricingBlock />
         </div>
       </section>
 
-      {/* ————— Testimonial strip ————— */}
-      <section className="bg-mist py-20">
-        <div className="container-x grid gap-6 md:grid-cols-3">
-          {[
-            [
-              "Three interviews, one onWard link.",
-              "I stopped rewriting my CV and started logging the work instead. Recruiters replied to the timeline, not the resume.",
-              "Ayesha O. · Product Designer",
-            ],
-            [
-              "The streak forgiveness is the feature.",
-              "Every other tracker broke when I missed a day. onWard nudges instead of guilt-tripping, and I am at 16 days.",
-              "Tobi A. · Backend Engineer",
-            ],
-            [
-              "Our 1:1s got shorter and better.",
-              "Team onWard spaces show momentum without a status meeting. I walk in with talking points, not interrogations.",
-              "Dani R. · Engineering Manager",
-            ],
-          ].map(([title, body, who]) => (
-            <figure
-              key={who}
-              className="rounded-[24px] border border-line bg-paper p-6 shadow-card"
-            >
-              <h3 className="h3 text-[16px]">{title}</h3>
-              <blockquote className="lead mt-3 text-[14px]">{body}</blockquote>
-              <figcaption className="mt-4 text-[12.5px] font-bold text-ink/70">
-                {who}
-              </figcaption>
-            </figure>
-          ))}
+      {/* ————— Line by line ————— */}
+      <section className="bg-mist py-20 lg:py-24">
+        <div className="container-x">
+          <div className="mx-auto mb-10 max-w-2xl text-center">
+            <p className="eyebrow">Line by line</p>
+            <h2 className="h2 mt-4">What each plan actually carries.</h2>
+            <p className="lead mx-auto mt-4">
+              These are the limits the app enforces, not a wish list. The one row
+              we have not finished is marked as in progress.
+            </p>
+          </div>
+          <div className="mx-auto max-w-3xl">
+            <ComparisonTable />
+          </div>
         </div>
       </section>
 
@@ -110,7 +103,7 @@ export default function Pricing() {
 
       {/* ————— CTA band ————— */}
       <section className="container-x pb-24">
-        <div className="relative overflow-hidden rounded-[36px] bg-night px-8 py-16 text-center text-paper">
+        <div className="relative overflow-hidden rounded-[36px] bg-night px-6 py-14 text-center text-paper sm:px-8 sm:py-16">
           <Starfield />
           <span className="absolute -left-16 -bottom-20 h-52 w-52 rounded-full bg-lime/15 blur-2xl" />
           <div className="relative mx-auto max-w-xl">
@@ -126,13 +119,13 @@ export default function Pricing() {
                 Explore features
                 <ArrowRight className="h-4 w-4" strokeWidth={2.4} />
               </Link>
-              <a
-                href="mailto:hello@gigslabs.example"
+              <Link
+                href="/contact"
                 className="inline-flex items-center gap-2 rounded-full border border-paper/20 px-6 py-3 text-[14px] font-semibold text-paper/85 transition hover:border-lime hover:text-lime"
               >
                 <MessageCircle className="h-4 w-4" />
-                Talk to GIGS Labs
-              </a>
+                Ask GIGS Labs a question
+              </Link>
             </div>
           </div>
         </div>

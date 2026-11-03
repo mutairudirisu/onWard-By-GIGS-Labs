@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LegalLayout, type LegalSection } from "@/components/legal";
+import { emailFor, mailto } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Terms of Service — GIGS Labs",
@@ -58,8 +59,9 @@ const SECTIONS: LegalSection[] = [
         </p>
         <p>
           You are responsible for the content you create and share, and you must
-          have the rights to any material you upload. You can export your data at
-          any time.
+          have the rights to any material you attach. Today the app gives you your
+          portfolio as a PDF download; a full data export is not shipped yet, so
+          ask us and we will pull what you need.
         </p>
       </>
     ),
@@ -85,12 +87,19 @@ const SECTIONS: LegalSection[] = [
     body: (
       <>
         <p>
-          onWard offers a Free plan and paid plans (Grow and, later, Teams). All
-          prices are shown in Nigerian Naira (&#8358;) on the{" "}
+          onWard has two plans: Free and Pro. Prices are shown in Nigerian Naira
+          (&#8358;) on the{" "}
           <a href="/pricing" className="font-semibold text-lime-deep hover:underline">
             pricing page
           </a>
-          .
+          , and students with the Student role set in the app pay half price while
+          that role stands.
+        </p>
+        <p>
+          To be straight with you: card checkout is not live yet. The upgrade
+          screen changes your plan without charging anything, so no money has
+          changed hands and none of the clauses below have bitten yet. When we turn
+          billing on, these are the terms it will run under.
         </p>
         <ul className="list-disc space-y-1.5 pl-5">
           <li>Paid plans renew automatically until you cancel.</li>
@@ -107,9 +116,10 @@ const SECTIONS: LegalSection[] = [
     heading: "Your data is never held hostage",
     body: (
       <p>
-        If you downgrade or stop paying, your Free plan keeps your full history
-        and export rights. Upgrading adds capability; it never locks you out of
-        your own growth story.
+        If you downgrade or stop paying, the Free plan still carries unlimited
+        tasks and notes and keeps everything you have ever logged readable. What
+        changes is capability — onWards per month, reminders, evidence on an onWard
+        and the depth of your insights history — not access to your own history.
       </p>
     ),
   },
@@ -134,9 +144,12 @@ const SECTIONS: LegalSection[] = [
     heading: "Third-party services",
     body: (
       <p>
-        The service may depend on third parties such as app stores, hosting and
-        payment providers. Their own terms can apply to those parts, and we are
-        not responsible for services we do not control.
+        The service depends on third parties we do not own — the hosting and
+        database provider that runs onWard and the identity provider behind Google
+        sign-in, and, once checkout ships, a payment provider. Their own terms can
+        apply to those parts, and we are not responsible for services we do not
+        control. onWard is not on an app store: it is a web app you install from
+        the browser.
       </p>
     ),
   },
@@ -147,8 +160,9 @@ const SECTIONS: LegalSection[] = [
       <p>
         The service is provided &ldquo;as is&rdquo; and &ldquo;as
         available&rdquo;. We do not warrant that it will be uninterrupted or
-        error-free. You are responsible for keeping your own backups of anything
-        critical, though we make exporting easy.
+        error-free. You are responsible for keeping your own copies of anything
+        critical — download the portfolio PDF when it matters to you, and do not
+        treat a young product&rsquo;s database as your only archive.
       </p>
     ),
   },
@@ -170,10 +184,13 @@ const SECTIONS: LegalSection[] = [
     heading: "Suspension and termination",
     body: (
       <p>
-        You can close your account at any time. We may suspend or terminate
-        access if you materially breach these terms, abuse the service, or where
-        we are legally required to. On termination you may export your data for a
-        reasonable window unless termination is for unlawful content.
+        You can ask us to close your account at any time — there is no
+        delete-account button in the app yet, so it is one email and we confirm it
+        back to you. We may suspend or terminate access if you materially breach
+        these terms, abuse the service, or where we are legally required to. If
+        your access ends, ask us for your data and we will hand over what we hold —
+        your portfolio and whatever else is in your account — for a reasonable
+        window.
       </p>
     ),
   },
@@ -207,10 +224,10 @@ const SECTIONS: LegalSection[] = [
       <p>
         Questions about these terms? Reach us at{" "}
         <a
-          href="mailto:legal@gigslabs.example"
+          href={mailto("legal")}
           className="font-semibold text-lime-deep hover:underline"
         >
-          legal@gigslabs.example
+          {emailFor("legal")}
         </a>{" "}
         or through the{" "}
         <a href="/contact" className="font-semibold text-lime-deep hover:underline">
@@ -227,7 +244,7 @@ export default function Terms() {
     <LegalLayout
       eyebrow="Terms"
       title="Terms of Service"
-      updated="29 October 2026"
+      updated="3 November 2026"
       subtitle="The plain-language agreement between you and GIGS Labs for using onWard."
       preamble={
         <p>

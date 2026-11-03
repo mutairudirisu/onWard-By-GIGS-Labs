@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PageHero } from "./page-hero";
+import { emailFor, mailto } from "@/lib/site";
 
 export type LegalSection = {
   id: string;
@@ -84,8 +85,8 @@ export function LegalLayout({
                 <Link href="/contact" className="btn-dark">
                   Contact GIGS Labs
                 </Link>
-                <a href="mailto:privacy@gigslabs.example" className="btn-ghost">
-                  privacy@gigslabs.example
+                <a href={mailto("privacy")} className="btn-ghost">
+                  {emailFor("privacy")}
                 </a>
               </div>
             </div>

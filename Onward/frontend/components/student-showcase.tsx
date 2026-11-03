@@ -26,12 +26,12 @@ const STAGES = [
   {
     term: "Year 3",
     title: "Evidence and placement",
-    body: "Screenshots, links and files sit on the onWard itself. The readiness list tells you what an interviewer will still ask for.",
+    body: "The link to the thing you made sits on the onWard itself, and the placement checklist in your student space tells you what an interviewer will still ask for.",
   },
   {
     term: "Graduation",
     title: "More than a certificate",
-    body: "One shareable link and a PDF, built year by year through school — ready before anyone asks you for a CV.",
+    body: "A portfolio page and the PDF it downloads, built year by year through school — ready before anyone asks you for a CV.",
   },
 ];
 

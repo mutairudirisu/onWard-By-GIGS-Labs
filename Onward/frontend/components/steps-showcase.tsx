@@ -1,42 +1,44 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import {
+  CreateSheetScreen,
+  InsightsScreen,
+  LogWardScreen,
+  NotesScreen,
+  ReminderScreen,
+} from "@/components/screens";
 
 const STEPS = [
   {
     n: "1",
     title: "Tap + and log what happened.",
-    body: "A task done, a note written, a win at work — capture it in one sheet while it is still fresh.",
-    img: "/app-log-onward.png",
-    alt: "onWard Log an onWard screen",
+    body: "A task, a note or a win, from the same sheet, while it is still fresh. Enter adds the next step, so a task can be a list by the time you look up.",
+    screen: <CreateSheetScreen />,
   },
   {
     n: "2",
-    title: "Notes keep the reasoning.",
-    body: "The why behind the what. Jot a thought and it stays attached to the day it mattered, searchable later.",
-    img: "/app-notes.png",
-    alt: "onWard notes library screen",
+    title: "Give the day a time that survives it.",
+    body: "A time on a task or a note becomes a reminder. If the moment passes, the row turns red and waits — you can silence the nudge without touching the work.",
+    screen: <ReminderScreen />,
   },
   {
     n: "3",
-    title: "onWard files it for you.",
-    body: "Tags, dates and goals update automatically. Your weekly plan stays honest without bookkeeping.",
-    img: "/app-tasks.png",
-    alt: "onWard tasks list screen",
+    title: "Notes keep the reasoning.",
+    body: "The why behind the what. Tick the lines inside the note, and the note stays filed on the day you wrote it — searchable later.",
+    screen: <NotesScreen />,
   },
   {
     n: "4",
-    title: "Your timeline builds itself.",
-    body: "Small logs grow into milestones, milestones grow into a portfolio you can share in one link.",
-    img: "/app-onwards.png",
-    alt: "onWard timeline screen",
+    title: "Name the win, and what changed.",
+    body: "An onWard asks what you did and what was different because of it. Two sentences. Skills you tagged come along, so the proof has a shape.",
+    screen: <LogWardScreen />,
   },
   {
     n: "5",
-    title: "Insights make it undeniable.",
-    body: "A calm look at momentum — skills, streaks and hours, so you can see the growth you can no longer argue with.",
-    img: "/app-insights.png",
-    alt: "onWard insights screen",
+    title: "Read it back when you need to.",
+    body: "Insights adds the steps up, the heatmap shows the days you turned up, and the skills listed are the ones your own entries used.",
+    screen: <InsightsScreen />,
   },
 ];
 
@@ -44,14 +46,15 @@ export function StepsShowcase() {
   const [active, setActive] = useState(0);
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
 
+  /* On phones each step carries its own screen, so the scroll never has to
+     explain a picture that lives off at the top of the section. */
   useEffect(() => {
+    if (window.matchMedia("(max-width: 1023px)").matches) return;
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
-            const idx = Number(
-              (entry.target as HTMLElement).dataset.step,
-            );
+            const idx = Number((entry.target as HTMLElement).dataset.step);
             if (!Number.isNaN(idx)) setActive(idx);
           }
         }
@@ -68,9 +71,9 @@ export function StepsShowcase() {
         <div>
           <p className="eyebrow">Simple by design</p>
           <h2 className="h2 mt-4">
-            Five taps.
+            Two minutes a day,
             <br />
-            Under a minute.
+            and it keeps.
           </h2>
 
           {STEPS.map((s, i) => (
@@ -80,15 +83,15 @@ export function StepsShowcase() {
               ref={(el) => {
                 stepRefs.current[i] = el;
               }}
-              className="flex min-h-[46vh] items-center lg:min-h-[64vh]"
+              className="lg:flex lg:min-h-[58vh] lg:items-center"
             >
               <div
-                className={`flex gap-6 transition-all duration-500 ${
-                  i === active ? "opacity-100" : "opacity-35"
+                className={`flex gap-5 py-9 transition-opacity duration-500 lg:py-0 ${
+                  i === active ? "opacity-100" : "lg:opacity-40"
                 }`}
               >
                 <span
-                  className={`text-[34px] font-bold leading-none transition-colors duration-500 sm:text-[40px] ${
+                  className={`text-[26px] font-bold leading-none transition-colors duration-500 sm:text-[32px] ${
                     i === active ? "text-lime" : "text-paper/40"
                   }`}
                 >
@@ -96,16 +99,25 @@ export function StepsShowcase() {
                 </span>
                 <div className="max-w-sm">
                   <h3
-                    className={`text-[20px] font-bold leading-snug tracking-tight sm:text-[24px] ${
+                    className={`text-[19px] font-bold leading-snug tracking-tight sm:text-[22px] ${
                       i === active ? "text-paper" : "text-paper/70"
                     }`}
                   >
                     {s.title}
                   </h3>
-                  <p className="mt-3 text-[15px] leading-relaxed text-paper/55">
+                  <p className="mt-3 text-[14.5px] leading-relaxed text-paper/55 sm:text-[15px]">
                     {s.body}
                   </p>
                 </div>
+              </div>
+
+              {/* the screen for this step, right under its words — desktop gets
+                  the sticky column instead */}
+              <div className="flex flex-col items-center pb-12 lg:hidden">
+                {s.screen}
+                <p className="mt-4 text-[11px] font-medium text-paper/35">
+                  Step {s.n} · sample entries
+                </p>
               </div>
             </div>
           ))}
@@ -113,40 +125,22 @@ export function StepsShowcase() {
 
         <div className="hidden lg:block">
           <div className="sticky top-24 flex h-[calc(100vh-12rem)] items-center justify-center">
-            <div className="relative aspect-[400/820] w-[320px] overflow-hidden rounded-[44px] border-[6px] border-[#3A3B30] bg-cream shadow-lift">
+            <div className="relative flex w-full max-w-[340px] items-center justify-center">
               {STEPS.map((s, i) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={s.img}
-                  src={s.img}
-                  alt={s.alt}
-                  className={`absolute left-1/2 top-0 w-[125%] max-w-none -translate-x-1/2 transition-opacity duration-700 ${
-                    i === active ? "opacity-100" : "opacity-0"
+                <div
+                  key={s.n}
+                  aria-hidden={i !== active}
+                  className={`transition-opacity duration-500 ${
+                    i === active
+                      ? "relative opacity-100"
+                      : "absolute inset-0 opacity-0"
                   }`}
-                />
+                >
+                  {s.screen}
+                </div>
               ))}
-              <span className="absolute bottom-3 left-1/2 h-[5px] w-28 -translate-x-1/2 rounded-full bg-ink/80" />
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* mobile: one phone under the steps, cross-fading like the desktop column */}
-      <div className="container-x pb-20 lg:hidden">
-        <div className="relative mx-auto aspect-[400/820] w-full max-w-[280px] overflow-hidden rounded-[40px] border-[6px] border-[#3A3B30] bg-cream shadow-lift">
-          {STEPS.map((s, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={s.img}
-              src={s.img}
-              alt={i === active ? s.alt : ""}
-              aria-hidden={i !== active}
-              className={`absolute left-1/2 top-0 w-[125%] max-w-none -translate-x-1/2 transition-opacity duration-500 ${
-                i === active ? "opacity-100" : "opacity-0"
-              }`}
-            />
-          ))}
-          <span className="absolute bottom-3 left-1/2 h-[5px] w-28 -translate-x-1/2 rounded-full bg-ink/80" />
         </div>
       </div>
     </section>

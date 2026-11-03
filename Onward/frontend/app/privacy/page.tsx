@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LegalLayout, type LegalSection } from "@/components/legal";
+import { emailFor, mailto } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — GIGS Labs",
@@ -22,10 +23,10 @@ const SECTIONS: LegalSection[] = [
         <p>
           Questions, requests or complaints about privacy can reach a human at{" "}
           <a
-            href="mailto:privacy@gigslabs.example"
+            href={mailto("privacy")}
             className="font-semibold text-lime-deep hover:underline"
           >
-            privacy@gigslabs.example
+            {emailFor("privacy")}
           </a>
           .
         </p>
@@ -48,18 +49,21 @@ const SECTIONS: LegalSection[] = [
             and portfolio entries. This is the heart of the product.
           </li>
           <li>
-            <strong>Device &amp; sync data</strong> — device type, app version,
-            and the technical identifiers needed to sync across your devices.
+            <strong>Device &amp; session data</strong> — the sign-in session your
+            browser keeps, plus device type and app version, so the app knows
+            which build to serve you.
           </li>
           <li>
-            <strong>Usage data</strong> — aggregate, product-improvement signals
-            such as which features are used. We aim for privacy-preserving,
-            cohort-level analytics rather than individual profiling.
+            <strong>Activity you generate</strong> — completing a task, writing a
+            note, logging an onWard. The app records these events to compute your
+            streaks, your heatmap and your weekly insights. They stay tied to
+            your own account.
           </li>
           <li>
-            <strong>Billing data</strong> — plan and payment status. Card numbers
-            are handled by our payment provider; we do not store full card
-            details on our own servers.
+            <strong>Plan data</strong> — whether you are on Free or Pro. Card
+            checkout is not live yet, so we hold no payment details at all; when
+            billing ships, a payment provider will handle cards and we will not
+            store full card numbers on our own servers.
           </li>
         </ul>
       </>
@@ -72,11 +76,10 @@ const SECTIONS: LegalSection[] = [
       <>
         <p>We use it to:</p>
         <ul className="list-disc space-y-1.5 pl-5">
-          <li>Run, secure and sync the onWard app across your devices.</li>
+          <li>Run the onWard app and keep your account the same on every device you sign in from.</li>
           <li>Generate the streaks, insights and portfolio you asked for.</li>
           <li>Provide support and answer the messages you send us.</li>
-          <li>Improve the product using aggregate, de-identified trends.</li>
-          <li>Send essential service notices (billing, security, major changes).</li>
+          <li>Send essential service notices (plan changes, security, major changes).</li>
         </ul>
         <p>
           We do not sell your personal data, and we do not use your private
@@ -102,13 +105,25 @@ const SECTIONS: LegalSection[] = [
     id: "storage-offline",
     heading: "Where your data lives",
     body: (
-      <p>
-        onWard is offline-first: your content is written to your device first and
-        synced to our servers when you are connected and signed in. Synced data
-        is stored encrypted at rest on infrastructure in vetted regions. You can
-        use the app without an account, in which case your data stays on-device
-        and never reaches us.
-      </p>
+      <>
+        <p>
+          Your content lives in one place: a managed Postgres database (Supabase)
+          that belongs to your onWard account. There is no separate copy kept on
+          our servers beyond that, and no analytics warehouse holding your notes.
+        </p>
+        <p>
+          onWard installs from the browser as an app, and we cache the interface
+          so the screens still open with no signal. Saving does need a connection
+          — there is no offline queue that quietly holds your entries and uploads
+          them later. If you are signed out and offline, nothing is written
+          anywhere.
+        </p>
+        <p>
+          You need an account to use onWard. We do not offer an anonymous,
+          on-device-only mode, so there is no &ldquo;your data never reaches
+          us&rdquo; path to promise.
+        </p>
+      </>
     ),
   },
   {
@@ -119,13 +134,16 @@ const SECTIONS: LegalSection[] = [
         <p>We only share data in these limited situations:</p>
         <ul className="list-disc space-y-1.5 pl-5">
           <li>
-            <strong>Service providers</strong> — hosting, email and payments who
+            <strong>Service providers</strong> — hosting, database and auth that
             process data on our instructions under contract.
           </li>
           <li>
-            <strong>Links you create</strong> — a portfolio or streak you
-            explicitly share becomes visible to whoever holds the link. You can
-            revoke any share link at any time.
+            <strong>Nothing is published by default</strong> — the share buttons
+            in the app hand a link to your device&apos;s share sheet, but that
+            link opens the sign-in screen for anyone who is not you; your content
+            stays behind your account. There is no public profile, feed or
+            portfolio link today, and the only thing that leaves your account is
+            a portfolio PDF you choose to download and send yourself.
           </li>
           <li>
             <strong>Legal requests</strong> — if compelled by law, after we
@@ -144,11 +162,11 @@ const SECTIONS: LegalSection[] = [
     heading: "Cookies and analytics",
     body: (
       <p>
-        The website uses essential cookies to function and privacy-respecting,
-        aggregate analytics to understand which pages help people. We avoid
-        cross-site advertising trackers. You can clear or block cookies in your
-        browser at any time; the app itself relies on local storage rather than
-        cookies.
+        This website sets no advertising cookies and loads no third-party
+        trackers — it is a static set of pages, and we do not watch where you
+        click on them. The app keeps your sign-in session in your browser&rsquo;s
+        local storage so you are not asked for a password on every visit. If we
+        ever add analytics, this page gets updated before it goes live.
       </p>
     ),
   },
@@ -158,9 +176,10 @@ const SECTIONS: LegalSection[] = [
     body: (
       <p>
         We keep account and content data for as long as your account is active.
-        If you delete your account, we remove your content from our systems
-        within 30 days, except where we must retain limited records for legal or
-        accounting obligations. Aggregate, de-identified statistics may persist.
+        There is no delete-my-account button in the app yet, so that one is on us:
+        email {emailFor("privacy")} and we remove your account and everything
+        attached to it, and tell you when it is done. Aggregate, de-identified
+        statistics may persist.
       </p>
     ),
   },
@@ -171,14 +190,14 @@ const SECTIONS: LegalSection[] = [
       <>
         <p>You can, at any time and free of charge:</p>
         <ul className="list-disc space-y-1.5 pl-5">
-          <li>Access and export your full history from within the app.</li>
-          <li>Correct or update your profile and content.</li>
-          <li>Delete your account and all associated content.</li>
-          <li>Revoke any share link you have created.</li>
+          <li>Read and correct everything you have logged, from inside the app.</li>
+          <li>Download your portfolio as a PDF from the portfolio screen.</li>
+          <li>Ask us for a copy of the rest of your data, in whatever shape we can export it.</li>
+          <li>Ask us to delete your account and all associated content.</li>
           <li>Object to or restrict certain processing, and withdraw consent.</li>
         </ul>
         <p>
-          To exercise a right, use the in-app controls or email us. We respond
+          For anything the app does not have a button for, email us. We respond
           within 30 days. You may also complain to your local data-protection
           authority.
         </p>
@@ -242,7 +261,7 @@ export default function Privacy() {
     <LegalLayout
       eyebrow="Privacy"
       title="Privacy Policy"
-      updated="29 October 2026"
+      updated="3 November 2026"
       subtitle="Your growth story belongs to you. Here is exactly what we collect, why, and how you stay in control."
       preamble={
         <p>

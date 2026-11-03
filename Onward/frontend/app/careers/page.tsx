@@ -12,7 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import { PageHero } from "@/components/page-hero";
-import { APP_URL } from "@/lib/site";
+import { APP_URL, emailFor, mailto } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Careers — GIGS Labs",
@@ -85,7 +85,7 @@ export default function Careers() {
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <a
-              href="mailto:careers@gigslabs.example?subject=Notify%20me%20about%20GIGS%20Labs%20roles"
+              href={mailto("careers", "Notify me about GIGS Labs roles")}
               className="btn-dark"
             >
               <Mail className="h-4 w-4" /> Notify me when roles open
@@ -208,10 +208,10 @@ export default function Careers() {
               Try onWard free <ArrowRight className="h-4 w-4" strokeWidth={2.4} />
             </a>
             <a
-              href="mailto:careers@gigslabs.example"
+              href={mailto("careers")}
               className="inline-flex items-center gap-2 rounded-full border border-paper/20 px-6 py-3 text-[14px] font-semibold text-paper/85 transition hover:border-lime hover:text-lime"
             >
-              <Mail className="h-4 w-4" /> careers@gigslabs.example
+              <Mail className="h-4 w-4" /> {emailFor("careers")}
             </a>
           </div>
         </div>

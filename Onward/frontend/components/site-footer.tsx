@@ -11,9 +11,9 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
     links: [
       { label: "Features", href: "/#features" },
       { label: "How it works", href: "/#how" },
+      { label: "For students", href: "/#students" },
       { label: "Built for your role", href: "/#audiences" },
       { label: "Pricing", href: "/pricing" },
-      { label: "Get onWard", href: APP_URL, external: true },
     ],
   },
   {
@@ -23,15 +23,7 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
       { label: "Careers", href: "/careers" },
       { label: "Press kit", href: "/press" },
       { label: "Contact", href: "/contact" },
-    ],
-  },
-  {
-    title: "Resources",
-    links: [
-      { label: "Help center", href: "#" },
-      { label: "Growth playbook", href: "#" },
-      { label: "Changelog", href: "#" },
-      { label: "For employers", href: "/#audiences" },
+      { label: "Get onWard", href: APP_URL, external: true },
     ],
   },
   {
@@ -78,7 +70,7 @@ export function SiteFooter() {
   return (
     <footer className="bg-night text-paper">
       <div className="container-x pt-16 lg:pt-24">
-        <div className="grid grid-cols-2 gap-x-8 gap-y-12 sm:grid-cols-4 lg:gap-x-10">
+        <div className="grid grid-cols-2 gap-x-8 gap-y-12 sm:grid-cols-3 lg:gap-x-10">
           {COLUMNS.map((col) => (
             <div key={col.title}>
               <p className="text-[14px] font-semibold text-paper/90">{col.title}</p>

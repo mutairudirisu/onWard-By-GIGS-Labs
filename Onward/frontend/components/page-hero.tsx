@@ -22,9 +22,7 @@ export function PageHero({
           </span>
           {badge}
         </div>
-        <h1 className="h-display mx-auto mt-6 max-w-3xl text-[34px] sm:text-[48px] lg:text-[56px]">
-          {title}
-        </h1>
+        <h1 className="h-page mx-auto mt-6 max-w-3xl">{title}</h1>
         {subtitle ? (
           <p className="lead mx-auto mt-5 max-w-2xl text-paper/60">{subtitle}</p>
         ) : null}

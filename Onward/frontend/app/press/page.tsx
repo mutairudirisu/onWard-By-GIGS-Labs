@@ -3,6 +3,7 @@ import { Download, Mail, MessageSquareQuote } from "lucide-react";
 import { PageHero } from "@/components/page-hero";
 import { CopyButton } from "@/components/copy-button";
 import { ColorSwatches } from "@/components/color-swatches";
+import { emailFor, mailto } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Press kit — GIGS Labs",
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 const BOILERPLATE =
-  "onWard is a work-documentation app from GIGS Labs, a young Nigerian software studio. It turns the tasks, notes and wins of an ordinary week into a dated record of impact — each entry carrying its evidence — then compiles the ones that matter into a portfolio you can share with a manager, an appraiser or a hiring team. onWard is an offline-first PWA available on iOS, Android and the web.";
+  "onWard is a work-documentation app from GIGS Labs, a young Nigerian software studio. It turns the tasks, notes and wins of an ordinary week into a dated record of what you did — and compiles the ones that matter into a portfolio page, with a PDF you can send to a manager, an appraiser or a hiring team. onWard installs from the browser on iOS, Android and desktop; there is no app store to go through.";
 
 const FACTS: [string, string][] = [
   ["Company", "GIGS Labs"],
@@ -19,9 +20,9 @@ const FACTS: [string, string][] = [
   ["Founded", "2026"],
   ["Headquarters", "Lagos, Nigeria"],
   ["Category", "Productivity · Work documentation"],
-  ["Platforms", "iOS, Android, Web (PWA)"],
-  ["Pricing", "Free plan; paid from ₦1,500/mo"],
-  ["Website", "onward.app"],
+  ["Platforms", "Web PWA — installs on iOS, Android and desktop"],
+  ["Pricing", "Free plan; Pro from ₦1,500/mo (₦750 for students)"],
+  ["Website", "getonward.vercel.app"],
 ];
 
 const LOGOS = [
@@ -163,7 +164,7 @@ export default function Press() {
                   <li>Use the official logos unchanged.</li>
                   <li>Keep the lowercase “o” in lime.</li>
                   <li>Give onWard a clear, legible size.</li>
-                  <li>Link to onward.app when publishing.</li>
+                  <li>Link to getonward.vercel.app when publishing.</li>
                 </ul>
               </div>
               <div className="rounded-2xl border border-line bg-paper p-5">
@@ -186,8 +187,13 @@ export default function Press() {
           <p className="eyebrow text-lime">Screenshots</p>
           <h2 className="h2 mt-4 max-w-lg text-paper">onWard, on the phone.</h2>
           <p className="lead mt-4 max-w-lg text-paper/55">
-            Product screens for articles and reviews. Right-click to save, or tap
-            to open full size.
+            Captured 29 October — the app has moved since, so these are the
+            closest we have to current. Right-click to save or tap to open full
+            size, and{" "}
+            <a href={mailto("press")} className="text-lime hover:underline">
+              ask us
+            </a>{" "}
+            if you need today&apos;s screens.
           </p>
           <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
             {SHOTS.map(([label, src]) => (
@@ -228,8 +234,8 @@ export default function Press() {
             A founder answers press email directly — usually within a day.
           </p>
           <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
-            <a href="mailto:press@gigslabs.example" className="btn-dark">
-              press@gigslabs.example
+            <a href={mailto("press")} className="btn-dark">
+              {emailFor("press")}
             </a>
             <a href="/press/onward-logo.svg" download className="btn-ghost">
               <Download className="h-4 w-4" /> Download logo pack

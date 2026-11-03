@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { LegalLayout, type LegalSection } from "@/components/legal";
+import { emailFor, mailto } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Security — GIGS Labs",
   description:
-    "How GIGS Labs protects onWard and your data: encryption, offline-first storage, access controls, responsible disclosure and incident response.",
+    "How GIGS Labs protects onWard and your data: per-user database isolation, TLS, access controls, responsible disclosure and incident response.",
 };
 
 const SECTIONS: LegalSection[] = [
@@ -14,10 +15,10 @@ const SECTIONS: LegalSection[] = [
     body: (
       <p>
         Security and privacy are the same idea from two angles: your data should
-        be yours, and it should be safe while we hold it for you. We design
-        onWard to collect as little as possible, keep your content on your device
-        by default, and protect everything that does sync. Because we are a small
-        team, security is everyone&rsquo;s job here — not a silo.
+        be yours, and it should be safe while we hold it for you. onWard collects
+        only what a feature needs, keeps every row tied to the account that
+        created it, and publishes nothing on its own. Because we are a small team,
+        security is everyone&rsquo;s job here — not a silo.
       </p>
     ),
   },
@@ -27,29 +28,34 @@ const SECTIONS: LegalSection[] = [
     body: (
       <ul className="list-disc space-y-1.5 pl-5">
         <li>
-          All communication between the app, website and our servers uses modern
-          TLS so nothing travels in the clear.
+          All communication between the app, the website and our servers goes over
+          TLS, so nothing travels in the clear.
         </li>
         <li>
-          Synced data is encrypted at rest on managed infrastructure in vetted
-          regions.
+          Your content sits in a managed Postgres database. The provider encrypts
+          the underlying storage and we do not hold a second copy of your notes in
+          a warehouse, a data lake or an analytics tool.
         </li>
         <li>
-          Secrets and credentials are stored in dedicated secret managers, never
-          hard-coded or committed.
+          Keys and connection strings live in the deployment&rsquo;s environment
+          variables and the database dashboard — never in the repo, never in the
+          browser bundle. The service-role key, which can read past those
+          isolation rules, stays on the server side and is not given to any client.
         </li>
       </ul>
     ),
   },
   {
-    id: "offline-first",
-    heading: "Offline-first, on-device by default",
+    id: "isolation",
+    heading: "One account cannot read another",
     body: (
       <p>
-        onWard writes to your device first. If you use it without signing in, your
-        content never leaves the device at all. Sync only happens when you are
-        signed in and connected, and it is scoped to your own account — one
-        person&rsquo;s data is never mixed with or visible to another&rsquo;s.
+        Every table enforces row-level security: a query only returns rows whose
+        owner matches the signed-in user, and the database itself rejects the rest
+        — the check is not something the app can talk its way around. We verify
+        this by reading one account&rsquo;s rows while authenticated as another and
+        getting nothing back. That isolation, not a promise, is what makes
+        multi-tenant storage acceptable to us at this size.
       </p>
     ),
   },
@@ -60,13 +66,15 @@ const SECTIONS: LegalSection[] = [
       <>
         <p>
           We follow least-privilege: staff and systems get only the access a task
-          requires, and that access is reviewed. Sign-in is protected through
-          secure, standard authentication, and we encourage strong, unique
-          credentials for your account.
+          requires, and that access is reviewed. Sign-in goes through the database
+          provider&rsquo;s authentication — email and password with reset by email,
+          or Google — and the app never sees your password.
         </p>
         <p>
-        Production data access is logged. We do not hand your raw content to
-        anyone inside the company without a clear, documented reason.
+          Because we are early, we will not overstate this: there is no 24/7
+          SOC, no formal access-review tool and no independent audit yet. What
+          there is: two founders, separate accounts, and a production database we
+          touch deliberately rather than casually.
         </p>
       </>
     ),
@@ -76,10 +84,12 @@ const SECTIONS: LegalSection[] = [
     heading: "Sharing you control",
     body: (
       <p>
-        Anything you publish — a portfolio or a streak — is explicit and
-        revocable. Share links are private unless you send them, you can revoke
-        any link in a tap, and revocation takes effect immediately. Nothing is
-        made public without you choosing it.
+        onWard has no public profile, no feed and no shareable link — nothing you
+        log becomes visible to anyone because of a setting we got wrong. The share
+        buttons inside the app either copy text to your clipboard or hand a card
+        to your device&rsquo;s own share sheet, and the links they carry open the
+        sign-in screen for anyone who is not you. What you show an employer today
+        is a portfolio PDF you download and send yourself.
       </p>
     ),
   },
@@ -88,9 +98,10 @@ const SECTIONS: LegalSection[] = [
     heading: "Data portability and deletion",
     body: (
       <p>
-        You can export your full history whenever you like and delete your
-        account and content permanently. Deletions are honoured across our systems
-        within 30 days, subject only to narrow legal-retention exceptions.
+        Your portfolio downloads as a PDF from inside the app. A full machine-
+        readable export and a self-service delete-account button are not shipped
+        yet, so both of those are a request: email us and we will pull your data
+        or remove your account and its rows, then confirm it back to you.
       </p>
     ),
   },
@@ -99,10 +110,23 @@ const SECTIONS: LegalSection[] = [
     heading: "How we operate",
     body: (
       <ul className="list-disc space-y-1.5 pl-5">
-        <li>Dependencies are kept updated and scanned for known vulnerabilities.</li>
-        <li>Infrastructure is monitored, with alerts for suspicious activity.</li>
-        <li>Backups are encrypted, tested for restore, and access-controlled.</li>
-        <li>Security is part of how we build, not a step bolted on at release.</li>
+        <li>
+          Dependencies move with the framework releases we track, and we review
+          what we add rather than installing blindly.
+        </li>
+        <li>
+          Deployment and database logs are ours to read, and we read them whenever
+          something looks wrong or a user reports one.
+        </li>
+        <li>
+          The managed database takes backups. Retention on our current plan is
+          short, which is exactly why we push for exports rather than relying on a
+          restore.
+        </li>
+        <li>
+          Migrations are versioned in the repo and applied deliberately, so a
+          schema change has a name, a date and a reason.
+        </li>
       </ul>
     ),
   },
@@ -111,10 +135,11 @@ const SECTIONS: LegalSection[] = [
     heading: "Your part",
     body: (
       <p>
-        A lot of security is shared. Please keep your password unique, enable any
-        available device lock or verification, do not share your account, and
-        treat your own share links like anything else you have published. Tell us
-        immediately if you suspect your account is compromised.
+        A lot of security is shared. Please keep your password unique, use the
+        lock or biometrics on the device you log in from, do not share your
+        account, and remember that onWard runs in a browser — an unlocked shared
+        laptop is an open journal. Tell us immediately if you suspect your account
+        is compromised.
       </p>
     ),
   },
@@ -126,10 +151,10 @@ const SECTIONS: LegalSection[] = [
         <p>
           Found a weakness? We want to know. Email{" "}
           <a
-            href="mailto:security@gigslabs.example"
+            href={mailto("security")}
             className="font-semibold text-lime-deep hover:underline"
           >
-            security@gigslabs.example
+            {emailFor("security")}
           </a>{" "}
           and we will acknowledge promptly and work with you.
         </p>
@@ -161,10 +186,10 @@ const SECTIONS: LegalSection[] = [
       <p>
         For anything security-related, contact{" "}
         <a
-          href="mailto:security@gigslabs.example"
+          href={mailto("security")}
           className="font-semibold text-lime-deep hover:underline"
         >
-          security@gigslabs.example
+          {emailFor("security")}
         </a>
         . For how we handle data day-to-day, read our{" "}
         <a href="/privacy" className="font-semibold text-lime-deep hover:underline">
@@ -181,7 +206,7 @@ export default function Security() {
     <LegalLayout
       eyebrow="Security"
       title="How we keep onWard safe."
-      updated="29 October 2026"
+      updated="3 November 2026"
       subtitle="The measures we take to protect your data and your account — and how to tell us about a risk."
       preamble={
         <p>

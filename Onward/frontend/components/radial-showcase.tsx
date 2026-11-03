@@ -1,21 +1,23 @@
 import {
+  BarChart3,
   Flame,
   FolderOpen,
   ListTodo,
   NotebookPen,
   Plus,
-  Sparkles,
-  Trophy,
+  Sprout,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 
+/* One tone for all six: the point is that they belong to the same record, not
+   that each corner of the app has its own colour. */
 const NODES = [
-  { label: "Tasks", Icon: ListTodo, angle: -90, color: "#2F6FED" },
-  { label: "Notes", Icon: NotebookPen, angle: -30, color: "#7C3AED" },
-  { label: "Streaks", Icon: Flame, angle: 30, color: "#F97316" },
-  { label: "Wins", Icon: Trophy, angle: 90, color: "#D9A400" },
-  { label: "Skills", Icon: Sparkles, angle: 150, color: "#E11D8F" },
-  { label: "Portfolio", Icon: FolderOpen, angle: 210, color: "#0E9F8E" },
+  { label: "Tasks", Icon: ListTodo, angle: -90 },
+  { label: "Notes", Icon: NotebookPen, angle: -30 },
+  { label: "Streaks", Icon: Flame, angle: 30 },
+  { label: "onWards", Icon: Sprout, angle: 90 },
+  { label: "Skills", Icon: BarChart3, angle: 150 },
+  { label: "Portfolio", Icon: FolderOpen, angle: 210 },
 ];
 
 const R = 40;
@@ -23,7 +25,9 @@ const C = 50;
 
 export function RadialShowcase() {
   return (
-    <div id="how" className="relative mx-auto aspect-square w-full max-w-[620px]">
+    // The inset keeps the top and bottom node labels inside the box on a 360px
+    // screen, where they used to overhang the heading above and below.
+    <div id="how" className="relative mx-auto aspect-square w-[calc(100%-2rem)] max-w-[560px]">
       <svg
         viewBox="0 0 100 100"
         className="absolute inset-0 h-full w-full"
@@ -68,13 +72,10 @@ export function RadialShowcase() {
             style={{ left, top }}
           >
             <div className="flex flex-col items-center gap-2">
-              <span
-                className="flex h-14 w-14 items-center justify-center rounded-full border bg-paper shadow-card sm:h-16 sm:w-16"
-                style={{ color: n.color, borderColor: `${n.color}33`, backgroundColor: `${n.color}0F` }}
-              >
-                <n.Icon className="h-6 w-6 sm:h-7 sm:w-7" strokeWidth={2.1} />
+              <span className="flex h-12 w-12 items-center justify-center rounded-full border border-lime-deep/30 bg-lime-soft text-ink shadow-card sm:h-14 sm:w-14">
+                <n.Icon className="h-5 w-5 text-lime-deep sm:h-6 sm:w-6" strokeWidth={2.1} />
               </span>
-              <span className="rounded-full bg-mist px-3 py-1 text-[11px] font-semibold text-ink/70">
+              <span className="rounded-full bg-paper px-3 py-1 text-[11px] font-semibold text-ink/70">
                 {n.label}
               </span>
             </div>

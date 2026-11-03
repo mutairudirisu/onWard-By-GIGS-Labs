@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
+import { mailto } from "@/lib/site";
 
 const TOPICS = [
   "General question",
@@ -25,11 +26,11 @@ export function ContactForm() {
 
     const subject = encodeURIComponent(`[onWard] ${topic} — ${name || "website enquiry"}`);
     const body = encodeURIComponent(
-      `${message}\n\n—\n${name}${email ? ` · ${email}` : ""}\nSent from onWard.com/contact`,
+      `${message}\n\n—\n${name}${email ? ` · ${email}` : ""}\nSent from the onWard website`,
     );
 
     setStatus("opening");
-    window.location.href = `mailto:hello@gigslabs.example?subject=${subject}&body=${body}`;
+    window.location.href = `${mailto("hello")}?subject=${subject}&body=${body}`;
     window.setTimeout(() => setStatus("done"), 400);
   }
 

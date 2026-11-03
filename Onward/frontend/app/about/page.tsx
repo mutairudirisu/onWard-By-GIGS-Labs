@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { PageHero } from "@/components/page-hero";
 import { LogoMark } from "@/components/logo";
-import { APP_URL } from "@/lib/site";
+import { APP_URL, emailFor } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "About — GIGS Labs",
@@ -29,7 +29,7 @@ const VALUES = [
   {
     icon: Lock,
     title: "Private by default",
-    body: "Your history belongs to you. Nothing leaves your device unless you choose to share it, and you can take the whole story with you whenever you want.",
+    body: "Your history belongs to you. It lives in your own account, behind a login only you hold — no feed, no public profile, nothing shown to anyone until you send them something.",
   },
   {
     icon: PenLine,
@@ -45,7 +45,7 @@ const VALUES = [
 
 const BELIEFS = [
   ["Why “onWard”?", "Because direction matters more than speed. A small step forward, repeated, is how a career actually moves."],
-  ["Why document your work?", "Most of us do good work that leaves no trace — it gets buried in chat threads and forgotten by review season. onWard keeps each win with its impact and its proof, so the record builds itself while you work."],
+  ["Why document your work?", "Most of us do good work that leaves no trace — it gets buried in chat threads and forgotten by review season. onWard keeps each win with the date it happened and the evidence you put on it, so the record builds itself while you work."],
   ["Why now?", "Because we felt it ourselves: a year of good work that nobody — including us — could point to afterwards. onWard is the fix we wanted."],
 ];
 
@@ -118,7 +118,7 @@ export default function About() {
                 ["Team size", "Small — deliberately"],
                 ["Headquarters", "Lagos, Nigeria"],
                 ["Product", "onWard — your growth, documented"],
-                ["Contact", "hello@gigslabs.example"],
+                ["Contact", emailFor("hello")],
               ].map(([k, v]) => (
                 <div
                   key={k}
