@@ -12,17 +12,17 @@ import {
   Flame,
   GraduationCap,
   Home,
+  Megaphone,
   Plus,
   Sprout,
   Trophy,
   User,
-  Users,
 } from "lucide-react";
 
 const MENU = [
   { href: "/today", label: "Today", Icon: Home },
   { href: "/onwards", label: "onWards", Icon: Sprout },
-  { href: "/feed", label: "Feed", Icon: Users },
+  { href: "/feed", label: "Posts", Icon: Megaphone },
   { href: "/notifications", label: "Notifications", Icon: Bell, badge: true },
   { href: "/profile", label: "You", Icon: User },
 ];

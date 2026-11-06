@@ -1,0 +1,358 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { Loader2, Send, X } from "lucide-react";
+import { useAuth, useCurrentUser } from "@/components/auth";
+import { Avatar } from "@/components/feed-post";
+import { toastError } from "@/components/toast";
+import {
+  addComment,
+  deleteComment,
+  fetchComments,
+  POST_COMMENT_MAX,
+  type PostComment,
+} from "@/lib/db";
+import { timeAgo } from "@/lib/dates";
+import { useKeyboardInset } from "@/lib/keyboard";
+
+/** Where the sheet sits when it arrives, when it is dragged open, and below what
+ *  fraction of the screen a release throws it away. All three are read off the
+ *  viewport height the moment the sheet opens. */
+const HALF = 0.58;
+const FULL = 0.92;
+const DISMISS = 0.4;
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
+
+/**
+ * The thread of one post, in a sheet that comes up over the half of the screen the
+ * list needs and can be pulled taller - or pushed back down and dismissed - by its
+ * grip. While the keyboard is up the sheet rides on top of it instead of hiding
+ * behind it, which is the whole reason the field is reachable on a phone.
+ */
+export function CommentsSheet({
+  postId,
+  open,
+  onClose,
+  onCountChange,
+  focusField = false,
+}: {
+  postId: string;
+  open: boolean;
+  onClose: () => void;
+  /** The thread is the truth about how many comments there are, so the card can be
+   *  told the number instead of guessing at a plus one. */
+  onCountChange: (total: number) => void;
+  /** True when the tap came from "add a comment": the keypad comes up with the sheet. */
+  focusField?: boolean;
+}) {
+  const { user } = useAuth();
+  const me = useCurrentUser();
+
+  const [comments, setComments] = useState<PostComment[] | undefined>(undefined);
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const [viewport, setViewport] = useState(0);
+  const [height, setHeight] = useState(0);
+  const [half, setHalf] = useState(0);
+  const [full, setFull] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const keyboard = useKeyboardInset(open);
+
+  const fieldRef = useRef<HTMLTextAreaElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ from: number; start: number } | null>(null);
+
+  // Open: measure the screen, take the thread, and stop the page behind scrolling.
+  useEffect(() => {
+    if (!open) return;
+    const base = window.innerHeight;
+    const h = Math.round(base * HALF);
+    setViewport(base);
+    setHalf(h);
+    setFull(Math.round(base * FULL));
+    setHeight(h);
+    setComments(undefined);
+    setDraft("");
+
+    const onResize = () => setViewport(window.innerHeight);
+    window.addEventListener("resize", onResize);
+
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+
+    void fetchComments(postId)
+      .then((thread) => setComments(thread))
+      .catch(() => {
+        setComments([]);
+        toastError("Couldn't load the comments");
+      });
+
+    return () => {
+      window.removeEventListener("resize", onResize);
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previous;
+    };
+  }, [open, onClose, postId]);
+
+  // Newest at the bottom, so the sheet opens looking at the live end of the thread.
+  useEffect(() => {
+    if (!open || !comments?.length) return;
+    const list = listRef.current;
+    if (list) list.scrollTop = list.scrollHeight;
+  }, [comments, open]);
+
+  useEffect(() => {
+    if (open && focusField && user) {
+      const timer = window.setTimeout(() => fieldRef.current?.focus(), 220);
+      return () => window.clearTimeout(timer);
+    }
+    return undefined;
+  }, [focusField, open, user]);
+
+  const release = useCallback(() => {
+    const d = drag.current;
+    drag.current = null;
+    setDragging(false);
+    if (!d) return;
+    setHeight((current) => {
+      if (current < viewport * DISMISS) {
+        onClose();
+        return current;
+      }
+      return current > (half + full) / 2 ? full : half;
+    });
+  }, [full, half, onClose, viewport]);
+
+  function gripProps() {
+    return {
+      onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => {
+        if (event.pointerType === "mouse" && event.button !== 0) return;
+        drag.current = { from: event.clientY, start: height };
+        setDragging(true);
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+      },
+      onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => {
+        const d = drag.current;
+        if (!d) return;
+        event.preventDefault();
+        setHeight(clamp(d.start + (d.from - event.clientY), 180, Math.max(240, viewport - 24)));
+      },
+      onPointerUp: release,
+      onPointerCancel: release,
+    };
+  }
+
+  function setTotal(next: PostComment[]) {
+    setComments(next);
+    onCountChange(next.length);
+  }
+
+  async function send() {
+    const body = draft.trim();
+    if (!body || sending) return;
+    setSending(true);
+    try {
+      const created = await addComment(postId, body);
+      setTotal([
+        ...(comments ?? []),
+        {
+          id: created.id,
+          body,
+          fullName: me.name.trim() || "Someone",
+          initials: me.initials || (me.name.slice(0, 1).toUpperCase() || "?"),
+          createdAt: created.createdAt,
+          mine: true,
+        },
+      ]);
+      setDraft("");
+      fieldRef.current?.focus();
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : "Couldn't post that comment");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function remove(commentId: string) {
+    try {
+      await deleteComment(commentId);
+      setTotal((comments ?? []).filter((comment) => comment.id !== commentId));
+    } catch {
+      toastError("Couldn't delete the comment");
+    }
+  }
+
+  /** Replies are a name at the front of the box, not a nested thread: nothing in the
+   *  schema knows which comment a reply belongs to, so the thread stays one level. */
+  function replyTo(comment: PostComment) {
+    // Addressed by given name, not by the whole one the row above carries.
+    const name = comment.fullName.split(" ")[0] || "someone";
+    setDraft((prev) => (prev.startsWith(`@${name}`) ? prev : `@${name} ${prev}`));
+    fieldRef.current?.focus();
+  }
+
+  if (!open) return null;
+
+  const total = comments?.length ?? 0;
+  const canType = Boolean(user);
+
+  return (
+    <div
+      className="fixed inset-0 z-[75] flex justify-center"
+      style={{ paddingBottom: keyboard }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Comments"
+    >
+      <div
+        className="absolute inset-0 bg-ink/45"
+        style={{ animation: "onward-fade 0.15s ease-out" }}
+        onClick={onClose}
+      />
+      <div
+        className="relative mt-auto flex w-full max-w-[420px] flex-col overflow-hidden rounded-t-3xl bg-paper shadow-lift"
+        style={{
+          // The frame before the effect has measured anything still has to land at
+          // the halfway mark, so the sheet never flashes at zero height.
+          height: height ? `${height}px` : "58vh",
+          transition: dragging ? "none" : "height 0.22s ease-out",
+          animation: "onward-sheet 0.22s ease-out",
+        }}
+      >
+        <div
+          {...gripProps()}
+          className="shrink-0 cursor-grab touch-none px-4 pb-1 pt-2.5 active:cursor-grabbing"
+          aria-label="Drag to make this bigger"
+        >
+          <span className="mx-auto block h-1 w-10 rounded-full bg-line" />
+        </div>
+
+        <div className="flex shrink-0 items-center gap-3 px-4 pb-2.5">
+          <h2 className="flex-1 text-[13px] font-bold tracking-tight text-ink">
+            {total === 0 ? "Comments" : `${total} comment${total === 1 ? "" : "s"}`}
+          </h2>
+          <button
+            type="button"
+            aria-label="Close comments"
+            onClick={onClose}
+            className="-mr-1.5 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-muted transition hover:bg-cream hover:text-ink"
+          >
+            <X className="h-[18px] w-[18px]" />
+          </button>
+        </div>
+
+        <div ref={listRef} className="wheel min-h-0 flex-1 overflow-y-auto border-t border-line px-4">
+          {comments === undefined ? (
+            <div className="flex items-center justify-center gap-2 py-10 text-[11px] text-muted">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading the thread…
+            </div>
+          ) : !comments.length ? (
+            <p className="py-10 text-center text-[11.5px] text-muted">
+              No comments yet. Say the first thing.
+            </p>
+          ) : (
+            <ul className="pb-2">
+              {comments.map((comment) => (
+                <li key={comment.id} className="flex gap-2.5 border-b border-line py-3 last:border-0">
+                  <Avatar initials={comment.initials} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11.5px] leading-[1.55] text-ink [overflow-wrap:anywhere]">
+                      <span className="font-bold">{comment.fullName || "Someone"}</span>{" "}
+                      {comment.body}
+                    </p>
+                    <div className="mt-1 flex items-center gap-3 text-[9.5px] text-faint">
+                      <span>{timeAgo(comment.createdAt)}</span>
+                      {canType && !comment.mine ? (
+                        <button
+                          type="button"
+                          onClick={() => replyTo(comment)}
+                          className="cursor-pointer font-semibold text-muted transition hover:text-ink"
+                        >
+                          Reply
+                        </button>
+                      ) : null}
+                      {comment.mine ? (
+                        <button
+                          type="button"
+                          onClick={() => void remove(comment.id)}
+                          className="cursor-pointer font-semibold text-muted transition hover:text-ink"
+                        >
+                          Delete
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="shrink-0 border-t border-line px-4 py-3">
+          {canType ? (
+            <div className="flex items-end gap-2.5">
+              <Avatar initials={me.initials || (me.name.slice(0, 1).toUpperCase() || "?")} src={me.avatarUrl} />
+              <label className="flex min-w-0 flex-1 items-end rounded-full border border-line bg-paper px-3.5 py-2 focus-within:border-dash">
+                <textarea
+                  ref={fieldRef}
+                  value={draft}
+                  rows={1}
+                  onChange={(event) => {
+                    const box = event.currentTarget;
+                    box.style.height = "auto";
+                    box.style.height = `${Math.min(96, box.scrollHeight)}px`;
+                    setDraft(event.target.value.slice(0, POST_COMMENT_MAX));
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+                      void send();
+                    }
+                  }}
+                  placeholder="Add a comment…"
+                  aria-label="Add a comment"
+                  className="wheel max-h-[96px] min-w-0 flex-1 resize-none bg-transparent text-[12px] leading-[1.5] text-ink outline-none placeholder:text-faint"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => void send()}
+                disabled={!draft.trim() || sending}
+                aria-label="Post comment"
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition ${
+                  draft.trim() && !sending
+                    ? "cursor-pointer bg-lime text-dark hover:bg-lime-deep"
+                    : "cursor-not-allowed bg-line text-muted"
+                }`}
+              >
+                {sending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+          ) : (
+            <p className="text-center text-[11px] text-muted">
+              <Link
+                href="/sign-in"
+                className="cursor-pointer font-bold text-lime-deep hover:underline"
+              >
+                Sign in
+              </Link>{" "}
+              to join the conversation.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

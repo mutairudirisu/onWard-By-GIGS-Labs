@@ -152,7 +152,7 @@ export default function SettingsPage() {
               title="Push notifications"
               hint={
                 permission === "granted"
-                  ? "Streak nudges and your wins, in your feed"
+                  ? "Streak nudges and your wins, in Posts"
                   : "Allow the browser prompt to get alerts"
               }
             >

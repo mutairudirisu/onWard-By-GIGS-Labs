@@ -143,12 +143,12 @@ const SECTIONS: LegalSection[] = [
             <strong>Nothing is published by default</strong> — an onWard stays in
             your account and reaches other people only when you write a feed post
             about it. A post carries what you typed, any photos or clips you
-            attached, your first name and your initials, and it is public the
-            moment it is made: anyone with the link can read it, account or no
-            account. Your email, surname, settings and every onWard you never
-            post about stay behind your account, and deleting a post takes its
-            files with it. A portfolio or CV only leaves your account as a file
-            you download and send yourself.
+            attached, the name you joined with and your initials, and it is
+            public the moment it is made: anyone with the link can read it,
+            account or no account. Your email, settings and every onWard you
+            never post about stay behind your account, and deleting a post takes
+            its files with it. A portfolio or CV only leaves your account as a
+            file you download and send yourself.
           </li>
           <li>
             <strong>Legal requests</strong> — if compelled by law, after we

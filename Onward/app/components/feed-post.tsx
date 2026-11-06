@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Heart, MessageCircle, MoreHorizontal, Send } from "lucide-react";
+import { Heart, MessageCircle, MoreHorizontal } from "lucide-react";
 import { ShareButton } from "@/components/share-button";
 import { mediaUrl, type FeedPost, type PostMedia } from "@/lib/db";
 import { timeAgo } from "@/lib/dates";
@@ -37,11 +37,11 @@ export function Avatar({
 }
 
 /** The photos and clips of one post, swiped in place the way a social app does it. */
-function MediaStage({ media }: { media: PostMedia[] }) {
+function MediaStage({ media, className = "" }: { media: PostMedia[]; className?: string }) {
   const [index, setIndex] = useState(0);
   if (!media.length) return null;
   return (
-    <div className="relative bg-ink">
+    <div className={`relative overflow-hidden rounded-2xl bg-ink ${className}`}>
       <div
         className="wheel flex snap-x snap-mandatory overflow-x-auto"
         onScroll={(e) => {
@@ -71,14 +71,19 @@ function MediaStage({ media }: { media: PostMedia[] }) {
         ))}
       </div>
       {media.length > 1 ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
-          {media.map((item, i) => (
-            <span
-              key={item.id}
-              className={`h-1.5 w-1.5 rounded-full ${i === index ? "bg-paper" : "bg-paper/40"}`}
-            />
-          ))}
-        </div>
+        <>
+          <span className="pointer-events-none absolute right-2.5 top-2.5 rounded-full bg-ink/55 px-2 py-0.5 text-[10px] font-bold tabular-nums text-paper">
+            {Math.min(index + 1, media.length)}/{media.length}
+          </span>
+          <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
+            {media.map((item, i) => (
+              <span
+                key={item.id}
+                className={`h-1.5 w-1.5 rounded-full ${i === index ? "bg-paper" : "bg-paper/40"}`}
+              />
+            ))}
+          </div>
+        </>
       ) : null}
     </div>
   );
@@ -94,21 +99,31 @@ export function PostBlock({
   liked,
   likes,
   signedIn,
+  me,
   onLike,
   onOpen,
+  onAddComment,
   onManage,
+  previewThread = true,
 }: {
   post: FeedPost;
   liked: boolean;
   likes: number;
   signedIn: boolean;
+  /** Whose face goes in the comment field at the bottom of the card. */
+  me: { initials: string; avatarUrl: string | null };
   onLike: (id: string) => void;
   onOpen: (id: string) => void;
+  /** The same thread, opened with the keypad already up. */
+  onAddComment?: (id: string) => void;
   onManage?: (post: FeedPost) => void;
+  /** Off where the whole thread is already on the page underneath. */
+  previewThread?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const long = post.body.length > 180;
-  const name = post.mine ? "You" : post.firstName || "Someone";
+  // A post always carries the name its author shows, including to themselves.
+  const name = post.fullName || "Someone";
   const permalink = `${window.location.origin}/feed/${post.id}`;
 
   return (
@@ -138,7 +153,26 @@ export function PostBlock({
         ) : null}
       </header>
 
-      <MediaStage media={post.media} />
+      {post.body ? (
+        <p
+          className={`text-[12px] leading-[1.55] text-ink [overflow-wrap:anywhere] ${
+            long && !expanded ? "line-clamp-3" : ""
+          }`}
+        >
+          {post.body}
+        </p>
+      ) : null}
+      {long && !expanded ? (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="mt-0.5 cursor-pointer text-[11px] font-semibold text-muted hover:text-ink"
+        >
+          more
+        </button>
+      ) : null}
+
+      <MediaStage media={post.media} className={post.body ? "mt-2.5" : ""} />
 
       <div className="flex items-center gap-4 pb-1 pt-2.5">
         <button
@@ -176,26 +210,7 @@ export function PostBlock({
         </span>
       </div>
 
-      {post.body ? (
-        <p
-          className={`text-[12px] leading-[1.55] text-ink [overflow-wrap:anywhere] ${
-            long && !expanded ? "line-clamp-3" : ""
-          }`}
-        >
-          <span className="font-bold">{name}</span> {post.body}
-        </p>
-      ) : null}
-      {long && !expanded ? (
-        <button
-          type="button"
-          onClick={() => setExpanded(true)}
-          className="mt-0.5 cursor-pointer text-[11px] font-semibold text-muted hover:text-ink"
-        >
-          more
-        </button>
-      ) : null}
-
-      {post.comments > 0 ? (
+      {previewThread && post.comments > 0 ? (
         <div className="mt-1.5 space-y-1">
           {post.comments > post.recentComments.length ? (
             <button
@@ -211,7 +226,7 @@ export function PostBlock({
               key={comment.id}
               className="text-[11.5px] leading-[1.5] text-ink [overflow-wrap:anywhere]"
             >
-              <span className="font-bold">{comment.firstName || "Someone"}</span> {comment.body}
+              <span className="font-bold">{comment.fullName || "Someone"}</span> {comment.body}
             </p>
           ))}
         </div>
@@ -220,15 +235,16 @@ export function PostBlock({
       {signedIn ? (
         <button
           type="button"
-          onClick={() => onOpen(post.id)}
-          className="mt-2 flex cursor-pointer items-center gap-1.5 text-[11px] text-muted transition hover:text-ink"
+          onClick={() => (onAddComment ?? onOpen)(post.id)}
+          className="mt-2.5 flex w-full cursor-pointer items-center gap-2 rounded-full border border-line bg-paper py-1.5 pl-1.5 pr-4 text-left transition hover:border-dash"
         >
-          <Send className="h-3.5 w-3.5" /> Add a comment
+          <Avatar initials={me.initials} src={me.avatarUrl} />
+          <span className="text-[11.5px] text-muted">Add a comment…</span>
         </button>
       ) : (
         <Link
           href="/sign-in"
-          className="mt-2 inline-block cursor-pointer text-[10.5px] font-semibold text-lime-deep hover:underline"
+          className="mt-2.5 inline-block cursor-pointer text-[10.5px] font-semibold text-lime-deep hover:underline"
         >
           Sign in to like or comment
         </Link>

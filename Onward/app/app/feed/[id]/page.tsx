@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, Send, Trash2, X } from "lucide-react";
+import { ArrowLeft, Loader2, Send, Trash2 } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { Modal } from "@/components/modal";
 import { useAuth, useCurrentUser } from "@/components/auth";
@@ -88,7 +88,7 @@ export default function PostPage() {
         {
           id: created.id,
           body,
-          firstName: me.name.split(" ")[0] || "Someone",
+          fullName: me.name.trim() || "Someone",
           initials: me.initials || (me.name.slice(0, 1).toUpperCase() || "?"),
           createdAt: created.createdAt,
           mine: true,
@@ -168,30 +168,37 @@ export default function PostPage() {
         liked={liked}
         likes={likes}
         signedIn={Boolean(user)}
+        me={{
+          initials: me.initials || (me.name.slice(0, 1).toUpperCase() || "?"),
+          avatarUrl: me.avatarUrl,
+        }}
         onLike={toggleLike}
         onOpen={() => document.getElementById("comment-box")?.focus()}
+        onAddComment={() => document.getElementById("comment-box")?.focus()}
+        previewThread={false}
       />
 
       <section className="mt-3.5 space-y-3">
         {comments.map((comment) => (
           <div key={comment.id} className="flex items-start gap-2.5">
             <Avatar initials={comment.initials} />
-            <p className="min-w-0 flex-1 text-[11.5px] leading-[1.55] text-ink [overflow-wrap:anywhere]">
-              <span className="font-bold">{comment.firstName || "Someone"}</span> {comment.body}{" "}
-              <span className="whitespace-nowrap text-[9.5px] text-faint">
-                {timeAgo(comment.createdAt)}
-              </span>
-              {comment.mine ? (
-                <button
-                  type="button"
-                  aria-label="Delete comment"
-                  onClick={() => void removeComment(comment.id)}
-                  className="ml-1 inline-flex cursor-pointer items-center text-faint transition hover:text-ink"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              ) : null}
-            </p>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11.5px] leading-[1.55] text-ink [overflow-wrap:anywhere]">
+                <span className="font-bold">{comment.fullName || "Someone"}</span> {comment.body}
+              </p>
+              <div className="mt-0.5 flex items-center gap-3 text-[9.5px] text-faint">
+                <span>{timeAgo(comment.createdAt)}</span>
+                {comment.mine ? (
+                  <button
+                    type="button"
+                    onClick={() => void removeComment(comment.id)}
+                    className="cursor-pointer font-semibold text-muted transition hover:text-ink"
+                  >
+                    Delete
+                  </button>
+                ) : null}
+              </div>
+            </div>
           </div>
         ))}
         {!comments.length ? (
@@ -200,7 +207,11 @@ export default function PostPage() {
       </section>
 
       {user ? (
-        <div className="mt-4 flex items-center gap-2">
+        <div className="mt-4 flex items-end gap-2.5">
+          <Avatar
+            initials={me.initials || (me.name.slice(0, 1).toUpperCase() || "?")}
+            src={me.avatarUrl}
+          />
           <input
             id="comment-box"
             value={draft}

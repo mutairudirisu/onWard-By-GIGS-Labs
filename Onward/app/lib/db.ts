@@ -372,7 +372,7 @@ export async function deleteRow(table: "on_wards", id: string) {
 
 export const POST_MEDIA_BUCKET = "post-media";
 export const POST_MEDIA_MAX_BYTES = 26_214_400;
-export const POST_MEDIA_MAX_PER_POST = 4;
+export const POST_MEDIA_MAX_PER_POST = 5;
 export const POST_BODY_MAX = 2000;
 export const POST_COMMENT_MAX = 500;
 
@@ -398,7 +398,7 @@ export type PostMedia = {
 export type PostComment = {
   id: string;
   body: string;
-  firstName: string;
+  fullName: string;
   initials: string;
   createdAt: string;
   mine: boolean;
@@ -408,7 +408,7 @@ export type FeedPost = {
   id: string;
   body: string;
   wardId: string | null;
-  firstName: string;
+  fullName: string;
   initials: string;
   avatarUrl: string | null;
   role: string | null;
@@ -423,7 +423,7 @@ export type FeedPost = {
 type CommentJson = {
   id: string;
   body: string;
-  first_name: string | null;
+  full_name: string | null;
   initials: string | null;
   created_at: string;
   mine?: boolean | null;
@@ -433,7 +433,7 @@ type FeedRow = {
   id: string;
   body: string;
   ward_id: string | null;
-  first_name: string | null;
+  full_name: string | null;
   initials: string | null;
   avatar_url: string | null;
   role: string | null;
@@ -449,7 +449,7 @@ function commentFromJson(row: CommentJson): PostComment {
   return {
     id: row.id,
     body: row.body,
-    firstName: row.first_name ?? "",
+    fullName: row.full_name ?? "",
     initials: row.initials ?? "",
     createdAt: row.created_at,
     mine: row.mine ?? false,
@@ -461,7 +461,7 @@ function postFromRow(row: FeedRow): FeedPost {
     id: row.id,
     body: row.body,
     wardId: row.ward_id,
-    firstName: row.first_name ?? "",
+    fullName: row.full_name ?? "",
     initials: row.initials ?? "",
     avatarUrl: row.avatar_url ?? null,
     role: row.role ?? null,
@@ -475,7 +475,7 @@ function postFromRow(row: FeedRow): FeedPost {
 }
 
 const FEED_COLUMNS =
-  "id, body, ward_id, first_name, initials, avatar_url, role, created_at, mine, media, likes, comments, recent_comments";
+  "id, body, ward_id, full_name, initials, avatar_url, role, created_at, mine, media, likes, comments, recent_comments";
 
 /** A public object in a public bucket needs no token, which is what lets an <img>
  *  tag work for someone who has never signed in. */
@@ -507,7 +507,7 @@ export async function fetchPost(id: string): Promise<FeedPost | null> {
 export async function fetchComments(postId: string): Promise<PostComment[]> {
   const { data, error } = await supabase
     .from("feed_comments")
-    .select("id, body, first_name, initials, created_at, mine")
+    .select("id, body, full_name, initials, created_at, mine")
     .eq("post_id", postId)
     .order("created_at");
   if (error) throw new Error(error.message);
@@ -522,6 +522,67 @@ export async function fetchMyLikes(): Promise<Set<string>> {
   const { data, error } = await supabase.from("post_likes").select("post_id");
   if (error) throw new Error(error.message);
   return new Set((data as { post_id: string }[] | null ?? []).map((row) => row.post_id));
+}
+
+export type FeedInteraction = {
+  id: string;
+  postId: string;
+  kind: "like" | "comment";
+  body: string;
+  createdAt: string;
+};
+
+/**
+ * What the reader has done in the feed, newest first, at most one line per post.
+ * Both halves are their own rows - likes are already own-only under RLS, and the
+ * view's mine flag is false for a visitor - so the strip above the timeline can
+ * only ever show things that really happened.
+ */
+export async function fetchMyInteractions(limit = 6): Promise<FeedInteraction[]> {
+  const [liked, mine] = await Promise.all([
+    supabase
+      .from("post_likes")
+      .select("post_id, created_at")
+      .order("created_at", { ascending: false })
+      .limit(limit),
+    supabase
+      .from("feed_comments")
+      .select("id, post_id, body, created_at")
+      .eq("mine", true)
+      .order("created_at", { ascending: false })
+      .limit(limit),
+  ]);
+  if (liked.error) throw new Error(liked.error.message);
+  if (mine.error) throw new Error(mine.error.message);
+
+  const rows: FeedInteraction[] = (
+    (liked.data as { post_id: string; created_at: string }[] | null ?? []).map((row) => ({
+      id: `like:${row.post_id}`,
+      postId: row.post_id,
+      kind: "like" as const,
+      body: "",
+      createdAt: row.created_at,
+    }) as FeedInteraction).concat(
+      (mine.data as { id: string; post_id: string; body: string; created_at: string }[] | null ?? [])
+        .map((row) => ({
+          id: `comment:${row.id}`,
+          postId: row.post_id,
+          kind: "comment" as const,
+          body: row.body,
+          createdAt: row.created_at,
+        }) as FeedInteraction),
+    )
+  ).sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
+
+  const seen = new Set<string>();
+  const out: FeedInteraction[] = [];
+  for (const row of rows) {
+    if (seen.has(row.postId)) continue;
+    seen.add(row.postId);
+    out.push(row);
+    if (out.length === limit) break;
+  }
+  return out;
 }
 
 export async function likePost(postId: string) {

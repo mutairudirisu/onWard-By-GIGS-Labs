@@ -19,7 +19,7 @@ const FAQS = [
   },
   {
     q: "Is my timeline private?",
-    a: "Yes, and there is nothing to publish by accident. Every onWard you log stays in your account. The feed is separate: it shows only what you deliberately write as a post, plus your first name and initials, and deleting the post takes its files and comments with it. There is no public profile or shareable portfolio page: the portfolio is a page inside your account that downloads as a PDF when you decide to hand it to someone.",
+    a: "Yes, and there is nothing to publish by accident. Every onWard you log stays in your account. The feed is separate: it shows only what you deliberately write as a post, plus the name you joined with and your initials, and deleting the post takes its files and comments with it. There is no public profile or shareable portfolio page: the portfolio is a page inside your account that downloads as a PDF when you decide to hand it to someone.",
   },
   {
     q: "What happens when I hit a Free limit?",

@@ -165,7 +165,7 @@ export default function OnWardDetailPage() {
         <div className="flex items-start gap-2.5 border-t border-lime-deep/30 px-3.5 py-3">
           <Users className="mt-0.5 h-3.5 w-3.5 shrink-0 text-inksoft" />
           <span className="flex-1">
-            <span className="block text-[11px] font-bold text-ink">Share to the feed</span>
+            <span className="block text-[11px] font-bold text-ink">Share to Posts</span>
             <span className="block text-[9px] text-muted">
               Opens the composer with this entry&rsquo;s text in it. Nothing is public until you
               post what you end up writing.

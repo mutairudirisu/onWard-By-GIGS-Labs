@@ -3,47 +3,74 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Bell, Loader2, Plus, Trash2 } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
-import { PageHeader } from "@/components/ui";
 import { Modal } from "@/components/modal";
+import { CommentsSheet } from "@/components/comments-sheet";
 import { Avatar, PostBlock } from "@/components/feed-post";
-import { useAuth } from "@/components/auth";
+import { useAuth, useCurrentUser } from "@/components/auth";
+import { UnreadDot, useNotifications } from "@/components/notifications";
+import { Wordmark } from "@/components/wordmark";
 import { toastError, toastSuccess } from "@/components/toast";
-import { deletePost, fetchFeed, fetchMyLikes, likePost, unlikePost, type FeedPost } from "@/lib/db";
+import {
+  deletePost,
+  fetchFeed,
+  fetchMyInteractions,
+  fetchMyLikes,
+  likePost,
+  unlikePost,
+  type FeedInteraction,
+  type FeedPost,
+} from "@/lib/db";
+import { timeAgo } from "@/lib/dates";
 
 /**
- * The key the author strip filters on. Your posts group under one tile whatever
- * the initials happen to be; everyone else is told apart by the name they show.
+ * The key the author strip filters on. The name shown is always the one the author
+ * chose, so a tile reads the same to everyone; your own posts still group under one
+ * tile whatever the initials happen to be.
  */
 function authorKey(post: FeedPost) {
-  const name = post.mine ? "You" : post.firstName || "Someone";
+  const name = post.fullName || "Someone";
   return `${post.mine ? "you" : "other"}:${name.toLowerCase()}:${post.initials}`;
+}
+
+function interactionLine(item: FeedInteraction, post: FeedPost) {
+  const who = post.mine ? "your" : `${post.fullName || "someone"}'s`;
+  const target = post.media.length ? `${who} photo` : `${who} post`;
+  if (item.kind === "like") return `You liked ${target}`;
+  return item.body ? `You said: ${item.body}` : `You commented on ${target}`;
 }
 
 export default function FeedPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const me = useCurrentUser();
+  const { unread } = useNotifications();
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [liked, setLiked] = useState<Set<string>>(new Set());
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [author, setAuthor] = useState<string | null>(null);
   const [pending, setPending] = useState<FeedPost | null>(null);
+  const [thread, setThread] = useState<{ id: string; focus: boolean } | null>(null);
+  const [engaged, setEngaged] = useState<FeedInteraction[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     setState("loading");
     Promise.all([
       fetchFeed(),
-      // A visitor has no likes to read, and the table would refuse the query anyway.
+      // A visitor has nothing of their own to read, and those tables would refuse
+      // the query anyway.
       user ? fetchMyLikes().catch(() => new Set<string>()) : Promise.resolve(new Set<string>()),
+      user ? fetchMyInteractions().catch(() => [] as FeedInteraction[]) : Promise.resolve([]),
     ])
-      .then(([next, likedSet]) => {
+      .then(([next, likedSet, interactions]) => {
         if (cancelled) return;
         setPosts(next);
         setLiked(likedSet);
         setCounts(Object.fromEntries(next.map((post) => [post.id, post.likes])));
+        setEngaged(interactions);
         setState("ready");
       })
       .catch(() => {
@@ -87,7 +114,7 @@ export default function FeedPage() {
     for (const post of posts) {
       const key = authorKey(post);
       if (byAuthor.has(key)) continue;
-      const name = post.mine ? "You" : post.firstName || "Someone";
+      const name = post.fullName || "Someone";
       byAuthor.set(key, {
         key,
         name,
@@ -103,6 +130,20 @@ export default function FeedPage() {
     [author, posts],
   );
 
+  // Only the things still on the feed: a row whose post has gone has no name to show
+  // and nothing left to open.
+  const recent = useMemo(() => {
+    const byId = new Map(posts.map((post) => [post.id, post]));
+    const out: { item: FeedInteraction; post: FeedPost }[] = [];
+    for (const item of engaged) {
+      const post = byId.get(item.postId);
+      if (!post) continue;
+      out.push({ item, post });
+      if (out.length === 3) break;
+    }
+    return out;
+  }, [engaged, posts]);
+
   async function removePost(post: FeedPost) {
     setPending(null);
     try {
@@ -116,20 +157,47 @@ export default function FeedPage() {
 
   return (
     <PhoneShell tab="feed">
-      <PageHeader
-        title="Feed"
-        subtitle="What people chose to post. A first name, initials and whatever they show."
-        actions={
-          <button
-            type="button"
-            aria-label="New post"
-            onClick={() => router.push(user ? "/feed/new" : "/sign-in")}
-            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-line bg-paper text-ink transition hover:border-lime-deep hover:text-lime-deep"
-          >
-            <Plus className="h-[18px] w-[18px]" strokeWidth={2.2} />
-          </button>
-        }
-      />
+      <div className="mb-3.5 flex items-center">
+        <button
+          type="button"
+          aria-label="New post"
+          onClick={() => router.push(user ? "/feed/new" : "/sign-in")}
+          className="-ml-2 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-ink transition hover:bg-cream"
+        >
+          <Plus className="h-[22px] w-[22px]" strokeWidth={2.2} />
+        </button>
+        <Wordmark className="flex-1 text-center text-[17px]" />
+        <Link
+          href="/notifications"
+          aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}
+          className="relative -mr-2 flex h-9 w-9 items-center justify-center rounded-full text-ink transition hover:bg-cream"
+        >
+          <Bell className="h-[21px] w-[21px]" strokeWidth={2} />
+          <UnreadDot />
+        </Link>
+      </div>
+
+      {recent.length ? (
+        <div
+          aria-label="What you have been part of"
+          className="wheel -mx-5 mb-3 flex gap-2 overflow-x-auto px-5 md:mx-0 md:px-0"
+        >
+          {recent.map(({ item, post }) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setThread({ id: post.id, focus: false })}
+              className="flex h-9 w-max shrink-0 cursor-pointer items-center gap-2 rounded-full border border-line bg-paper pl-1.5 pr-3.5 text-left transition hover:border-dash"
+            >
+              <Avatar initials={post.initials} src={post.avatarUrl} />
+              <span className="max-w-[190px] truncate text-[10.5px] leading-none text-inksoft">
+                {interactionLine(item, post)}
+              </span>
+              <span className="text-[9.5px] leading-none text-faint">{timeAgo(item.createdAt)}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {state === "loading" ? (
         <div className="card flex items-center justify-center gap-2 px-4 py-10 text-[11px] text-muted">
@@ -137,14 +205,14 @@ export default function FeedPage() {
         </div>
       ) : state === "error" ? (
         <div className="card px-4 py-8 text-center">
-          <p className="text-[12px] font-semibold text-ink">The feed is out of reach right now.</p>
+          <p className="text-[12px] font-semibold text-ink">Posts are out of reach right now.</p>
           <p className="tiny mt-1">Check your connection and try again.</p>
         </div>
       ) : posts.length === 0 ? (
         <div className="card px-4 py-8 text-center">
           <p className="text-[12px] font-semibold text-ink">Nothing has been posted yet.</p>
           <p className="tiny mt-1 mx-auto max-w-[34ch]">
-            The feed is its own place. What you log as an onWard stays private until you write a
+            Posts are their own place. What you log as an onWard stays private until you write a
             post about it.
           </p>
           {user ? (
@@ -207,8 +275,13 @@ export default function FeedPage() {
                 liked={liked.has(post.id)}
                 likes={counts[post.id] ?? post.likes}
                 signedIn={Boolean(user)}
+                me={{
+                  initials: me.initials || (me.name.slice(0, 1).toUpperCase() || "?"),
+                  avatarUrl: me.avatarUrl,
+                }}
                 onLike={toggleLike}
-                onOpen={(id) => router.push(`/feed/${id}`)}
+                onOpen={(id) => setThread({ id, focus: false })}
+                onAddComment={(id) => setThread({ id, focus: true })}
                 onManage={setPending}
               />
             ))}
@@ -217,12 +290,27 @@ export default function FeedPage() {
           <div className="mt-5 rounded-xl border border-dash px-3.5 py-3">
             <p className="text-[9.5px] leading-[1.55] text-muted">
               A post is public the moment it is made, so anything you write here can be read by
-              anyone using onWard. Your email, surname, settings and your onWards stay private, and
-              deleting a post takes its photos and clips with it. Likes and comments need a sign-in.
+              anyone using onWard. Your name is shown with your post, to everyone who can read it.
+              Your email, settings and your onWards stay private, and deleting a post takes its
+              photos and clips with it. Likes and comments need a sign-in.
             </p>
           </div>
         </>
       )}
+
+      <CommentsSheet
+        postId={thread?.id ?? ""}
+        open={Boolean(thread)}
+        focusField={thread?.focus ?? false}
+        onClose={() => setThread(null)}
+        onCountChange={(total) => {
+          const id = thread?.id;
+          if (!id) return;
+          setPosts((prev) =>
+            prev.map((post) => (post.id === id ? { ...post, comments: total } : post)),
+          );
+        }}
+      />
 
       <Modal open={Boolean(pending)} onClose={() => setPending(null)} title="Delete this post?">
         <p className="text-[11.5px] leading-[1.6] text-inksoft">
