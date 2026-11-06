@@ -8,35 +8,12 @@ export const user = {
   bio: "I turn messy workflows into thoughtful systems that help people do their best work.",
 };
 
-export const PRIORITIES = ["Low", "Medium", "High"] as const;
-
-export const LIST_TYPES = [
-  "Work",
-  "Personal",
-  "Learning",
-  "Health",
-  "Errands",
-  "Ideas",
-] as const;
-
-export const NOTE_TYPES = [
-  "Work",
-  "Personal",
-  "Career",
-  "Ideas",
-  "Health",
-  "Finance",
-  "Learning",
-  "Journal",
-] as const;
-
 export type Settings = {
   theme: "light" | "dark";
   notifications: boolean;
   weeklyDigest: boolean;
   haptics: boolean;
   reducedMotion: boolean;
-  defaultReminderTime: string;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -45,40 +22,25 @@ export const DEFAULT_SETTINGS: Settings = {
   weeklyDigest: false,
   haptics: true,
   reducedMotion: false,
-  defaultReminderTime: "09:00",
 };
 
 export type Plan = "free" | "pro";
 
 // null means "unlimited" for that dimension, 0 means "not on this plan".
+// Only what the app actually enforces lives here.
 export type PlanLimits = {
   wardsPerMonth: number | null;
   evidencePerWard: number | null;
-  portfolioShares: number | null;
-  reminderTasks: number | null;
-  verifiedSkills: boolean;
-  streakForgiveness: boolean;
-  insights: "weekly" | "full";
 };
 
 export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
   free: {
     wardsPerMonth: 3,
     evidencePerWard: 0,
-    portfolioShares: 1,
-    reminderTasks: 3,
-    verifiedSkills: false,
-    streakForgiveness: false,
-    insights: "weekly",
   },
   pro: {
     wardsPerMonth: null,
     evidencePerWard: null,
-    portfolioShares: null,
-    reminderTasks: null,
-    verifiedSkills: true,
-    streakForgiveness: true,
-    insights: "full",
   },
 };
 
@@ -102,134 +64,17 @@ export type PlanFeature = {
 };
 
 export const PLAN_FEATURES: PlanFeature[] = [
-  { label: "Tasks & notes", free: "Unlimited", pro: "Unlimited" },
   { label: "onWards per month", free: "3", pro: "Unlimited" },
   { label: "Attachments per onWard", free: "None", pro: "Unlimited" },
-  { label: "Task reminders", free: "3 tasks", pro: "Unlimited" },
-  { label: "Portfolio share links", free: "1", pro: "Unlimited" },
-  { label: "Verified skill snapshots", free: false, pro: true },
-  { label: "Streak forgiveness & nudges", free: false, pro: true },
+  { label: "Streak, heatmap and insights", free: true, pro: true },
+  { label: "Portfolio page and PDF", free: true, pro: true },
+  { label: "CV builder, PDF and plain-text export", free: true, pro: true },
+  { label: "Feed posts, with up to 4 photos or clips each", free: true, pro: true },
+  { label: "Voice dictation", free: true, pro: true },
   { label: "Dark theme", free: true, pro: true },
-  { label: "Insights", free: "Weekly", pro: "Full history" },
   { label: "Offline PWA", free: true, pro: true },
 ];
 
-
-export type Task = {
-  id: string;
-  title: string;
-  meta: string;
-  todaySub?: string;
-  time?: string;
-  done: boolean;
-  notes?: string;
-  dueDate?: string;
-  list?: string;
-  priority?: string;
-  date?: string; // yyyy-mm-dd the task belongs to
-  archived?: boolean;
-  // Sub-steps, held as markdown task items ("- [ ] call Priya") in the same
-  // column as the old free-text notes. The task is done when they all are.
-  steps?: string;
-};
-
-export const tasks: Task[] = [
-  {
-    id: "review-project-milestones",
-    title: "Review project milestones",
-    meta: "Atlas onboarding · 30 min",
-    todaySub: "Work · Atlas onboarding",
-    time: "10:00",
-    done: false,
-    notes: "Check the Atlas onboarding rollout with Priya. Bring the new-hire feedback.",
-    dueDate: "28 Oct 2026",
-    list: "Work",
-    priority: "High",
-  },
-  {
-    id: "send-onboarding-summary",
-    title: "Send the onboarding summary",
-    meta: "Atlas onboarding · 15 min",
-    todaySub: "Work · Add results to project notes",
-    time: "15:00",
-    done: false,
-    notes: "Wrap the week-one results and share them with the Atlas channel.",
-    dueDate: "28 Oct 2026",
-    list: "Work",
-    priority: "Medium",
-  },
-  {
-    id: "update-onboarding-checklist",
-    title: "Update the onboarding checklist",
-    meta: "Work · Ready to log as an onWard",
-    done: true,
-  },
-  {
-    id: "collect-new-hire-feedback",
-    title: "Collect new-hire feedback",
-    meta: "Work · 12 responses collected",
-    done: true,
-  },
-  {
-    id: "read-weekly-product-digest",
-    title: "Read the weekly product digest",
-    meta: "Learning · 20 min",
-    done: true,
-  },
-  {
-    id: "plan-weeks-priorities",
-    title: "Plan this week's priorities",
-    meta: "Work · 15 min",
-    done: true,
-  },
-];
-
-export type Note = {
-  id: string;
-  title: string;
-  excerpt: string;
-  tag: string;
-  when: string;
-  pinned?: boolean;
-  body?: string;
-  priority?: string;
-  createdAt?: string; // ISO instant the note was first added
-  remindAt?: string; // UTC ISO the note asks to be nudged about
-};
-
-export const notes: Note[] = [
-  {
-    id: "atlas-onboarding-reflections",
-    title: "Atlas onboarding reflections",
-    excerpt:
-      "What worked, what surprised us, and how we cut time-to-ready from 5 days to 3.",
-    tag: "Work",
-    when: "Edited today",
-    pinned: true,
-    priority: "High",
-    body:
-      "We made the first week feel less like a maze. The new checklist brings every handoff into one place, with a clear owner at each step.\n\nWhat changed:\n• Time-to-ready fell from 5 days to 3.\n• 12 new hires used the updated flow.\n• Fewer repeat questions in the team channel.\n\n“The best process is the one people don’t have to think about.”\n\nFor the milestone review: ask Priya where the next bottleneck is, and keep measuring time-to-ready for the November cohort.",
-  },
-  {
-    id: "questions-for-next-1-1",
-    title: "Questions for my next 1:1",
-    excerpt:
-      "Talk about the operations exec push. Bring examples of the onboarding project.",
-    tag: "Career",
-    when: "Yesterday",
-    body:
-      "Talk about the operations exec push. Bring examples of the onboarding project and the time-to-ready numbers. Ask what “exceptional” looks like at the next level.",
-  },
-  {
-    id: "a-calmer-monday",
-    title: "A calmer Monday",
-    excerpt: "Protect an hour for deep work. One clear priority is better than ten open tabs.",
-    tag: "Personal",
-    when: "26 Oct",
-    body:
-      "Protect an hour for deep work before opening the inbox. One clear priority is better than ten open tabs.",
-  },
-];
 
 export type Evidence = {
   id: string;
@@ -294,15 +139,9 @@ export const skills = [
   "Data analysis",
 ];
 
-// The mock "today" the app is anchored to.
-export const BASE_DATE = "2026-10-28";
-
 // Backfill dates + evidence on the seed rows so the store has consistent data.
-tasks.forEach((t) => {
-  if (!t.date) t.date = BASE_DATE;
-});
 onWards.forEach((w, i) => {
-  if (!w.date) w.date = ["2026-10-28", "2026-10-24", "2026-10-20"][i] ?? BASE_DATE;
+  if (!w.date) w.date = ["2026-10-28", "2026-10-24", "2026-10-20"][i];
   if (!w.evidence)
     w.evidence = Array.from({ length: w.files }).map((_, n) => ({
       id: `${w.id}-f${n}`,

@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 const BOILERPLATE =
-  "onWard is a work-documentation app from GIGS Labs, a young Nigerian software studio. It turns the tasks, notes and wins of an ordinary week into a dated record of what you did — and compiles the ones that matter into a portfolio page, with a PDF you can send to a manager, an appraiser or a hiring team. onWard installs from the browser on iOS, Android and desktop; there is no app store to go through.";
+  "onWard is a work-documentation app from GIGS Labs, a young Nigerian software studio. It turns the wins, lessons, milestones and feedback of an ordinary week into a dated record of what you did — and compiles the ones that matter into a portfolio page, with a PDF you can send to a manager, an appraiser or a hiring team. onWard installs from the browser on iOS, Android and desktop; there is no app store to go through.";
 
 const FACTS: [string, string][] = [
   ["Company", "GIGS Labs"],
@@ -44,9 +44,6 @@ const COLORS: [string, string, string][] = [
 ];
 
 const SHOTS: [string, string][] = [
-  ["Today", "/app-today.png"],
-  ["Tasks", "/app-tasks.png"],
-  ["Notes", "/app-notes.png"],
   ["onWards timeline", "/app-onwards.png"],
   ["Log an onWard", "/app-log-onward.png"],
   ["Insights", "/app-insights.png"],

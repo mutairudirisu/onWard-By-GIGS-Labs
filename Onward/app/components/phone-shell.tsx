@@ -15,36 +15,26 @@ export function PhoneShell({
   tab,
   indicator = true,
   wide = false,
-  fill = false,
 }: {
   children: ReactNode;
   tab?: TabId;
   indicator?: boolean;
   wide?: boolean;
-  /* Pin the shell to the viewport and let the screen scroll its own body, so a
-     header and a bottom bar stay put while the page underneath them moves. */
-  fill?: boolean;
 }) {
   const showNav = Boolean(tab);
   const hasFooter = showNav || indicator;
 
   return (
-    <div className={`flex flex-col ${fill ? "h-dvh overflow-hidden" : "min-h-dvh"}`}>
+    <div className="flex flex-col min-h-dvh">
       <main
         className={`flex-1 px-5 pt-5 md:px-8 md:pt-8 lg:px-10 lg:pt-10 xl:px-14 ${
-          fill
-            ? "min-h-0 pb-4"
-            : showNav
-              ? "pb-36 md:pb-12"
-              : indicator
-                ? "pb-16 md:pb-12"
-                : "pb-6"
+          showNav ? "pb-36 md:pb-12" : indicator ? "pb-16 md:pb-12" : "pb-6"
         }`}
       >
         <div
           className={`mx-auto w-full max-w-none md:max-w-[680px] lg:max-w-[820px] ${
             wide ? "xl:max-w-[1180px] 2xl:max-w-[1320px]" : "xl:max-w-[900px]"
-          }${fill ? " flex h-full min-h-0 flex-col" : ""}`}
+          }`}
         >
           {children}
         </div>

@@ -33,7 +33,7 @@ const SECTIONS: LegalSection[] = [
         </li>
         <li>
           Your content sits in a managed Postgres database. The provider encrypts
-          the underlying storage and we do not hold a second copy of your notes in
+          the underlying storage and we do not hold a second copy of your content in
           a warehouse, a data lake or an analytics tool.
         </li>
         <li>
@@ -84,12 +84,16 @@ const SECTIONS: LegalSection[] = [
     heading: "Sharing you control",
     body: (
       <p>
-        onWard has no public profile, no feed and no shareable link — nothing you
-        log becomes visible to anyone because of a setting we got wrong. The share
-        buttons inside the app either copy text to your clipboard or hand a card
-        to your device&rsquo;s own share sheet, and the links they carry open the
-        sign-in screen for anyone who is not you. What you show an employer today
-        is a portfolio PDF you download and send yourself.
+        Nothing becomes public by accident: every onWard stays inside your
+        account, and the feed only ever shows what you chose to write as a post.
+        A post carries its text, any photos or clips you attached, your first
+        name and your initials — and deleting it takes the files, the comments
+        and the likes with it. A post&rsquo;s own link can be read by anyone,
+        which is why posting stays a deliberate act. There is no public profile
+        page and no shareable portfolio link. The share buttons inside the app
+        either copy text to your clipboard or hand a card to your
+        device&rsquo;s own share sheet, and what you show an employer today is a
+        portfolio or CV file you download and send yourself.
       </p>
     ),
   },

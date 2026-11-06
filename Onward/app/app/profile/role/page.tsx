@@ -60,7 +60,7 @@ export default function SetRolePage() {
         <h1 className="text-[17px] font-bold tracking-tight text-ink">Set your role</h1>
       </div>
       <p className="tiny mb-4">
-        This shapes your portfolio and the tasks we suggest for your appraisal.
+        This appears on the portfolio you export, and a student role unlocks student pricing.
       </p>
 
       <div className="space-y-2">

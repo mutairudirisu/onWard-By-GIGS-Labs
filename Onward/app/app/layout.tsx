@@ -5,7 +5,6 @@ import { NotificationsProvider } from "@/components/notifications";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { Sidebar } from "@/components/sidebar";
 import { StoreProvider } from "@/components/store";
-import { TaskComposerProvider } from "@/components/task-composer";
 import { ThemeManager } from "@/components/theme-manager";
 import { ToastHost } from "@/components/toast";
 import { UpdatePrompt } from "@/components/update-prompt";
@@ -48,12 +47,10 @@ export default function RootLayout({
             <AuthGate>
               <NotificationsProvider>
                 <ThemeManager />
-                <TaskComposerProvider>
-                  <div className="mx-auto flex min-h-dvh w-full max-w-[400px] flex-col bg-cream shadow-lift md:max-w-none md:flex-row md:shadow-none">
-                    <Sidebar />
-                    <div className="flex min-h-dvh flex-1 flex-col">{children}</div>
-                  </div>
-                </TaskComposerProvider>
+                <div className="mx-auto flex min-h-dvh w-full max-w-[400px] flex-col bg-cream shadow-lift md:max-w-none md:flex-row md:shadow-none">
+                  <Sidebar />
+                  <div className="flex min-h-dvh flex-1 flex-col">{children}</div>
+                </div>
                 <ServiceWorkerRegister />
                 <UpdatePrompt />
                 <ToastHost />

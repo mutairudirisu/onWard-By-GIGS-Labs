@@ -159,7 +159,7 @@ export default function LeaderboardPage() {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-1.5 text-[11.5px] font-semibold text-ink">
-                      {isYou ? `${user.name} · You` : r.name}
+                      {isYou ? `${user.name.split(" ")[0]} · You` : r.name.split(" ")[0]}
                     </span>
                     <span className="mt-0.5 flex items-center gap-1 text-[9px] text-muted">
                       <Flame className="h-3 w-3 text-lime-deep" /> {r.streak}-day streak

@@ -7,25 +7,18 @@
  * sample entries — which the app itself seeds. */
 
 import {
-  AlarmClock,
   Bell,
-  BellRing,
   CalendarDays,
   Check,
   ChevronRight,
-  Clock,
   FileText,
   Flame,
   Link2,
   Mic,
   Plus,
   Sprout,
-  Star,
-  TrendingUp,
-  X,
 } from "lucide-react";
 
-const RED = "#E5484D";
 
 /* ————— shared chrome ————— */
 
@@ -53,9 +46,9 @@ export function PhoneFrame({
   );
 }
 
-/** The five tabs the app actually ships. */
+/** The four tabs the app actually ships. */
 function TabBar({ active }: { active: string }) {
-  const tabs = ["Today", "Tasks", "Notes", "onWards", "You"];
+  const tabs = ["Today", "onWards", "Feed", "You"];
   return (
     <div className="mt-auto border-t border-line bg-cream px-2 pb-3 pt-2">
       <div className="flex items-center justify-between">
@@ -121,10 +114,16 @@ function DayStrip({ selected }: { selected: number }) {
 
 export function TodayScreen() {
   const rows = [
-    { title: "Review project milestones", meta: "28 Oct · 10:00 AM · Due today", steps: "2/3", done: false },
-    { title: "Send the onboarding summary", meta: "28 Oct · by end of day", steps: "", done: false },
-    { title: "Book the studio slot", meta: "28 Oct · 15:00 · Expired", steps: "", done: false, late: true },
-    { title: "Draft the quarter note", meta: "28 Oct · 4 of 4 steps", steps: "4/4", done: true },
+    {
+      title: "A smoother start for new hires",
+      impact: "40% faster onboarding · 12 new hires",
+      skills: "Process design · Collaboration",
+    },
+    {
+      title: "Made team knowledge easier to find",
+      impact: "Saved an estimated 3 hours each week",
+      skills: "Documentation · Communication",
+    },
   ];
   return (
     <PhoneFrame>
@@ -153,75 +152,35 @@ export function TodayScreen() {
           <DayStrip selected={2} />
         </div>
 
-        {/* Goal gauge: the arc carries the caption, the middle the percentage. */}
-        <div className="mx-4 mt-3 flex items-center gap-4 rounded-2xl border border-line bg-paper px-4 py-3">
-          <span className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-[5px] border-line">
-            <span className="absolute inset-0 rounded-full [border:5px_solid_transparent] [border-top-color:#B4E13A] [border-right-color:#B4E13A] [transform:rotate(35deg)]" />
-            <span className="text-[15px] font-bold leading-none text-ink">67</span>
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[8.5px] font-semibold uppercase tracking-[0.14em] text-muted">
-              Goals reached today
-            </span>
-            <span className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-ink">
-              4 of 6 done
-              <TrendingUp className="h-3 w-3 text-lime-deep" strokeWidth={2.4} />
-              <span className="text-[10px] font-medium text-muted">was 50%</span>
-            </span>
-          </span>
-        </div>
-
-        <div className="mt-4 flex items-center justify-between px-4">
-          <p className="text-[13px] font-bold text-ink">Today&apos;s journey</p>
-          <span className="text-[10px] font-semibold text-lime-deep underline decoration-lime-deep/40 underline-offset-2">
-            See all
-          </span>
+        <div className="mt-4 flex items-center gap-3 px-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted">
+            Logged this day
+          </p>
+          <span className="h-px flex-1 bg-line" />
+          <p className="text-[9.5px] font-semibold text-muted underline">All onWards</p>
         </div>
 
         <div className="mt-2 space-y-2 px-4">
           {rows.map((r) => (
             <div
               key={r.title}
-              className="flex items-center gap-2.5 rounded-2xl border border-line bg-paper px-3 py-2.5"
+              className="flex items-start gap-2.5 rounded-2xl border border-line bg-paper px-3 py-2.5"
             >
-              <span
-                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
-                  r.done
-                    ? "border-lime-deep bg-lime"
-                    : "border-dashed border-line bg-paper"
-                }`}
-              >
-                {r.done ? <Check className="h-2.5 w-2.5 text-dark" strokeWidth={3.5} /> : null}
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-lime-soft">
+                <Sprout className="h-3 w-3 text-inksoft" strokeWidth={2.2} />
               </span>
               <span className="min-w-0 flex-1">
-                <span
-                  className={`block truncate text-[11px] font-semibold ${
-                    r.done ? "text-faint line-through" : "text-ink"
-                  }`}
-                >
+                <span className="block truncate text-[11px] font-bold tracking-tight text-ink">
                   {r.title}
                 </span>
-                <span
-                  className="mt-0.5 flex items-center gap-1 text-[9.5px] font-medium"
-                  style={{ color: r.late ? RED : undefined }}
-                >
-                  {r.late ? <AlarmClock className="h-2.5 w-2.5" strokeWidth={2.4} /> : null}
-                  <span className={r.late ? "font-semibold" : "text-muted"}>{r.meta}</span>
+                <span className="mt-0.5 block truncate text-[9.5px] leading-[1.55] text-muted">
+                  {r.impact}
+                </span>
+                <span className="mt-1 block truncate text-[9px] font-semibold text-inksoft">
+                  {r.skills}
                 </span>
               </span>
-              {r.steps ? (
-                <span className="rounded-full bg-lime-soft px-1.5 py-0.5 text-[9px] font-bold text-ink">
-                  {r.steps}
-                </span>
-              ) : null}
-              {r.late ? (
-                <span
-                  className="flex h-4 w-4 items-center justify-center rounded-full"
-                  style={{ color: RED }}
-                >
-                  <X className="h-2.5 w-2.5" strokeWidth={2.6} />
-                </span>
-              ) : null}
+              <ChevronRight className="mt-1 h-3.5 w-3.5 shrink-0 text-faint" />
             </div>
           ))}
         </div>
@@ -232,242 +191,22 @@ export function TodayScreen() {
           </div>
         </div>
 
+        <div className="mx-4 mt-3 rounded-2xl border border-line bg-paper px-3.5 py-3">
+          <p className="text-[8.5px] font-semibold uppercase tracking-[0.12em] text-muted">
+            This month
+          </p>
+          <p className="mt-1 text-[22px] font-bold leading-none tracking-tight text-ink">2</p>
+          <p className="mt-1.5 text-[9.5px] text-muted">2 of 3 free captures used.</p>
+        </div>
+
+        <div className="mx-4 mt-3 rounded-2xl bg-ink px-4 py-3.5">
+          <p className="text-[10.5px] font-bold text-paper">Write it down before it blurs</p>
+          <p className="mt-1 text-[9px] leading-[1.55] text-paper/60">
+            The numbers and names you cannot recall next quarter are the ones a review or a CV needs.
+          </p>
+        </div>
+
         <TabBar active="Today" />
-      </div>
-    </PhoneFrame>
-  );
-}
-
-/* ————— The create sheet ————— */
-
-export function CreateSheetScreen() {
-  const options = [
-    { letter: "T", label: "New task" },
-    { letter: "N", label: "New note" },
-    { letter: "W", label: "New onWard" },
-  ];
-  return (
-    <PhoneFrame className="bg-gradient-to-b from-mist to-lime-soft">
-      <div className="relative flex min-h-[520px] flex-col">
-        <div className="px-5 pt-2">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted">
-            Wednesday, 28 October
-          </p>
-          <p className="mt-1 text-[19px] font-bold tracking-tight text-ink">Hi, Maya.</p>
-          <p className="mt-3 text-[11px] font-semibold text-ink/55">
-            Room for ideas before they become something.
-          </p>
-        </div>
-
-        <div className="absolute inset-x-0 bottom-0 rounded-t-[26px] bg-dark px-4 pb-5 pt-4">
-          <div className="grid grid-cols-3 gap-2">
-            {options.map((o) => (
-              <div
-                key={o.label}
-                className="flex flex-col items-center gap-2 rounded-[16px] bg-[#2B2C24] px-2 py-4"
-              >
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-lime text-[12px] font-bold text-ink">
-                  {o.letter}
-                </span>
-                <span className="text-[9.5px] font-semibold text-paper/85">{o.label}</span>
-              </div>
-            ))}
-          </div>
-          <div className="mt-3 flex items-center justify-between rounded-full bg-paper px-3 py-2">
-            {["Today", "Tasks", "Notes"].map((s, i) => (
-              <span
-                key={s}
-                className={`text-[9.5px] font-bold ${i === 0 ? "text-ink" : "text-ink/35"}`}
-              >
-                {s}
-              </span>
-            ))}
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-lime">
-              <X className="h-3 w-3 text-ink" strokeWidth={2.6} />
-            </span>
-          </div>
-        </div>
-      </div>
-    </PhoneFrame>
-  );
-}
-
-/* ————— Reminders: the missed row and the modal that catches up ————— */
-
-export function ReminderScreen() {
-  return (
-    <PhoneFrame className="bg-gradient-to-b from-mist to-paper">
-      <div className="relative flex min-h-[520px] flex-col">
-        <div className="px-5 pt-2">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted">
-            Wednesday, 28 October
-          </p>
-          <p className="mt-1 text-[19px] font-bold tracking-tight text-ink">Your tasks</p>
-        </div>
-        <div className="mt-3 space-y-2 px-4">
-          <div className="flex items-center gap-2.5 rounded-2xl border border-line bg-paper px-3 py-2.5">
-            <span className="h-4 w-4 shrink-0 rounded-full border-2 border-dashed border-line" />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-[11px] font-semibold text-ink">
-                Book the studio slot
-              </span>
-              <span
-                className="mt-0.5 flex items-center gap-1 text-[9.5px] font-semibold"
-                style={{ color: RED }}
-              >
-                <AlarmClock className="h-2.5 w-2.5" strokeWidth={2.4} />
-                28 Oct · 3:00 PM · Expired
-              </span>
-            </span>
-            <span
-              className="flex h-4 w-4 items-center justify-center rounded-full"
-              style={{ color: RED }}
-            >
-              <X className="h-2.5 w-2.5" strokeWidth={2.6} />
-            </span>
-          </div>
-          <div className="flex items-center gap-2.5 rounded-2xl border border-line bg-paper px-3 py-2.5">
-            <span className="h-4 w-4 shrink-0 rounded-full border-2 border-dashed border-line" />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-[11px] font-semibold text-ink">
-                Prep the review deck
-              </span>
-              <span className="mt-0.5 flex items-center gap-1 text-[9.5px] font-medium text-muted">
-                <BellRing className="h-2.5 w-2.5 text-lime-deep" strokeWidth={2.4} />
-                Tomorrow · 9:45 AM
-              </span>
-            </span>
-            <span className="rounded-full bg-lime-soft px-1.5 py-0.5 text-[9px] font-bold text-lime-deep">
-              9:45 AM
-            </span>
-          </div>
-        </div>
-
-        {/* The modal, which is what the reminder becomes on screen. */}
-        <div className="absolute inset-0 flex flex-col justify-center bg-ink/45 px-5 backdrop-blur-[1px]">
-          <div className="rounded-[22px] bg-paper p-4 shadow-lift">
-            <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: RED }}>
-              <AlarmClock className="h-3 w-3" strokeWidth={2.4} />
-              Missed reminder
-            </p>
-            <p className="mt-2.5 text-[14px] font-bold leading-snug text-ink">
-              Book the studio slot
-            </p>
-            <p className="mt-1 flex items-center gap-1.5 text-[10.5px] font-medium text-muted">
-              <Clock className="h-3 w-3" strokeWidth={2.2} />
-              Was due Wed, 28 Oct · 3:00 PM
-            </p>
-            <div className="mt-3 flex items-center gap-2">
-              <span className="flex items-center gap-1 rounded-full bg-mist px-2.5 py-1.5 text-[9.5px] font-semibold text-ink">
-                <BellRing className="h-3 w-3" strokeWidth={2.2} /> Snooze 10 min
-              </span>
-              <span className="flex items-center gap-1 rounded-full bg-mist px-2.5 py-1.5 text-[9.5px] font-semibold" style={{ color: RED }}>
-                <X className="h-3 w-3" strokeWidth={2.4} /> Silence
-              </span>
-            </div>
-            <span className="mt-3 flex items-center justify-center gap-1.5 rounded-full bg-lime py-2.5 text-[11px] font-bold text-ink">
-              <Check className="h-3.5 w-3.5" strokeWidth={2.8} /> Mark done
-            </span>
-          </div>
-        </div>
-      </div>
-    </PhoneFrame>
-  );
-}
-
-/* ————— Notes: the day timeline and its three pill states ————— */
-
-export function NotesScreen() {
-  const cards = [
-    {
-      tag: "Career",
-      title: "Questions for the review",
-      body: "☐ Bring the onboarding numbers\n☑ Ask who owns the roadmap",
-      progress: "1 of 2 done",
-      pill: { label: "06 Nov · 9:45 AM", tone: "pending" as const },
-    },
-    {
-      tag: "Work",
-      title: "Atlas onboarding notes",
-      body: "The handoff stalls because nobody knows who signs off. Write the two names down.",
-      progress: "",
-      pill: { label: "9:19 AM", tone: "time" as const },
-      pinned: true,
-    },
-    {
-      tag: "Learning",
-      title: "Course notes — pricing",
-      body: "☐ Re-read the unit economics section\n☐ One example from GoDropa",
-      progress: "0 of 2 done",
-      pill: { label: "02 Nov · 8:00 AM", tone: "missed" as const },
-    },
-  ];
-  return (
-    <PhoneFrame className="bg-gradient-to-b from-mist to-paper">
-      <div className="flex min-h-[520px] flex-col">
-        <div className="px-5 pt-2">
-          <p className="text-[19px] font-bold tracking-tight text-ink">Your notes</p>
-          <p className="mt-0.5 text-[10px] font-medium text-muted">
-            Room for ideas before they become something.
-          </p>
-          <div className="mt-3 flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-1.5">
-            <span className="text-[9.5px] text-faint">Search your thoughts</span>
-          </div>
-        </div>
-
-        <div className="mt-4 flex items-center gap-3 px-5">
-          <span className="text-[9px] font-semibold uppercase tracking-[0.1em] text-muted">
-            Keep close
-          </span>
-          <span className="h-px flex-1 bg-line" />
-          <span className="text-[9px] font-medium text-faint">1 pinned</span>
-        </div>
-
-        <div className="mt-3 space-y-2.5 px-4">
-          {cards.map((c) => (
-            <div
-              key={c.title}
-              className={`rounded-[20px] border px-3.5 py-3 ${
-                c.pinned ? "border-lime-deep/40 bg-lime-pale" : "border-line bg-paper"
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <span className="text-[9.5px] font-medium text-muted">{c.tag}</span>
-                {c.pinned ? (
-                  <Star className="h-3 w-3 fill-lime-deep text-lime-deep" strokeWidth={2} />
-                ) : null}
-              </div>
-              <p className="mt-1 text-[12.5px] font-bold tracking-tight text-ink">{c.title}</p>
-              <p className="mt-1 whitespace-pre-line text-[9.5px] leading-relaxed text-muted">
-                {c.body}
-              </p>
-              <div className="mt-2.5 flex items-center justify-between gap-2">
-                <span className="truncate text-[9px] font-medium text-faint">{c.progress}</span>
-                <span
-                  className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[9px] font-bold ${
-                    c.pill.tone === "pending" ? "bg-lime-soft text-lime-deep" : ""
-                  }`}
-                  style={
-                    c.pill.tone === "missed"
-                      ? { background: "rgba(229,72,77,0.1)", color: RED }
-                      : c.pill.tone === "time"
-                        ? { background: "#101108", color: "#FFFFFF" }
-                        : undefined
-                  }
-                >
-                  {c.pill.tone === "time" ? (
-                    <Clock className="h-2.5 w-2.5" strokeWidth={2.4} />
-                  ) : (
-                    <Bell className="h-2.5 w-2.5" strokeWidth={2.4} />
-                  )}
-                  {c.pill.label}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <TabBar active="Notes" />
       </div>
     </PhoneFrame>
   );
@@ -506,8 +245,8 @@ export function InsightsScreen() {
 
         <div className="mx-5 mt-4 rounded-2xl border border-line bg-paper px-3.5 py-3">
           <div className="flex items-center justify-between">
-            <p className="text-[10.5px] font-bold text-ink">Steps this month</p>
-            <p className="text-[8.5px] font-medium text-faint">Tasks, notes and onWards</p>
+            <p className="text-[10.5px] font-bold text-ink">Captures this month</p>
+            <p className="text-[8.5px] font-medium text-faint">onWards logged · 30 days</p>
           </div>
           <div className="mt-3 flex h-16 items-end gap-1.5">
             {bars.map((h, i) => (
@@ -519,7 +258,7 @@ export function InsightsScreen() {
             ))}
           </div>
           <p className="mt-2.5 text-[8.5px] font-medium text-muted">
-            19 of 24 tasks complete in this window · 62% this month
+            11 onWards logged in this window
           </p>
         </div>
 
@@ -593,7 +332,7 @@ export function LogWardScreen() {
         <div className="px-5 pt-2">
           <p className="text-[17px] font-bold tracking-tight text-ink">Log an onWard</p>
           <p className="mt-0.5 text-[10px] font-medium text-muted">
-            Every task completed is a step forward — capture the win.
+            Every piece of work is a step forward — capture the win.
           </p>
           <p className="mt-2 text-[8.5px] font-semibold uppercase tracking-[0.1em] text-lime-deep">
             2 of 3 free onWards used this month
@@ -737,8 +476,7 @@ export function PortfolioScreen() {
         </div>
 
         <p className="mt-4 border-t border-line pt-3 text-[8px] leading-relaxed text-faint">
-          Metrics are self-reported from the work logged in onWard. Evidence shared with
-          permission. Built with onWard.
+          Metrics are self-reported from the work logged in onWard. Built with onWard.
         </p>
       </div>
     </div>

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { useStore } from "@/components/store";
-import { BASE_DATE } from "@/lib/data";
 import {
   addDays,
   dayNum,
@@ -11,6 +10,7 @@ import {
   monthTitle,
   parseISO,
   toISO,
+  todayISO,
   weekdayLetter,
   weekOf,
   type WeekCell,
@@ -25,7 +25,7 @@ function DayCell({
   selected: boolean;
   onSelect: () => void;
 }) {
-  const today = cell.iso === BASE_DATE;
+  const today = cell.iso === todayISO();
   return (
     <button
       type="button"
@@ -95,7 +95,7 @@ function MonthCalendar({
         ))}
         {weeks.flat().map((c) => {
           const sel = c.iso === selected;
-          const today = c.iso === BASE_DATE;
+          const today = c.iso === todayISO();
           return (
             <button
               key={c.iso}
@@ -165,8 +165,8 @@ export function DateStrip() {
               type="button"
               aria-label="Jump to today"
               onClick={() => {
-                setSelectedDate(BASE_DATE);
-                setViewDate(BASE_DATE);
+                setSelectedDate(todayISO());
+                setViewDate(todayISO());
               }}
               className="rounded-full px-2.5 py-1 text-[10px] font-bold text-lime-deep transition hover:bg-lime-soft"
             >

@@ -1,5 +1,3 @@
-import { BASE_DATE } from "@/lib/data";
-
 const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -18,6 +16,11 @@ export function toISO(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+/** Today as the app keeps it: yyyy-mm-dd on the device you are holding. */
+export function todayISO() {
+  return toISO(new Date());
+}
+
 export function addDays(iso: string, n: number): string {
   const d = parseISO(iso);
   d.setDate(d.getDate() + n);
@@ -30,14 +33,6 @@ export function startOfWeek(iso: string): string {
   const shift = (d.getDay() + 6) % 7; // Mon=0 … Sun=6
   d.setDate(d.getDate() - shift);
   return toISO(d);
-}
-
-export function isSameDay(a: string, b: string) {
-  return a === b;
-}
-
-export function isToday(iso: string) {
-  return iso === BASE_DATE;
 }
 
 export function weekdayLetter(iso: string) {
@@ -59,45 +54,10 @@ export function formatMedium(iso: string) {
   return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`;
 }
 
-export function formatTasksHeader(iso: string) {
-  const d = parseISO(iso);
-  const wd = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
-  return `${wd}, ${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)}`;
-}
-
-/** "26 Oct" — the day a task falls due, short enough to sit under a title. */
+/** "26 Oct" — the day an onWard happened, short enough to sit under a title. */
 export function formatDue(iso: string) {
   const d = parseISO(iso);
   return `${String(d.getDate()).padStart(2, "0")} ${MONTHS[d.getMonth()].slice(0, 3)}`;
-}
-
-/** "9:15 PM" from the stored 24-hour "09:15". */
-export function formatClock(time: string) {
-  const [h, m] = time.split(":").map(Number);
-  const ap = h >= 12 ? "PM" : "AM";
-  return `${h % 12 === 0 ? 12 : h % 12}:${String(m ?? 0).padStart(2, "0")} ${ap}`;
-}
-
-/** When the task stops being doable — a known hour, or the end of its day. */
-export function formatExpiry(iso: string, time?: string) {
-  return `${formatDue(iso)} · ${time ? formatClock(time) : "by end of day"}`;
-}
-
-/** "9:19 AM" on its own — enough for the pill in the corner of a card. */
-export function formatTimeOf(iso: string) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const h = d.getHours();
-  const ap = h >= 12 ? "PM" : "AM";
-  return `${h % 12 === 0 ? 12 : h % 12}:${String(d.getMinutes()).padStart(2, "0")} ${ap}`;
-}
-
-/** "1 Nov 2026 · 9:19 AM" from a full ISO timestamp. */
-export function formatStamp(iso: string) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const time = formatTimeOf(iso);
-  return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()} · ${time}`;
 }
 
 /**
@@ -114,74 +74,28 @@ export function dayHeading(iso: string, now = new Date()) {
   return d.getFullYear() === now.getFullYear() ? short : `${short} ${d.getFullYear()}`;
 }
 
-/**
- * The instant a wall-clock reminder actually falls due, as UTC ISO. A reminder is
- * picked as "Fri, 6 Nov at 9:45 AM", and AM means *this device's* morning — so the
- * conversion belongs on the device. The server only compares the result to now().
- */
-export function reminderInstant(date?: string | null, time?: string | null): string | null {
-  if (!date || !time) return null;
-  const ms = Date.parse(`${date}T${time}:00`);
-  return Number.isNaN(ms) ? null : new Date(ms).toISOString();
-}
-
-/** A stored instant split back into the { date, time } the picker shows. */
-export function reminderParts(iso?: string | null): { date: string; time: string } | null {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  const time = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-  return { date: toISO(d), time };
-}
-
-/** "Fri, 6 Nov · 9:45 AM" — the one line a stored reminder is shown as. */
-export function formatReminder(iso: string) {
-  const parts = reminderParts(iso);
-  return parts ? `${formatTasksHeader(parts.date)} · ${formatClock(parts.time)}` : "";
-}
-
-/** "9:45 AM" when it falls today, "06 Nov · 9:45 AM" otherwise — short enough for a pill. */
-export function formatReminderBrief(iso: string, now = new Date()) {
-  const parts = reminderParts(iso);
-  if (!parts) return "";
-  const time = formatTimeOf(iso);
-  return parts.date === toISO(now) ? time : `${formatDue(parts.date)} · ${time}`;
-}
-
-export function reminderPassed(iso: string, now = new Date()) {
-  const at = Date.parse(iso);
-  return !Number.isNaN(at) && at <= now.getTime();
-}
-
-/** The same reminder pushed forward by n minutes. */
-export function laterInstant(iso: string, minutes: number): string {
-  const at = Date.parse(iso);
-  return Number.isNaN(at) ? iso : new Date(at + minutes * 60_000).toISOString();
-}
-
-export type DueState = "Expired" | "Due today" | "Tomorrow" | "Upcoming";
-
-/** Where a due date sits against the real clock, not the mock "today". */
-export function dueState(iso: string, time?: string, now = new Date()): DueState {
-  const today = toISO(now);
-  if (iso < today) return "Expired";
-  if (iso === today) {
-    if (time) {
-      const [h, m] = time.split(":").map(Number);
-      if (h * 60 + (m ?? 0) < now.getHours() * 60 + now.getMinutes()) return "Expired";
-    }
-    return "Due today";
-  }
-  if (iso === addDays(today, 1)) return "Tomorrow";
-  return "Upcoming";
-}
-
-// onWard timeline label relative to the mock "today".
+// onWard timeline label relative to the real clock.
 export function wardDateLabel(iso: string) {
   const d = parseISO(iso);
   const base = `${String(d.getDate()).padStart(2, "0")} ${MONTHS[d.getMonth()].slice(0, 3).toUpperCase()}`;
-  if (iso === BASE_DATE) return `${base} · TODAY`;
+  if (iso === todayISO()) return `${base} · TODAY`;
   return `${base} · ${WD[d.getDay()].toUpperCase()}`;
+}
+
+/** How long ago a feed item happened, the way a social timeline says it: "4h", "2d". */
+export function timeAgo(stamp: string, now = Date.now()) {
+  const then = new Date(stamp).getTime();
+  if (Number.isNaN(then)) return "";
+  const mins = Math.max(0, Math.round((now - then) / 60000));
+  if (mins < 1) return "now";
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.round(hours / 24);
+  if (days < 7) return `${days}d`;
+  if (days < 31) return `${Math.round(days / 7)}w`;
+  if (days < 365) return `${Math.round(days / 30)}mo`;
+  return `${Math.round(days / 365)}y`;
 }
 
 export type WeekCell = { iso: string; inMonth: boolean };

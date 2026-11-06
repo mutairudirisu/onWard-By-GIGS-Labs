@@ -2,19 +2,12 @@ import { supabase } from "./supabase";
 import {
   DEFAULT_SETTINGS,
   type Evidence,
-  type Note,
   type OnWard,
   type Plan,
   type Settings,
-  type Task,
 } from "./data";
-import { formatMedium, reminderInstant, toISO, wardDateLabel } from "./dates";
-import { hasChecklist } from "./checklist";
-
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
+import { toISO, wardDateLabel } from "./dates";
+import { EMPTY_CV_DOC, type CvDoc } from "./cv";
 
 export type Profile = {
   id: string;
@@ -32,9 +25,7 @@ export type Profile = {
 
 export type ActivityDay = {
   day: string;
-  taskCount: number;
   wardCount: number;
-  noteCount: number;
 };
 
 export type StreakStats = {
@@ -67,42 +58,10 @@ export type MyReferrals = {
 };
 
 export type Workspace = {
-  tasks: Task[];
-  notes: Note[];
   onWards: OnWard[];
   skills: string[];
   settings: Settings;
   plan: Plan;
-};
-
-type TaskRow = {
-  id: string;
-  user_id: string;
-  title: string;
-  meta: string | null;
-  notes: string | null;
-  time: string | null;
-  day: string | null;
-  due_date: string | null;
-  list: string | null;
-  priority: string | null;
-  done: boolean;
-  archived: boolean;
-  sort_order: number;
-};
-
-type NoteRow = {
-  id: string;
-  user_id: string;
-  title: string;
-  excerpt: string;
-  body: string;
-  tag: string | null;
-  priority: string | null;
-  pinned: boolean;
-  reminder_at: string | null;
-  created_at: string;
-  updated_at: string;
 };
 
 type WardRow = {
@@ -133,7 +92,6 @@ type SettingsRow = {
   weekly_digest: boolean;
   haptics: boolean;
   reduced_motion: boolean;
-  default_reminder_time: string;
 };
 
 type ProfileRow = {
@@ -181,35 +139,6 @@ export function uuid(): string {
   ].join("-");
 }
 
-/** "2026-10-28", "28 Oct 2026" and anything Date can read all become yyyy-mm-dd. */
-export function toIsoDate(value?: string | null): string | null {
-  const text = value?.trim();
-  if (!text) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
-  const dayMonthYear = text.match(/^(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})$/);
-  if (dayMonthYear) {
-    const [, day, month, year] = dayMonthYear;
-    const index = MONTHS.findIndex((m) =>
-      m.toLowerCase().startsWith(month.slice(0, 3).toLowerCase()),
-    );
-    if (index >= 0) {
-      return `${year}-${String(index + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    }
-  }
-  const parsed = Date.parse(text);
-  return Number.isNaN(parsed) ? null : toISO(new Date(parsed));
-}
-
-function relativeWhen(timestamp: string): string {
-  const day = timestamp.slice(0, 10);
-  const today = toISO(new Date());
-  if (day === today) return "Edited today";
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  if (day === toISO(yesterday)) return "Yesterday";
-  return formatMedium(day).split(" ").slice(0, 2).join(" ");
-}
-
 export function initialsFor(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "";
@@ -243,18 +172,7 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
 }
 
 export async function fetchWorkspace(userId: string): Promise<Workspace> {
-  const [tasksRes, notesRes, wardsRes, skillsRes, settingsRes, profileRes] = await Promise.all([
-    supabase
-      .from("tasks")
-      .select("*")
-      .eq("user_id", userId)
-      .order("sort_order", { ascending: true }),
-    supabase
-      .from("notes")
-      .select("*")
-      .eq("user_id", userId)
-      .order("pinned", { ascending: false })
-      .order("updated_at", { ascending: false }),
+  const [wardsRes, skillsRes, settingsRes, profileRes] = await Promise.all([
     supabase
       .from("on_wards")
       .select("*, ward_skills(skill_id, skills(name)), evidence(id, kind, label, meta)")
@@ -266,17 +184,13 @@ export async function fetchWorkspace(userId: string): Promise<Workspace> {
     supabase.from("profiles").select("plan, pro_until").eq("id", userId).maybeSingle(),
   ]);
 
-  fail(tasksRes.error, notesRes.error, wardsRes.error, skillsRes.error, settingsRes.error, profileRes.error);
+  fail(wardsRes.error, skillsRes.error, settingsRes.error, profileRes.error);
 
-  const tasks: TaskRow[] = tasksRes.data ?? [];
-  const notes: NoteRow[] = notesRes.data ?? [];
   const wards: WardRow[] = wardsRes.data ?? [];
   const skillRows: { name: string }[] = skillsRes.data ?? [];
   const settingsRow = (settingsRes.data ?? null) as SettingsRow | null;
 
   return {
-    tasks: tasks.map(taskFromRow),
-    notes: notes.map(noteFromRow),
     onWards: wards.map(wardFromRow),
     skills: skillRows.map((s) => s.name),
     settings: settingsFromRow(settingsRow),
@@ -284,42 +198,6 @@ export async function fetchWorkspace(userId: string): Promise<Workspace> {
       ((profileRes.data as { plan?: Plan } | null)?.plan ?? "free") as Plan,
       (profileRes.data as { pro_until?: string | null } | null)?.pro_until,
     ),
-  };
-}
-
-function taskFromRow(row: TaskRow): Task {
-  // One column carries both shapes: markdown items are steps, anything else is
-  // the free-text note that used to live there.
-  const steps = row.notes && hasChecklist(row.notes) ? row.notes : undefined;
-  return {
-    id: row.id,
-    title: row.title,
-    meta: row.meta ?? "",
-    todaySub: row.list ?? undefined,
-    time: row.time ?? undefined,
-    done: row.done,
-    notes: steps ? undefined : row.notes ?? undefined,
-    steps,
-    dueDate: row.due_date ? formatMedium(row.due_date) : undefined,
-    list: row.list ?? undefined,
-    priority: row.priority ?? undefined,
-    date: row.day ?? undefined,
-    archived: row.archived,
-  };
-}
-
-function noteFromRow(row: NoteRow): Note {
-  return {
-    id: row.id,
-    title: row.title,
-    excerpt: row.excerpt,
-    body: row.body,
-    tag: row.tag ?? "Personal",
-    when: relativeWhen(row.updated_at),
-    createdAt: row.created_at,
-    pinned: row.pinned,
-    priority: row.priority ?? undefined,
-    remindAt: row.reminder_at ?? undefined,
   };
 }
 
@@ -353,64 +231,10 @@ function settingsFromRow(row: SettingsRow | null): Settings {
     weeklyDigest: row.weekly_digest,
     haptics: row.haptics,
     reducedMotion: row.reduced_motion,
-    defaultReminderTime: row.default_reminder_time,
   };
 }
 
 // ------------------------------------------------------------------------ writing
-
-export async function writeTask(userId: string, task: Task, sortOrder: number) {
-  const { error } = await supabase.from("tasks").upsert(
-    {
-      id: task.id,
-      user_id: userId,
-      title: task.title,
-      meta: task.meta ?? "",
-      notes: task.steps ?? task.notes ?? null,
-      time: task.time ?? null,
-      day: task.date ?? null,
-      due_date: toIsoDate(task.dueDate),
-      list: task.list ?? null,
-      priority: task.priority ?? null,
-      done: task.done,
-      archived: task.archived ?? false,
-      // Derived, never hand-set: the instant the device meant by date+time, so the
-      // server can compare it to now() without knowing anything about zones.
-      reminder_at: reminderInstant(task.date, task.time),
-      sort_order: sortOrder,
-    },
-    { onConflict: "id" },
-  );
-  if (error) throw new Error(error.message);
-}
-
-export async function writeTaskOrder(pairs: { id: string; sort_order: number }[]) {
-  const results = await Promise.all(
-    pairs.map(({ id, sort_order }) =>
-      supabase.from("tasks").update({ sort_order }).eq("id", id),
-    ),
-  );
-  const failed = results.find((r) => r.error);
-  if (failed?.error) throw new Error(failed.error.message);
-}
-
-export async function writeNote(userId: string, note: Note) {
-  const { error } = await supabase.from("notes").upsert(
-    {
-      id: note.id,
-      user_id: userId,
-      title: note.title,
-      excerpt: note.excerpt,
-      body: note.body ?? "",
-      tag: note.tag,
-      priority: note.priority ?? null,
-      pinned: note.pinned ?? false,
-      reminder_at: note.remindAt ?? null,
-    },
-    { onConflict: "id" },
-  );
-  if (error) throw new Error(error.message);
-}
 
 async function skillIdsFor(userId: string, names: string[]): Promise<string[]> {
   if (!names.length) return [];
@@ -500,10 +324,27 @@ export async function writeSettings(userId: string, settings: Settings) {
         weekly_digest: settings.weeklyDigest,
         haptics: settings.haptics,
         reduced_motion: settings.reducedMotion,
-        default_reminder_time: settings.defaultReminderTime,
       },
       { onConflict: "user_id" },
     );
+  if (error) throw new Error(error.message);
+}
+
+/** The CV's hand-typed extras. Returns an empty doc until the cv column exists. */
+export async function fetchCvDoc(userId: string): Promise<CvDoc> {
+  const { data, error } = await supabase.from("user_settings").select("cv").eq("user_id", userId).maybeSingle();
+  if (error || !data?.cv) return EMPTY_CV_DOC;
+  return { ...EMPTY_CV_DOC, ...(data.cv as Partial<CvDoc>) };
+}
+
+/**
+ * The row may not exist yet, and the other columns are NOT NULL with defaults, so an
+ * upsert on the key alone is what an owner is allowed to do here.
+ */
+export async function saveCvDoc(userId: string, doc: CvDoc) {
+  const { error } = await supabase
+    .from("user_settings")
+    .upsert({ user_id: userId, cv: doc }, { onConflict: "user_id" });
   if (error) throw new Error(error.message);
 }
 
@@ -522,17 +363,301 @@ export async function saveProfile(userId: string, patch: Partial<Omit<Profile, "
   if (error) throw new Error(error.message);
 }
 
-export async function deleteRow(table: "tasks" | "notes" | "on_wards", id: string) {
+export async function deleteRow(table: "on_wards", id: string) {
   const { error } = await supabase.from(table).delete().eq("id", id);
   if (error) throw new Error(error.message);
 }
 
+// ------------------------------------------------------------------------ feed
+
+export const POST_MEDIA_BUCKET = "post-media";
+export const POST_MEDIA_MAX_BYTES = 26_214_400;
+export const POST_MEDIA_MAX_PER_POST = 4;
+export const POST_BODY_MAX = 2000;
+export const POST_COMMENT_MAX = 500;
+
+/** Kept in step with the bucket's allowed_mime_types, so a pick the server would
+ *  refuse never reaches an upload. */
+const EXT_BY_TYPE: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "video/mp4": "mp4",
+  "video/webm": "webm",
+  "video/quicktime": "mov",
+};
+
+export type PostMedia = {
+  id: string;
+  kind: "image" | "video";
+  path: string;
+  bytes: number | null;
+};
+
+export type PostComment = {
+  id: string;
+  body: string;
+  firstName: string;
+  initials: string;
+  createdAt: string;
+  mine: boolean;
+};
+
+export type FeedPost = {
+  id: string;
+  body: string;
+  wardId: string | null;
+  firstName: string;
+  initials: string;
+  avatarUrl: string | null;
+  role: string | null;
+  createdAt: string;
+  mine: boolean;
+  media: PostMedia[];
+  likes: number;
+  comments: number;
+  recentComments: PostComment[];
+};
+
+type CommentJson = {
+  id: string;
+  body: string;
+  first_name: string | null;
+  initials: string | null;
+  created_at: string;
+  mine?: boolean | null;
+};
+
+type FeedRow = {
+  id: string;
+  body: string;
+  ward_id: string | null;
+  first_name: string | null;
+  initials: string | null;
+  avatar_url: string | null;
+  role: string | null;
+  created_at: string;
+  mine: boolean | null;
+  media: PostMedia[] | null;
+  likes: number | null;
+  comments: number | null;
+  recent_comments: CommentJson[] | null;
+};
+
+function commentFromJson(row: CommentJson): PostComment {
+  return {
+    id: row.id,
+    body: row.body,
+    firstName: row.first_name ?? "",
+    initials: row.initials ?? "",
+    createdAt: row.created_at,
+    mine: row.mine ?? false,
+  };
+}
+
+function postFromRow(row: FeedRow): FeedPost {
+  return {
+    id: row.id,
+    body: row.body,
+    wardId: row.ward_id,
+    firstName: row.first_name ?? "",
+    initials: row.initials ?? "",
+    avatarUrl: row.avatar_url ?? null,
+    role: row.role ?? null,
+    createdAt: row.created_at,
+    mine: row.mine ?? false,
+    media: row.media ?? [],
+    likes: row.likes ?? 0,
+    comments: row.comments ?? 0,
+    recentComments: (row.recent_comments ?? []).map(commentFromJson),
+  };
+}
+
+const FEED_COLUMNS =
+  "id, body, ward_id, first_name, initials, avatar_url, role, created_at, mine, media, likes, comments, recent_comments";
+
+/** A public object in a public bucket needs no token, which is what lets an <img>
+ *  tag work for someone who has never signed in. */
+export function mediaUrl(path: string): string {
+  return supabase.storage.from(POST_MEDIA_BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
+/** Reads the feed view: everything a stranger is allowed to see, in one round trip. */
+export async function fetchFeed(limit = 40): Promise<FeedPost[]> {
+  const { data, error } = await supabase
+    .from("feed_posts")
+    .select(FEED_COLUMNS)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  return (data as FeedRow[] | null ?? []).map(postFromRow);
+}
+
+export async function fetchPost(id: string): Promise<FeedPost | null> {
+  const { data, error } = await supabase
+    .from("feed_posts")
+    .select(FEED_COLUMNS)
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? postFromRow(data as FeedRow) : null;
+}
+
+export async function fetchComments(postId: string): Promise<PostComment[]> {
+  const { data, error } = await supabase
+    .from("feed_comments")
+    .select("id, body, first_name, initials, created_at, mine")
+    .eq("post_id", postId)
+    .order("created_at");
+  if (error) throw new Error(error.message);
+  return (data as CommentJson[] | null ?? []).map(commentFromJson);
+}
+
+/**
+ * The posts you have liked. RLS hands back your own rows and nothing else, so this is
+ * a list of yours rather than anyone else's - and it is empty for a visitor.
+ */
+export async function fetchMyLikes(): Promise<Set<string>> {
+  const { data, error } = await supabase.from("post_likes").select("post_id");
+  if (error) throw new Error(error.message);
+  return new Set((data as { post_id: string }[] | null ?? []).map((row) => row.post_id));
+}
+
+export async function likePost(postId: string) {
+  const { error } = await supabase.from("post_likes").insert({ post_id: postId });
+  if (error) throw new Error(error.message);
+}
+
+export async function unlikePost(postId: string) {
+  const { error } = await supabase.from("post_likes").delete().eq("post_id", postId);
+  if (error) throw new Error(error.message);
+}
+
+export async function addComment(
+  postId: string,
+  body: string,
+): Promise<{ id: string; createdAt: string }> {
+  const { data, error } = await supabase
+    .from("post_comments")
+    .insert({ post_id: postId, body })
+    .select("id, created_at")
+    .single();
+  fail(error);
+  if (!data) throw new Error("The comment did not land");
+  return { id: data.id as string, createdAt: data.created_at as string };
+}
+
+export async function deleteComment(id: string) {
+  const { error } = await supabase.from("post_comments").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function deletePost(id: string) {
+  // The Storage API is the only way a file can actually leave the bucket - Supabase
+  // rejects a direct delete on its own tables. So the files go first, and if any of
+  // them refuses to go the post stays up rather than vanishing with something still
+  // public behind it.
+  const { data: picked } = await supabase
+    .from("post_media")
+    .select("storage_path")
+    .eq("post_id", id);
+  const paths = (picked as { storage_path: string }[] | null ?? []).map((row) => row.storage_path);
+  if (paths.length) {
+    const { error: removeError } = await supabase.storage.from(POST_MEDIA_BUCKET).remove(paths);
+    if (removeError) throw new Error(removeError.message);
+  }
+  const { error } = await supabase.from("posts").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+/** Why a pick was refused, in the words the composer shows. */
+export function mediaProblem(files: File[]): string | null {
+  if (files.length > POST_MEDIA_MAX_PER_POST) {
+    return `A post takes up to ${POST_MEDIA_MAX_PER_POST} photos or clips.`;
+  }
+  for (const file of files) {
+    if (!EXT_BY_TYPE[file.type]) return `That file type is not supported (${file.type || "unknown"}).`;
+    if (file.size > POST_MEDIA_MAX_BYTES) return `"${file.name}" is over the 25MB limit.`;
+  }
+  return null;
+}
+
+async function signedInUserId(): Promise<string> {
+  const { data } = await supabase.auth.getUser();
+  const id = data.user?.id;
+  if (!id) throw new Error("Sign in to post");
+  return id;
+}
+
+/**
+ * The post row goes first so its id can name the folders the files land in. If an
+ * upload fails the files that went up are deleted and the row with them - no
+ * half-published post, and nothing left in storage that no post points at.
+ */
+export async function createPost(input: {
+  body: string;
+  files: File[];
+  wardId?: string | null;
+  onProgress?: (done: number, total: number) => void;
+}): Promise<FeedPost> {
+  const { body, files, wardId = null, onProgress } = input;
+  const problem = mediaProblem(files);
+  if (problem) throw new Error(problem);
+  if (!body.trim() && !files.length) throw new Error("A post needs words or a photo");
+
+  const userId = await signedInUserId();
+  const { data: created, error: createError } = await supabase
+    .from("posts")
+    .insert({ body, ward_id: wardId })
+    .select("id")
+    .single();
+  if (createError) throw new Error(createError.message);
+  const postId = created.id as string;
+
+  const paths: string[] = [];
+  try {
+    for (let index = 0; index < files.length; index++) {
+      const file = files[index];
+      // Only ids and a whitelisted extension go into the path, never file names.
+      const path = `${userId}/${postId}/${index}.${EXT_BY_TYPE[file.type]}`;
+      const { error } = await supabase.storage
+        .from(POST_MEDIA_BUCKET)
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (error) throw new Error(error.message);
+      paths.push(path);
+      onProgress?.(index + 1, files.length);
+    }
+    if (paths.length) {
+      const { error } = await supabase.from("post_media").insert(
+        files.map((file, index) => ({
+          post_id: postId,
+          kind: file.type.startsWith("video/") ? "video" : "image",
+          storage_path: paths[index],
+          bytes: file.size,
+          sort: index,
+        })),
+      );
+      if (error) throw new Error(error.message);
+    }
+  } catch (error) {
+    // Anything that did go up is removed by name, and the row delete takes the rest.
+    if (paths.length) await supabase.storage.from(POST_MEDIA_BUCKET).remove(paths);
+    await supabase.from("posts").delete().eq("id", postId);
+    throw error instanceof Error ? error : new Error("Upload failed");
+  }
+
+  const post = await fetchPost(postId);
+  if (!post) throw new Error("The post did not come back");
+  return post;
+}
+
 // --------------------------------------------------------------------- activity
 
-/** Counts one piece of real usage for streaks, heatmaps and insights. */
-export async function recordActivity(kind: "task" | "ward" | "note", day?: string) {
+/** Marks a day used so streaks, heatmaps and insights can count it. */
+export async function recordActivity(day?: string) {
   const { error } = await supabase.rpc("record_activity", {
-    p_kind: kind,
+    p_kind: "ward",
     p_day: day ?? toISO(new Date()),
   });
   if (error) throw new Error(error.message);
@@ -545,7 +670,7 @@ export async function fetchActivity(
   const [daysRes, streakRes] = await Promise.all([
     supabase
       .from("activity_days")
-      .select("day, task_count, ward_count, note_count")
+      .select("day, ward_count")
       .eq("user_id", userId)
       .gte("day", since)
       .order("day"),
@@ -556,18 +681,12 @@ export async function fetchActivity(
       .maybeSingle(),
   ]);
   fail(daysRes.error, streakRes.error);
-  const rows: { day: string; task_count: number; ward_count: number; note_count: number }[] =
-    daysRes.data ?? [];
+  const rows: { day: string; ward_count: number }[] = daysRes.data ?? [];
   const streak = streakRes.data as
     | { current: number; longest: number; days_using: number }
     | null;
   return {
-    days: rows.map((row) => ({
-      day: row.day,
-      taskCount: row.task_count,
-      wardCount: row.ward_count,
-      noteCount: row.note_count,
-    })),
+    days: rows.map((row) => ({ day: row.day, wardCount: row.ward_count })),
     streak: {
       current: streak?.current ?? 0,
       longest: streak?.longest ?? 0,

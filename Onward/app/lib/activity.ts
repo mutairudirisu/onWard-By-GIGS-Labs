@@ -55,7 +55,7 @@ export function useActivity(weeks = 26) {
 export function activityByDay(days: ActivityDay[]): Record<string, number> {
   const map: Record<string, number> = {};
   for (const day of days) {
-    map[day.day] = (map[day.day] ?? 0) + day.taskCount + day.wardCount + day.noteCount;
+    map[day.day] = (map[day.day] ?? 0) + day.wardCount;
   }
   return map;
 }
@@ -86,8 +86,7 @@ export function bestWeekday(days: ActivityDay[]): string {
   const names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const totals = new Array(7).fill(0) as number[];
   for (const day of days) {
-    const count = day.taskCount + day.wardCount + day.noteCount;
-    totals[parseISO(day.day).getDay()] += count;
+    totals[parseISO(day.day).getDay()] += day.wardCount;
   }
   const best = totals.indexOf(Math.max(...totals));
   return totals[best] > 0 ? names[best] : "—";

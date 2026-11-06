@@ -81,7 +81,7 @@ export default function StreaksPage() {
         <div className="mt-2.5 flex items-center justify-between">
           <p className="text-[9px] text-muted">
             {loaded && streak.daysUsing === 0
-              ? "Your first completed task, note or onWard fills a square."
+              ? "Your first onWard fills a square."
               : "Every square is a day you showed up."}
           </p>
           <HeatLegend />

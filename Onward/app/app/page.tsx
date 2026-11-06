@@ -150,7 +150,7 @@ export default function WelcomePage() {
                       Made something better.
                     </span>
                     <span className="block text-[9px] text-muted">
-                      One task. One step forward.
+                      One onWard. One step forward.
                     </span>
                   </span>
                 </div>

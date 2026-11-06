@@ -53,7 +53,7 @@ const SECTIONS: LegalSection[] = [
     body: (
       <>
         <p>
-          You own everything you create in onWard — tasks, notes, onWards and
+          You own everything you create in onWard — onWards, evidence and
           portfolio entries. You grant us a limited licence to store, sync, back
           up and display it solely to operate the service for you.
         </p>
@@ -116,10 +116,10 @@ const SECTIONS: LegalSection[] = [
     heading: "Your data is never held hostage",
     body: (
       <p>
-        If you downgrade or stop paying, the Free plan still carries unlimited
-        tasks and notes and keeps everything you have ever logged readable. What
-        changes is capability — onWards per month, reminders, evidence on an onWard
-        and the depth of your insights history — not access to your own history.
+        If you downgrade or stop paying, the Free plan still keeps everything you
+        have ever logged readable. What
+        changes is capability — how many onWards a month, and whether you can
+        attach evidence to one — not access to your own history.
       </p>
     ),
   },

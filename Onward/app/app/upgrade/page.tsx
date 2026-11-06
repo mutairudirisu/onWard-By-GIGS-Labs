@@ -49,7 +49,7 @@ export default function UpgradePage() {
         <p className="mx-auto mt-2 max-w-[38ch] text-[13px] leading-[1.5] text-muted lg:text-[14px]">
           {isPro
             ? "Thanks for growing with us. Every Pro capability is active on this device."
-            : "Keep unlimited tasks and notes free. Pro removes the ceiling on everything that helps you go further."}
+            : "Three onWards a month stay free. Pro removes the ceiling on everything that helps you go further."}
         </p>
       </div>
 

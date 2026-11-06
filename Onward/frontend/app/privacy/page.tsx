@@ -45,8 +45,10 @@ const SECTIONS: LegalSection[] = [
             chosen role, and profile details you add.
           </li>
           <li>
-            <strong>Content you create</strong> — tasks, notes, onWards, streaks
-            and portfolio entries. This is the heart of the product.
+            <strong>Content you create</strong> — onWards, the evidence you
+            attach, portfolio entries, and the CV details you type over them
+            (headline, links, education, and any role or dates you correct).
+            This is the heart of the product.
           </li>
           <li>
             <strong>Device &amp; session data</strong> — the sign-in session your
@@ -54,9 +56,9 @@ const SECTIONS: LegalSection[] = [
             which build to serve you.
           </li>
           <li>
-            <strong>Activity you generate</strong> — completing a task, writing a
-            note, logging an onWard. The app records these events to compute your
-            streaks, your heatmap and your weekly insights. They stay tied to
+            <strong>Activity you generate</strong> — the day you logged an
+            onWard. The app records these events to compute your
+            streaks, your heatmap and your insights. They stay tied to
             your own account.
           </li>
           <li>
@@ -77,7 +79,7 @@ const SECTIONS: LegalSection[] = [
         <p>We use it to:</p>
         <ul className="list-disc space-y-1.5 pl-5">
           <li>Run the onWard app and keep your account the same on every device you sign in from.</li>
-          <li>Generate the streaks, insights and portfolio you asked for.</li>
+          <li>Generate the streaks, insights, portfolio and CV you asked for.</li>
           <li>Provide support and answer the messages you send us.</li>
           <li>Send essential service notices (plan changes, security, major changes).</li>
         </ul>
@@ -109,7 +111,7 @@ const SECTIONS: LegalSection[] = [
         <p>
           Your content lives in one place: a managed Postgres database (Supabase)
           that belongs to your onWard account. There is no separate copy kept on
-          our servers beyond that, and no analytics warehouse holding your notes.
+          our servers beyond that, and no analytics warehouse holding your entries.
         </p>
         <p>
           onWard installs from the browser as an app, and we cache the interface
@@ -138,12 +140,15 @@ const SECTIONS: LegalSection[] = [
             process data on our instructions under contract.
           </li>
           <li>
-            <strong>Nothing is published by default</strong> — the share buttons
-            in the app hand a link to your device&apos;s share sheet, but that
-            link opens the sign-in screen for anyone who is not you; your content
-            stays behind your account. There is no public profile, feed or
-            portfolio link today, and the only thing that leaves your account is
-            a portfolio PDF you choose to download and send yourself.
+            <strong>Nothing is published by default</strong> — an onWard stays in
+            your account and reaches other people only when you write a feed post
+            about it. A post carries what you typed, any photos or clips you
+            attached, your first name and your initials, and it is public the
+            moment it is made: anyone with the link can read it, account or no
+            account. Your email, surname, settings and every onWard you never
+            post about stay behind your account, and deleting a post takes its
+            files with it. A portfolio or CV only leaves your account as a file
+            you download and send yourself.
           </li>
           <li>
             <strong>Legal requests</strong> — if compelled by law, after we

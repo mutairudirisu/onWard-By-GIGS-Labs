@@ -3,11 +3,9 @@ import { ArrowRight, ArrowUpRight, Sprout } from "lucide-react";
 import { Starfield } from "@/components/starfield";
 import { DefinitionRow, FeatureSplit, LimePanel } from "@/components/sections";
 import {
-  CreateSheetScreen,
   InsightsScreen,
-  NotesScreen,
+  LogWardScreen,
   PortfolioScreen,
-  ReminderScreen,
   TodayScreen,
 } from "@/components/screens";
 import { RadialShowcase } from "@/components/radial-showcase";
@@ -87,8 +85,9 @@ export default function Home() {
               .
             </h1>
             <p className="mt-6 max-w-xl text-[clamp(15px,1.7vw,19px)] leading-relaxed text-paper/70">
-              Tasks, notes and the wins in between — dated as you log them, then
-              compiled into a portfolio you can actually hand someone.
+              The wins, lessons, milestones and feedback of an ordinary week —
+              dated as you log them, then compiled into a portfolio you can
+              actually hand someone.
             </p>
             <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
               <a href={SIGNUP_URL} className="btn-light">
@@ -127,19 +126,19 @@ export default function Home() {
       <DefinitionRow
         items={[
           {
-            name: "Task",
-            tagline: "Today, and the steps inside it.",
-            body: "One line per task, Enter for each step, and the task closes when every step does. Give it a time and it becomes a reminder.",
-          },
-          {
-            name: "Note",
-            tagline: "Room for ideas before they become something.",
-            body: "Tickable lines, numbered steps or plain prose. Tagged, pinnable, and grouped by the day you wrote it.",
-          },
-          {
             name: "onWard",
             tagline: "A win, with the reason it mattered.",
             body: "What you did, what changed because of it, the skills you used — and one switch to put it in your portfolio.",
+          },
+          {
+            name: "Evidence",
+            tagline: "The receipt beside the claim.",
+            body: "The link the thing lives at sits on the entry itself; on Pro, so do the file and the screenshot.",
+          },
+          {
+            name: "Portfolio",
+            tagline: "The page someone else can read.",
+            body: "Flagged onWards gather on one page with the skills your own entries show you practising, then download as a PDF.",
           },
         ]}
       />
@@ -147,60 +146,19 @@ export default function Home() {
       {/* ————— Capture ————— */}
       <FeatureSplit
         id="features"
-        eyebrow="Capture the loop"
-        title="One tap, from wherever you already are."
-        body="The plus button opens a single sheet, so momentum never waits for the right app or the right screen. Everything lands on the same dated record."
+        eyebrow="Capture"
+        title="Under a minute, before it blurs."
+        body="One screen for the whole entry, reached from the plus button on any tab. The numbers and names you cannot recall next quarter are the ones a review or a CV needs."
         points={[
-          "A task, a note or an onWard from the same button",
-          "Enter adds the next step — a task is a checklist by default",
+          "A title, what you did and what changed — two sentences is a capture",
           "Dictate the title when typing is the slower option",
-          "Five tabs on the phone, a sidebar when you open it on a laptop",
+          "Tag the skills you used, so the proof has a shape",
+          "Four tabs on the phone, a sidebar when you open it on a laptop",
         ]}
-        caption="The create sheet, exactly as it opens above the tab bar."
+        caption="The log screen, filled with a sample entry."
         visual={
           <LimePanel>
-            <CreateSheetScreen />
-          </LimePanel>
-        }
-      />
-
-      {/* ————— Reminders ————— */}
-      <FeatureSplit
-        id="reminders"
-        eyebrow="Reminders"
-        title="A reminder that survives a busy day."
-        body="Set a time on a task or on a note. When it passes, the row turns red instead of quietly disappearing — and the next time you open onWard, what fell due is waiting for you in one modal."
-        points={[
-          "Times on tasks and on notes, shared across your free allowance",
-          "A passed reminder shows red, with a tap to silence it alone",
-          "Snooze it ten minutes, silence it, or mark it done from one modal",
-          "Anything that fell due while you were away catches you up",
-        ]}
-        reverse
-        caption="A missed task reminder, and the modal that catches up on it."
-        visual={
-          <LimePanel>
-            <ReminderScreen />
-          </LimePanel>
-        }
-      />
-
-      {/* ————— Notes ————— */}
-      <FeatureSplit
-        id="notes"
-        eyebrow="Thinking space"
-        title="Notes that turn into something."
-        body="Write the messy version first. Notes keep their own boxes, so a list you ticked is a list that counts as progress — and the good ones can become an onWard later."
-        points={[
-          "Grouped by the day you wrote them, pinned ones kept close",
-          "Tick lines inside the note, in place, without opening it",
-          "Turn a note into an onWard, or export it as Markdown",
-          "A reminder on a note asks for one nudge, not a whole task",
-        ]}
-        caption="Your notes: a pinned card, tickable lines and the reminder pill."
-        visual={
-          <LimePanel>
-            <NotesScreen />
+            <LogWardScreen />
           </LimePanel>
         }
       />
@@ -216,6 +174,7 @@ export default function Home() {
         body="Flag an onWard and it appears on one page: the proof at a glance, the wins with their impact, and the skills your own entries show you practising. Then it downloads as a PDF."
         points={[
           "Skills rated Recorded, Practising or Proven by your entries",
+          "The same flagged wins re-laid as a one-page CV, exported as PDF or plain text",
           "One page, one PDF — that file is the thing you send",
           "Nothing leaves your account until you export it",
           "The page says what is self-reported, so it stays credible",
@@ -232,9 +191,8 @@ export default function Home() {
             <p className="eyebrow">Everything connects</p>
             <h2 className="h2 mt-4">One record, four ways to use it.</h2>
             <p className="lead mt-5">
-              Tasks and notes are the daily part. onWards are the proof. Insights
-              read them back to you, and the portfolio is what someone else can
-              see.
+              The onWard is the record. Your skills and your streak are read out
+              of it, and the portfolio is the part someone else can see.
             </p>
           </div>
           <div className="mt-14">
@@ -248,14 +206,14 @@ export default function Home() {
         id="insights"
         eyebrow="Stay honest"
         title="The calm version of how you're doing."
-        body="Insights counts steps, not hours in a chair. The streak is only the days you turned up, and the heatmap keeps six months of them in one square each."
+        body="Insights counts captures, not hours in a chair. The streak is only the days you turned up, and the heatmap keeps six months of them in one square each."
         points={[
-          "Steps across tasks, notes and onWards, per week or month",
+          "onWards logged per week or per month",
           "A six-month heatmap — every square a day you showed up",
           "Skills showing up, ranked by the onWards that used them",
           "A leaderboard ranked by what you logged, first names only",
         ]}
-        caption="Insights: the step bars, the skills the work shows, the streak."
+        caption="Insights: the capture bars, the skills the work shows, the streak."
         visual={
           <LimePanel>
             <InsightsScreen />
@@ -269,8 +227,9 @@ export default function Home() {
           <p className="eyebrow">Built for momentum</p>
           <h2 className="h2 mt-4">Pick a role, keep the same habit.</h2>
           <p className="lead mt-5">
-            Your role shapes the portfolio page and what onWard suggests you log.
-            None of these nine are a box you have to stay in — add your own.
+            Your role prints at the top of the portfolio you export, and a
+            student role unlocks half-price Pro. None of these nine are a box you
+            have to stay in — add your own.
           </p>
         </div>
         <div className="mt-14 grid gap-px border-y border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
@@ -300,9 +259,8 @@ export default function Home() {
               Stop documenting work. Start documenting growth.
             </h2>
             <p className="lead mt-4 text-paper/60">
-              Tasks and notes are unlimited on every plan. Free carries three
-              onWards a month; Pro removes the ceiling when your record outgrows
-              it.
+              Capture is free — three onWards a month. Pro removes the ceiling
+              on everything that helps you go further.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Link href="/pricing" className="btn-lime">

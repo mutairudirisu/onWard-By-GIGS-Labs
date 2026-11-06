@@ -2,43 +2,36 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  CreateSheetScreen,
   InsightsScreen,
   LogWardScreen,
-  NotesScreen,
-  ReminderScreen,
+  PortfolioScreen,
+  TodayScreen,
 } from "@/components/screens";
 
 const STEPS = [
   {
     n: "1",
     title: "Tap + and log what happened.",
-    body: "A task, a note or a win, from the same sheet, while it is still fresh. Enter adds the next step, so a task can be a list by the time you look up.",
-    screen: <CreateSheetScreen />,
-  },
-  {
-    n: "2",
-    title: "Give the day a time that survives it.",
-    body: "A time on a task or a note becomes a reminder. If the moment passes, the row turns red and waits — you can silence the nudge without touching the work.",
-    screen: <ReminderScreen />,
-  },
-  {
-    n: "3",
-    title: "Notes keep the reasoning.",
-    body: "The why behind the what. Tick the lines inside the note, and the note stays filed on the day you wrote it — searchable later.",
-    screen: <NotesScreen />,
-  },
-  {
-    n: "4",
-    title: "Name the win, and what changed.",
-    body: "An onWard asks what you did and what was different because of it. Two sentences. Skills you tagged come along, so the proof has a shape.",
+    body: "One screen: what you did, what changed because of it, and the skills you used. Dictate the title when typing is the slower option.",
     screen: <LogWardScreen />,
   },
   {
-    n: "5",
+    n: "2",
+    title: "It files itself on the day.",
+    body: "Every capture is dated the moment you save it, so the record reads back as a timeline you can move through — not a pile to re-sort later.",
+    screen: <TodayScreen />,
+  },
+  {
+    n: "3",
     title: "Read it back when you need to.",
-    body: "Insights adds the steps up, the heatmap shows the days you turned up, and the skills listed are the ones your own entries used.",
+    body: "Insights adds the captures up, the heatmap keeps six months of the days you turned up, and the skills listed are the ones your own entries used.",
     screen: <InsightsScreen />,
+  },
+  {
+    n: "4",
+    title: "Compile the proof.",
+    body: "Flag the onWards that matter and they gather on one page — the wins with their impact, the skills they show — which downloads as a PDF you can send.",
+    screen: <PortfolioScreen />,
   },
 ];
 

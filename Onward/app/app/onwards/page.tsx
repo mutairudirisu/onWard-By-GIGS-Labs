@@ -107,7 +107,7 @@ function WardCard({
         </span>
         <span className="flex items-center gap-2">
           {ward.date ? (
-            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-ink px-2.5 py-1 text-[10px] font-semibold text-paper">
+            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-cream px-2.5 py-1 text-[10px] font-semibold text-inksoft">
               <CalendarDays className="h-3 w-3" />
               {formatDue(ward.date)}
             </span>

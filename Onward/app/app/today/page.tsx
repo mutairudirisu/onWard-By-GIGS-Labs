@@ -2,32 +2,56 @@
 
 import Link from "next/link";
 import { PhoneShell } from "@/components/phone-shell";
-import { GoalGauge } from "@/components/goal-gauge";
 import { DateStrip } from "@/components/date-strip";
-import { TaskRow } from "@/components/task-row";
 import { Button } from "@/components/ui";
 import { useStore } from "@/components/store";
 import { useCurrentUser } from "@/components/auth";
 import { UnreadDot } from "@/components/notifications";
-import { BASE_DATE } from "@/lib/data";
+import type { OnWard } from "@/lib/data";
 import { formatLong } from "@/lib/dates";
-import { Bell, CalendarClock, ChevronRight, Plus } from "lucide-react";
+import { Bell, ChevronRight, Plus, Sprout } from "lucide-react";
+
+/** One logged ward, as a line in the day's record. */
+function WardLine({ ward }: { ward: OnWard }) {
+  return (
+    <Link
+      href={`/onwards/${ward.id}`}
+      className="flex items-start gap-3 py-3 transition hover:bg-cream"
+    >
+      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-lime-soft text-inksoft">
+        <Sprout className="h-3.5 w-3.5" strokeWidth={2.2} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[12.5px] font-bold tracking-tight text-ink [overflow-wrap:anywhere] lg:text-[14px]">
+          {ward.title}
+        </span>
+        {ward.impact ? (
+          <span className="mt-0.5 line-clamp-2 block text-[11px] leading-[1.55] text-muted [overflow-wrap:anywhere]">
+            {ward.impact}
+          </span>
+        ) : null}
+        {ward.skills.length ? (
+          <span className="mt-1 block truncate text-[10px] font-semibold text-inksoft">
+            {ward.skills.slice(0, 3).join(" · ")}
+          </span>
+        ) : null}
+      </span>
+      <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-faint" />
+    </Link>
+  );
+}
 
 export default function TodayPage() {
-  const { tasks, selectedDate } = useStore();
+  const { onWards, selectedDate, wardsThisMonth, limits } = useStore();
   const user = useCurrentUser();
   const firstName = user.name.split(" ")[0] || "there";
 
-  const dayTasks = tasks.filter((t) => (t.date ?? BASE_DATE) === selectedDate);
-  const open = dayTasks.filter((t) => !t.done);
-  const done = dayTasks.filter((t) => t.done);
-  const total = dayTasks.length;
-  const percent = total ? Math.round((done.length / total) * 100) : 0;
-  const isBase = selectedDate === BASE_DATE;
+  const dayWards = onWards.filter((w) => w.date === selectedDate);
+  const cap = limits.wardsPerMonth;
 
   return (
     <PhoneShell tab="today" wide>
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:grid-rows-[auto_auto_1fr] lg:gap-x-8">
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-x-8">
         <div className="mb-4 lg:col-span-2 lg:mb-6">
           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted lg:text-[11px]">
             {formatLong(selectedDate)}
@@ -57,78 +81,73 @@ export default function TodayPage() {
           </div>
         </div>
 
-        <div className="mb-3 lg:col-start-1 lg:row-start-2 lg:mb-5">
+        <div className="lg:col-start-1">
           <DateStrip />
+
+          <section className="mt-4">
+            <div className="mb-2 flex items-center gap-3">
+              <h2 className="text-[12px] font-bold uppercase tracking-[0.08em] text-muted">
+                {dayWards.length ? "Logged this day" : "Proof from this day"}
+              </h2>
+              <span className="h-px flex-1 bg-line" />
+              <Link
+                href="/onwards"
+                className="text-[10px] font-semibold text-muted underline lg:text-[12px]"
+              >
+                All onWards
+              </Link>
+            </div>
+
+            {dayWards.length ? (
+              <div className="card divide-y divide-line px-3.5">
+                {dayWards.map((ward) => (
+                  <WardLine key={ward.id} ward={ward} />
+                ))}
+              </div>
+            ) : (
+              <div className="card px-4 py-5 text-center">
+                <p className="text-[12px] font-semibold text-ink">
+                  Nothing captured for this day yet
+                </p>
+                <p className="mt-1 text-[10.5px] leading-[1.6] text-muted">
+                  A win, a lesson, a milestone or a piece of feedback takes under a minute
+                  now, and is proof later.
+                </p>
+              </div>
+            )}
+          </section>
         </div>
 
-        <section className="mb-6 lg:col-start-2 lg:row-start-2 lg:mb-0">
-          <GoalGauge
-            percent={percent}
-            doneCount={done.length}
-            total={total}
-            yesterday={isBase ? 50 : undefined}
-            caption={isBase ? "Goals reached today" : "Goals reached"}
-          />
-        </section>
-
-        <section className="lg:col-start-1 lg:row-start-3 lg:mt-0">
-          <div className="mb-2 flex items-end justify-between">
-            <h2 className="text-[13px] font-bold tracking-tight text-ink lg:text-[16px]">
-              {isBase ? "Today's journey" : "This day's journey"}
-            </h2>
-            <Link href="/tasks" className="text-[10px] font-semibold text-muted underline lg:text-[12px]">
-              See all
-            </Link>
-          </div>
-
-          {open.length === 0 && done.length === 0 ? (
-            <div className="card px-4 py-5 text-center">
-              <p className="text-[12px] font-semibold text-ink">Nothing planned for this day</p>
-              <p className="mt-1 text-[10px] text-muted">
-                Add a task to shape {isBase ? "today" : formatLong(selectedDate)}.
-              </p>
-              <div className="mt-3">
-                <Button href="/tasks" iconLeft={<Plus className="h-4 w-4" strokeWidth={2.4} />} full={false}>
-                  Add a task
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {open.map((task) => (
-                <TaskRow key={task.id} task={task} />
-              ))}
-              {done.map((task) => (
-                <TaskRow key={task.id} task={task} />
-              ))}
-            </div>
-          )}
-        </section>
-
-        <aside className="lg:col-start-2 lg:row-start-3 lg:mt-0 lg:space-y-4">
-          {isBase ? (
-            <Link
-              href="/tasks"
-              className="mt-5 flex items-center gap-3 rounded-2xl border border-lime-deep/50 bg-lime-pale px-3.5 py-3 lg:mt-0"
-            >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-paper text-inksoft">
-                <CalendarClock className="h-4 w-4" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[12px] font-bold text-ink">Milestone review at 10:00</span>
-                <span className="block text-[10px] text-muted">10:00 · Calendar · Today</span>
-              </span>
-              <ChevronRight className="h-4 w-4 text-muted" />
-            </Link>
-          ) : null}
-
-          <section className="mt-5 lg:mt-0">
+        <aside className="mt-6 space-y-4 lg:col-start-2 lg:mt-0">
+          <section>
             <p className="mb-2 text-[10px] text-muted lg:text-[12px]">
               Got something worth remembering?
             </p>
             <Button href="/onwards/new" iconLeft={<Plus className="h-4 w-4" strokeWidth={2.4} />}>
               Log an onWard
             </Button>
+          </section>
+
+          <section className="card px-4 py-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
+              This month
+            </p>
+            <p className="mt-1 text-[28px] font-bold leading-none tracking-tight text-ink">
+              {wardsThisMonth}
+            </p>
+            <p className="mt-1.5 text-[10.5px] text-muted">
+              {cap == null
+                ? "onWards captured, nothing capped on Pro."
+                : `${Math.min(wardsThisMonth, cap)} of ${cap} free captures used.`}
+            </p>
+          </section>
+
+          <section className="rounded-2xl bg-panel px-5 py-4 text-on-panel">
+            <h3 className="text-[12px] font-bold">Write it down before it blurs</h3>
+            <p className="mt-1 text-[11px] leading-[1.55] text-[#B7B8AC]">
+              The numbers and names you cannot recall next quarter are the ones a review or
+              a CV needs.
+            </p>
           </section>
         </aside>
       </div>

@@ -19,11 +19,13 @@ const TIERS = [
     href: SIGNUP_URL,
     featured: false,
     features: [
-      "Unlimited tasks, notes and steps",
       "3 onWards a month",
-      "Reminders on 3 tasks or notes",
       "Portfolio page and PDF download",
-      "Weekly insights, dark theme, installs as an app",
+      "CV builder with PDF and plain-text export",
+      "Feed posts, with up to 4 photos or clips each",
+      "Streak, heatmap and insights",
+      "Voice dictation on every field",
+      "Dark theme, installs as an app",
     ],
   },
   {
@@ -37,25 +39,23 @@ const TIERS = [
     featured: true,
     features: [
       "Everything in Free",
-      "Unlimited onWards, unlimited reminders",
+      "Unlimited onWards a month",
       "Evidence on every onWard — link, file or image",
-      "Full insights history instead of this week only",
       "Half price while your role says Student",
     ],
   },
 ];
 
 const ROWS: { label: string; free: string | boolean; pro: string | boolean }[] = [
-  { label: "Tasks & notes", free: "Unlimited", pro: "Unlimited" },
   { label: "onWards per month", free: "3", pro: "Unlimited" },
-  { label: "Reminders (tasks + notes)", free: "3", pro: "Unlimited" },
   { label: "Evidence per onWard", free: "None", pro: "Unlimited" },
-  { label: "Insights", free: "This week", pro: "Full history" },
   { label: "Portfolio page & PDF", free: true, pro: true },
+  { label: "CV builder, PDF & text export", free: true, pro: true },
+  { label: "Feed posts, photos and clips included", free: true, pro: true },
+  { label: "Streak, heatmap & insights", free: true, pro: true },
   { label: "Voice dictation", free: true, pro: true },
   { label: "Dark theme", free: true, pro: true },
   { label: "Installable PWA", free: true, pro: true },
-  { label: "Reminders that reach you off-device", free: false, pro: "In progress" },
 ];
 
 function Cell({ value, tone }: { value: string | boolean; tone: "free" | "pro" }) {
@@ -207,8 +207,8 @@ export function PricingBlock() {
       <p className="tiny relative z-20 mx-auto mt-8 max-w-2xl text-center text-paper/45">
         Prices in Nigerian Naira (₦). Set your role to Student in the app and Pro
         drops to ₦750/mo (₦600 billed yearly) for as long as you are studying —
-        same plan, no student ID. Cancel from the app; your tasks, notes and
-        onWards stay yours and the portfolio page still downloads.
+        same plan, no student ID. Cancel from the app; your onWards stay yours
+        and the portfolio page still downloads.
       </p>
     </>
   );

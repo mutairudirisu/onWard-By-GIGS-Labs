@@ -231,11 +231,11 @@ export default function StudentSpacePage() {
       <div className="grid grid-cols-2 gap-2.5">
         <PortfolioDownloadButton portfolio={portfolio} label="Download PDF" className="w-full" />
         <Link
-          href="/portfolio/share"
+          href="/portfolio"
           onClick={buzz}
           className="flex w-full items-center justify-center gap-2 rounded-btn border border-line bg-paper px-4 py-3 text-[12.5px] font-bold text-ink"
         >
-          Create share link
+          Preview portfolio
         </Link>
       </div>
 

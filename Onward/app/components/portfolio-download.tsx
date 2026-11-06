@@ -6,20 +6,10 @@ import { Modal } from "@/components/modal";
 import { useCurrentUser } from "@/components/auth";
 import { useActivity } from "@/lib/activity";
 import { useStore } from "@/components/store";
+import { downloadBlob } from "@/lib/download";
 import { buildPortfolio, type PortfolioModel } from "@/lib/portfolio";
 import { buildPortfolioPdf, portfolioFileName } from "@/lib/portfolio-pdf";
 import { Download, UserRoundPlus } from "lucide-react";
-
-function download(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1500);
-}
 
 /** The preview and the PDF read from this one model, so they cannot drift apart. */
 export function usePortfolio(): PortfolioModel {
@@ -52,7 +42,7 @@ export function PortfolioDownloadButton({
 
   const downloadPdf = () => {
     setAsking(false);
-    download(buildPortfolioPdf(portfolio), portfolioFileName(portfolio.name));
+    downloadBlob(buildPortfolioPdf(portfolio), portfolioFileName(portfolio.name));
   };
 
   return (

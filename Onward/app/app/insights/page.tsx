@@ -19,20 +19,17 @@ const WINDOW: Record<Range, number> = {
 
 export default function InsightsPage() {
   const [range, setRange] = useState<Range>("This month");
-  const { tasks, notes, onWards, skills } = useStore();
+  const { onWards, skills } = useStore();
   const { days, streak, loaded } = useActivity(27);
 
   const today = toISO(new Date());
   const since = addDays(today, -(WINDOW[range] - 1));
-  const monthStart = `${today.slice(0, 7)}-01`;
+  const daysSoFar = Number(today.slice(8, 10));
 
   const monthWards = onWards.filter((w) => (w.date ?? "").slice(0, 7) === today.slice(0, 7));
-  const monthTasks = tasks.filter((t) => !t.archived && (t.date ?? "").slice(0, 7) === today.slice(0, 7));
-  const monthTasksDone = monthTasks.filter((t) => t.done);
+  const monthDays = new Set(monthWards.map((w) => w.date)).size;
 
   const rangedWards = onWards.filter((w) => (w.date ?? "") >= since);
-  const rangedTasks = tasks.filter((t) => !t.archived && (t.date ?? "") >= since);
-  const rangedDone = rangedTasks.filter((t) => t.done);
 
   const buckets = useMemo(
     () => bucketsFrom(days, 6, Math.max(1, Math.round(WINDOW[range] / 6))),
@@ -53,16 +50,12 @@ export default function InsightsPage() {
   }, [onWards]);
   const skillMax = Math.max(1, ...skillUsage.map((s) => s.count));
 
-  const completion = monthTasks.length
-    ? Math.round((monthTasksDone.length / monthTasks.length) * 100)
-    : 0;
-
   const coaching =
     streak.current >= 7
       ? "Consistent effort is becoming a strength. This is a good story to bring to your next 1:1."
       : streak.daysUsing > 0
-        ? "Momentum is starting. One completed task or onWard today keeps the streak warm."
-        : "Log your first onWard or finish a task today — the picture builds from there.";
+        ? "Momentum is starting. One onWard today keeps the run alive."
+        : "Log your first onWard today — the picture builds from there.";
 
   return (
     <PhoneShell tab="you">
@@ -98,11 +91,9 @@ export default function InsightsPage() {
           </p>
         </div>
         <div className="card px-3.5 py-3">
-          <p className="text-[20px] font-bold leading-none tracking-tight text-ink">
-            {monthTasksDone.length}
-          </p>
-          <p className="mt-1 text-[10px] font-semibold text-inksoft">Tasks completed</p>
-          <p className="mt-0.5 text-[9px] text-muted">Since {monthStart.slice(8)} {monthTitle(today).split(" ")[0]}</p>
+          <p className="text-[20px] font-bold leading-none tracking-tight text-ink">{monthDays}</p>
+          <p className="mt-1 text-[10px] font-semibold text-inksoft">Days captured</p>
+          <p className="mt-0.5 text-[9px] text-muted">of {daysSoFar} so far this month</p>
         </div>
       </div>
 
@@ -110,10 +101,10 @@ export default function InsightsPage() {
         <div className="flex items-start justify-between">
           <div>
             <h3 className="text-[12px] font-bold tracking-tight text-ink">
-              {range === "This week" ? "Steps this week" : range === "This month" ? "Steps this month" : "Steps all time"}
+              {range === "This week" ? "Captures this week" : range === "This month" ? "Captures this month" : "Captures all time"}
             </h3>
             <p className="mt-0.5 text-[9px] text-muted">
-              Tasks, notes and onWards · {WINDOW[range]} days
+              onWards logged · {WINDOW[range]} days
             </p>
           </div>
           <span className="text-[18px] font-bold tracking-tight text-ink">{bucketTotal}</span>
@@ -131,7 +122,7 @@ export default function InsightsPage() {
         </div>
         <p className="mt-3 border-t border-line pt-2.5 text-[9px] text-muted">
           {loaded
-            ? `${rangedDone.length} of ${rangedTasks.length} tasks complete in this window · ${completion}% this month`
+            ? `${rangedWards.length} onWard${rangedWards.length === 1 ? "" : "s"} logged in this window`
             : "Reading your activity…"}
         </p>
       </section>
@@ -165,11 +156,10 @@ export default function InsightsPage() {
         )}
       </section>
 
-      <div className="mb-3 grid grid-cols-3 gap-2">
+      <div className="mb-3 grid grid-cols-2 gap-2">
         {[
-          { value: skills.length, label: "skills" },
-          { value: notes.length, label: "notes" },
-          { value: rangedWards.length, label: "onWards" },
+          { value: skills.length, label: "skills tagged" },
+          { value: onWards.length, label: "onWards logged" },
         ].map((stat) => (
           <div key={stat.label} className="card px-2 py-3 text-center">
             <p className="text-[16px] font-bold leading-none tracking-tight text-ink">{stat.value}</p>

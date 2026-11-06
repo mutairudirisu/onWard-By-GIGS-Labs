@@ -16,7 +16,7 @@ import {
 
 const ROLES = [
   { id: "student", label: "Student", meta: "Learning, coursework & growth", icon: GraduationCap },
-  { id: "employee", label: "Employee", meta: "Work tasks, projects & goals", icon: Briefcase },
+  { id: "employee", label: "Employee", meta: "Work wins, projects & goals", icon: Briefcase },
   { id: "freelancer", label: "Freelancer", meta: "Clients, contracts & creative work", icon: Zap },
   { id: "jobseeker", label: "Job seeker", meta: "Applications, prep & interviews", icon: Search },
   { id: "other", label: "Other", meta: "Something else entirely", icon: MoreHorizontal },

@@ -8,7 +8,7 @@ import { ShareSheet, wardShareText } from "@/components/share-sheet";
 import { BackLink, Button, Tag } from "@/components/ui";
 import { useStore } from "@/components/store";
 import type { Evidence } from "@/lib/data";
-import { ArrowUpRight, Check, File as FileIcon, Folder, Globe, Image as ImageIcon, Share2, Star, TrendingUp } from "lucide-react";
+import { ArrowUpRight, Check, File as FileIcon, Folder, Globe, Image as ImageIcon, Share2, Star, TrendingUp, Users } from "lucide-react";
 
 function EvidenceIcon({ kind }: { kind: Evidence["kind"] }) {
   const cls = "h-[15px] w-[15px]";
@@ -129,34 +129,55 @@ export default function OnWardDetailPage() {
         </p>
       </section>
 
-      <section className="mb-5 flex items-start gap-2.5 rounded-xl border border-lime-deep/40 bg-lime-pale px-3.5 py-3">
-        <Folder className="mt-0.5 h-3.5 w-3.5 shrink-0 text-inksoft" />
-        <span className="flex-1">
-          <span className="block text-[11px] font-bold text-ink">
-            {ward.inPortfolio ? "Selected for your portfolio" : "Not in your portfolio"}
+      <section className="mb-5 rounded-xl border border-lime-deep/40 bg-lime-pale">
+        <div className="flex items-start gap-2.5 px-3.5 py-3">
+          <Folder className="mt-0.5 h-3.5 w-3.5 shrink-0 text-inksoft" />
+          <span className="flex-1">
+            <span className="block text-[11px] font-bold text-ink">
+              {ward.inPortfolio ? "Selected for your portfolio" : "Not in your portfolio"}
+            </span>
+            <span className="block text-[9px] text-muted">
+              {ward.inPortfolio
+                ? "Shown in the portfolio file you download and send"
+                : "Leave it out of the portfolio file"}
+            </span>
           </span>
-          <span className="block text-[9px] text-muted">
-            {ward.inPortfolio ? "Public when you publish · Private draft until then" : "Keep this win private"}
-          </span>
-        </span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={ward.inPortfolio}
-          aria-label="Include in portfolio"
-          onClick={() => togglePortfolio(ward.id)}
-          className={`mt-0.5 flex h-6 w-10 shrink-0 items-center rounded-full px-0.5 transition ${
-            ward.inPortfolio ? "bg-lime" : "bg-line"
-          }`}
-        >
-          <span
-            className={`flex h-5 w-5 items-center justify-center rounded-full bg-paper shadow transition-transform ${
-              ward.inPortfolio ? "translate-x-4" : ""
+          <button
+            type="button"
+            role="switch"
+            aria-checked={ward.inPortfolio}
+            aria-label="Include in portfolio"
+            onClick={() => togglePortfolio(ward.id)}
+            className={`mt-0.5 flex h-6 w-10 shrink-0 items-center rounded-full px-0.5 transition ${
+              ward.inPortfolio ? "bg-lime" : "bg-line"
             }`}
           >
-            {ward.inPortfolio ? <Check className="h-3 w-3 text-lime-deep" strokeWidth={3} /> : null}
+            <span
+              className={`flex h-5 w-5 items-center justify-center rounded-full bg-paper shadow transition-transform ${
+                ward.inPortfolio ? "translate-x-4" : ""
+              }`}
+            >
+              {ward.inPortfolio ? <Check className="h-3 w-3 text-lime-deep" strokeWidth={3} /> : null}
+            </span>
+          </button>
+        </div>
+
+        <div className="flex items-start gap-2.5 border-t border-lime-deep/30 px-3.5 py-3">
+          <Users className="mt-0.5 h-3.5 w-3.5 shrink-0 text-inksoft" />
+          <span className="flex-1">
+            <span className="block text-[11px] font-bold text-ink">Share to the feed</span>
+            <span className="block text-[9px] text-muted">
+              Opens the composer with this entry&rsquo;s text in it. Nothing is public until you
+              post what you end up writing.
+            </span>
           </span>
-        </button>
+          <Link
+            href={`/feed/new?ward=${ward.id}`}
+            className="mt-0.5 shrink-0 cursor-pointer rounded-full border border-line bg-paper px-3 py-1.5 text-[10px] font-bold text-ink transition hover:border-lime-deep"
+          >
+            Write a post
+          </Link>
+        </div>
       </section>
 
       <div className="grid grid-cols-2 gap-2.5">

@@ -65,7 +65,7 @@ export default function SignInPage() {
       <AuthHeader />
       <p className="eyebrow mb-3">Pick up where you left off</p>
       <h1 className="h1 mb-2">Good to see you.</h1>
-      <p className="sub mb-7">Your plans, notes and little wins are right where you left them.</p>
+      <p className="sub mb-7">Your onWards are right where you left them.</p>
 
       <form onSubmit={submit} className="space-y-4">
         <Field label="Email address">

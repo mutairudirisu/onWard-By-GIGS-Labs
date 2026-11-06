@@ -127,7 +127,6 @@ export default function Overview() {
               <StatCard
                 label="onWards logged"
                 value={data.onWards.toLocaleString()}
-                hint={`${data.tasks.toLocaleString()} tasks · ${data.notes.toLocaleString()} notes`}
               />
             </div>
 
@@ -271,8 +270,8 @@ export default function Overview() {
               <dl className="mt-4 space-y-2.5">
                 {[
                   { label: "onWards", value: data.onWards },
-                  { label: "Tasks", value: data.tasks },
-                  { label: "Notes", value: data.notes },
+                  { label: "Tasks · legacy", value: data.tasks },
+                  { label: "Notes · legacy", value: data.notes },
                 ].map((row) => (
                   <div key={row.label} className="flex items-center justify-between">
                     <dt className="text-[12.5px] text-muted">{row.label}</dt>

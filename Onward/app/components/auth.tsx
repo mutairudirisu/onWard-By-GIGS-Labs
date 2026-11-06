@@ -43,6 +43,17 @@ const PUBLIC_ROUTES = [
   "/usage",
 ];
 
+/**
+ * A post and the feed are read by anyone a link reaches; writing is not offered
+ * until there is a session. /feed/new is the composer, and that one needs a name
+ * to post under, so it stays behind the gate.
+ */
+function isPublicRoute(pathname: string) {
+  if (PUBLIC_ROUTES.includes(pathname)) return true;
+  if (pathname === "/feed") return true;
+  return pathname.startsWith("/feed/") && pathname !== "/feed/new";
+}
+
 // These are the entry screens a signed-in user should be bounced away from.
 const ENTRY_ROUTES = ["/", "/sign-in", "/create-account"];
 
@@ -301,7 +312,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const { ready, user } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
-  const isPublic = PUBLIC_ROUTES.includes(pathname);
+  const isPublic = isPublicRoute(pathname);
   const isEntry = ENTRY_ROUTES.includes(pathname);
   const blocked = (!user && !isPublic) || (Boolean(user) && isEntry);
 

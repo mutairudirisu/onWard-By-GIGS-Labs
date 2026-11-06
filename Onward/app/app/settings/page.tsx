@@ -21,7 +21,6 @@ import {
   Mail,
   Moon,
   Sun,
-  Timer,
   Vibrate,
 } from "lucide-react";
 
@@ -90,7 +89,7 @@ export default function SettingsPage() {
             <span className="block text-[11px] text-muted lg:text-[12px]">
               {isPro
                 ? "Every Pro capability is active."
-                : "3 onWards/mo, 1 share link, reminders on 3 tasks."}
+                : "3 onWards a month, no evidence attachments."}
             </span>
           </span>
           <button
@@ -153,7 +152,7 @@ export default function SettingsPage() {
               title="Push notifications"
               hint={
                 permission === "granted"
-                  ? "Task reminders and daily nudges"
+                  ? "Streak nudges and your wins, in your feed"
                   : "Allow the browser prompt to get alerts"
               }
             >
@@ -179,7 +178,7 @@ export default function SettingsPage() {
                   Notification inbox
                 </span>
                 <span className="block text-[10.5px] text-muted lg:text-[12px]">
-                  {unread > 0 ? `${unread} unread` : "Reminders, streaks and your wins"}
+                  {unread > 0 ? `${unread} unread` : "Streaks and the onWards you capture"}
                 </span>
               </span>
               {unread > 0 ? (
@@ -196,15 +195,6 @@ export default function SettingsPage() {
                 label="Weekly digest"
               />
             </Row>
-            <Row icon={<Timer className="h-[18px] w-[18px]" />} title="Default reminder time">
-              <input
-                type="time"
-                value={settings.defaultReminderTime}
-                onChange={(e) => setSetting("defaultReminderTime", e.target.value)}
-                aria-label="Default reminder time"
-                className="rounded-lg border border-line bg-cream px-3 py-2 text-[13px] font-semibold text-ink outline-none lg:text-[14px]"
-              />
-            </Row>
           </div>
         </section>
 
@@ -217,7 +207,7 @@ export default function SettingsPage() {
               hint={
                 vibrates === false
                   ? "This browser has no vibration API — Android and the installed app buzz"
-                  : "Buzz when you check off a task, log a win or save a note"
+                  : "Buzz when you capture an onWard or tap through the app"
               }
             >
               <Toggle
@@ -252,7 +242,7 @@ export default function SettingsPage() {
             </Button>
           </div>
           <p className="mt-3 text-[11px] text-muted lg:text-[12px]">
-            Your tasks, notes and onWards stay on your account. Nothing is shared unless you share it.
+            Your onWards stay on your account. Nothing is shared unless you share it.
           </p>
         </section>
       </div>

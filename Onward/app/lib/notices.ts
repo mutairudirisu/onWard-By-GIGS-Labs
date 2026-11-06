@@ -1,12 +1,6 @@
 "use client";
 
-export type NoticeKind =
-  | "reminder"
-  | "streak"
-  | "task"
-  | "win"
-  | "note"
-  | "welcome";
+export type NoticeKind = "streak" | "win" | "welcome";
 
 export type NoticeInput = {
   id?: string;

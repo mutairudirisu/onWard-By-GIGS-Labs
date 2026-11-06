@@ -2,7 +2,7 @@
 
 import { PhoneShell } from "@/components/phone-shell";
 import { PortfolioDownloadButton, usePortfolio } from "@/components/portfolio-download";
-import { BackButton, Tag } from "@/components/ui";
+import { BackButton, Button, Tag } from "@/components/ui";
 import { Wordmark } from "@/components/wordmark";
 import { FileText, Mail, Sprout } from "lucide-react";
 
@@ -158,9 +158,14 @@ export default function EmployerPortfolioPage() {
       ) : null}
       <PortfolioDownloadButton portfolio={portfolio} />
 
+      <div className="mt-2 border-t border-line pt-3">
+        <Button href="/cv" variant="quiet" full={false} className="-ml-2 text-[11px]">
+          Turn these wins into a CV
+        </Button>
+      </div>
+
       <p className="mt-5 text-center text-[8px] leading-[1.6] text-faint">
-        Metrics are self-reported from the work logged in onWard. Evidence shared with permission.
-        Built with onWard.
+        Metrics are self-reported from the work logged in onWard. Built with onWard.
       </p>
     </PhoneShell>
   );

@@ -40,7 +40,7 @@ export function ShareButton({
   }
 
   return (
-    <button type="button" onClick={onShare} className={className}>
+    <button type="button" onClick={onShare} aria-label={label || "Share"} className={className}>
       {icon ? (
         copied ? (
           <Check className="h-4 w-4" />

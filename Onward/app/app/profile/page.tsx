@@ -14,6 +14,8 @@ import { heatmapFrom, useActivity } from "@/lib/activity";
 import {
   BarChart3,
   Crown,
+  FileDown,
+  FileText,
   Flame,
   GraduationCap,
   Pencil,
@@ -162,7 +164,9 @@ export default function ProfilePage() {
                 {isPro ? <ProBadge /> : null}
               </span>
               <span className={`block text-[10px] lg:text-[12px] ${isPro ? "text-[#A9AAA0]" : "text-dark/70"}`}>
-                {isPro ? "Every capability unlocked" : "Unlimited onWards, unlimited reminders & more"}
+                {isPro
+                  ? "Every capability unlocked"
+                  : "Unlimited onWards and evidence on every capture"}
               </span>
             </span>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className={isPro ? "text-[#A9AAA0]" : "text-dark/60"} aria-hidden>
@@ -258,9 +262,15 @@ export default function ProfilePage() {
             <InstallButton className="card w-full items-center px-4 py-3.5 text-[13px] font-semibold text-ink lg:text-[14px]" />
           </div>
 
-          <Button href="/portfolio/share" iconLeft={<Share2 className="h-4 w-4" />}>
-            Share my portfolio
+          <Button href="/portfolio" iconLeft={<FileText className="h-4 w-4" />}>
+            My portfolio
           </Button>
+
+          <div className="mt-2">
+            <Button href="/cv" variant="secondary" iconLeft={<FileDown className="h-4 w-4" />}>
+              My CV
+            </Button>
+          </div>
 
           <p className="pt-2 text-center text-[9.5px] font-medium tracking-[0.08em] text-faint">
             onWard v{process.env.NEXT_PUBLIC_APP_VERSION} · by GIGS Labs

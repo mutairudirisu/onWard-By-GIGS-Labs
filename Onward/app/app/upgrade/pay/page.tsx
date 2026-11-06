@@ -78,8 +78,8 @@ export default function PayPage() {
             You&apos;re on Pro
           </h1>
           <p className="mt-2 text-[13px] leading-[1.5] text-muted">
-            Unlimited onWards, reminders on every task, verified skills and
-            every share link are now unlocked. Growth has no ceiling.
+            Unlimited onWards and evidence on every capture are now unlocked.
+            Growth has no ceiling.
           </p>
           <div className="mt-7 flex w-full flex-col gap-2">
             <button

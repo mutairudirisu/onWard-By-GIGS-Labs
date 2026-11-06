@@ -29,7 +29,7 @@ const VALUES = [
   {
     icon: Lock,
     title: "Private by default",
-    body: "Your history belongs to you. It lives in your own account, behind a login only you hold — no feed, no public profile, nothing shown to anyone until you send them something.",
+    body: "Your history belongs to you. It lives in your own account, behind a login only you hold. Nothing reaches anyone until you write a feed post — and the post, its files, its likes and its comments go away when you delete it.",
   },
   {
     icon: PenLine,

@@ -19,15 +19,15 @@ const FAQS = [
   },
   {
     q: "Is my timeline private?",
-    a: "Yes, and there is nothing to publish by accident. There is no feed and no public profile — the portfolio is a page inside your account that downloads as a PDF when you decide to hand it to someone.",
+    a: "Yes, and there is nothing to publish by accident. Every onWard you log stays in your account. The feed is separate: it shows only what you deliberately write as a post, plus your first name and initials, and deleting the post takes its files and comments with it. There is no public profile or shareable portfolio page: the portfolio is a page inside your account that downloads as a PDF when you decide to hand it to someone.",
   },
   {
     q: "What happens when I hit a Free limit?",
-    a: "The app counts them for you: three onWards a month and reminders on three tasks or notes, shown as \"2 of 3 free onWards used this month\" while you are still writing. When you reach the last one it asks before it stops you, and the half-written entry stays exactly where you left it.",
+    a: "The app counts them for you: three onWards a month, shown as \"2 of 3 free onWards used this month\" while you are still writing. When you reach the last one it asks before it stops you, and the half-written entry stays exactly where you left it.",
   },
   {
-    q: "Do tasks and notes cost anything?",
-    a: "No. Tasks, notes and the steps inside them are unlimited on every plan, forever. The plan you are on only changes how much of that work you can promote into an onWard, how much evidence you can attach, and how many things you can set a reminder on.",
+    q: "What does Free leave out?",
+    a: "Two things: how many onWards you can log in a month, and whether you can attach evidence — a link, file or image — to one. The dated record, the streak, the heatmap, insights, the portfolio page and its PDF, dictation and the dark theme are on both plans.",
   },
   {
     q: "Does the app work offline?",
@@ -56,8 +56,8 @@ export default function Pricing() {
             Two plans. Both keep your history.
           </h1>
           <p className="lead mx-auto mt-5 max-w-xl text-paper/60">
-            Free is a working app, not a trial. Upgrade when the onWard cap or the
-            reminder cap starts deciding what you can log.
+            Free is a working app, not a trial. Upgrade when the onWard cap or
+            the evidence cap starts deciding what you can log.
           </p>
           <PricingBlock />
         </div>
@@ -70,8 +70,8 @@ export default function Pricing() {
             <p className="eyebrow">Line by line</p>
             <h2 className="h2 mt-4">What each plan actually carries.</h2>
             <p className="lead mx-auto mt-4">
-              These are the limits the app enforces, not a wish list. The one row
-              we have not finished is marked as in progress.
+              These are the limits the app enforces, not a wish list. The rows
+              that read the same on both plans are the ones we do not gate.
             </p>
           </div>
           <div className="mx-auto max-w-3xl">

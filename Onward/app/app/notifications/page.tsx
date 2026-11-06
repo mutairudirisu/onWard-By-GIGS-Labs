@@ -10,18 +10,14 @@ import {
   Bell,
   BellRing,
   CheckCheck,
-  CheckCircle2,
   Flame,
   Sparkles,
   Sprout,
 } from "lucide-react";
 
 const ICONS: Record<NoticeKind, typeof Bell> = {
-  reminder: BellRing,
   streak: Flame,
-  task: CheckCircle2,
   win: Sprout,
-  note: Sparkles,
   welcome: Sparkles,
 };
 
@@ -39,19 +35,9 @@ function when(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
-function until(iso: string) {
-  const mins = Math.round((new Date(iso).getTime() - Date.now()) / 60000);
-  if (mins < 1) return "now";
-  if (mins < 60) return `in ${mins}m`;
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return `in ${hours}h`;
-  return `in ${Math.round(hours / 24)}d`;
-}
-
 function NoticeRow({ notice, unread }: { notice: AppNotice; unread: boolean }) {
   const { markRead } = useNotifications();
   const Icon = ICONS[notice.kind] ?? Bell;
-  const upcoming = notice.kind === "reminder" && new Date(notice.at).getTime() > Date.now();
   const inner = (
     <>
       <span
@@ -67,9 +53,7 @@ function NoticeRow({ notice, unread }: { notice: AppNotice; unread: boolean }) {
           {unread ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" /> : null}
         </span>
         <span className="mt-0.5 block text-[11.5px] leading-[1.5] text-inksoft">{notice.body}</span>
-        <span className="mt-1 block text-[10px] font-medium text-muted">
-          {upcoming ? `Scheduled ${until(notice.at)}` : when(notice.at)}
-        </span>
+        <span className="mt-1 block text-[10px] font-medium text-muted">{when(notice.at)}</span>
       </span>
     </>
   );
@@ -111,7 +95,7 @@ export default function NotificationsPage() {
         <BackLink href="/today" label="Back to today" />
         <h1 className="text-[17px] font-bold tracking-tight text-ink">Notifications</h1>
       </div>
-      <p className="tiny mb-4">Reminders, streak nudges and the wins you just captured.</p>
+      <p className="tiny mb-4">Streak nudges and the wins you just captured.</p>
 
       {permission !== "granted" ? (
         <section className="card mb-4 flex items-start gap-3 px-4 py-3.5">
@@ -125,7 +109,7 @@ export default function NotificationsPage() {
             <p className="mt-0.5 text-[11px] leading-[1.5] text-muted">
               {permission === "denied"
                 ? "Allow notifications for this site in your browser settings, then reopen onWard."
-                : "Get a buzz when a task reminder is due while onWard is open."}
+                : "Get a buzz when onWard saves something worth your attention."}
             </p>
             {permission === "default" ? (
               <button
@@ -141,7 +125,7 @@ export default function NotificationsPage() {
       ) : (
         <p className="mb-4 flex items-center gap-1.5 text-[10.5px] font-semibold text-lime-deep">
           <BellRing className="h-3.5 w-3.5" />
-          {alertsOn ? "Alerts are on. Reminders buzz while onWard is open." : "Alerts allowed, but muted in Settings."}
+          {alertsOn ? "Alerts are on. You will hear when something lands here." : "Alerts allowed, but muted in Settings."}
         </p>
       )}
 
@@ -152,7 +136,7 @@ export default function NotificationsPage() {
           </span>
           <p className="mt-3 text-[12.5px] font-semibold text-ink">Nothing needs your attention</p>
           <p className="tiny mt-1">
-            Add a reminder to a task and it will show up here before it is due.
+            Every onWard you save lands here, and a streak nudge shows up when the run is going.
           </p>
         </div>
       ) : (

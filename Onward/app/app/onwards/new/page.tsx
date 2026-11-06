@@ -8,7 +8,8 @@ import { DictateButton } from "@/components/dictate-button";
 import { BackLink, Button, Field, TextArea, TextInput, Toggle } from "@/components/ui";
 import { ProBadge, UpgradeModal } from "@/components/pro";
 import { useStore } from "@/components/store";
-import { BASE_DATE, type Evidence } from "@/lib/data";
+import { type Evidence } from "@/lib/data";
+import { todayISO } from "@/lib/dates";
 import { uuid } from "@/lib/db";
 import { appendDictation } from "@/lib/dictation";
 import {
@@ -37,7 +38,7 @@ export default function LogOnWardPage() {
   const [evidenceGate, setEvidenceGate] = useState(false);
 
   const [title, setTitle] = useState("");
-  const [date, setDate] = useState(selectedDate || BASE_DATE);
+  const [date, setDate] = useState(selectedDate || todayISO());
   const [project, setProject] = useState("");
   const [body, setBody] = useState("");
   const [impact, setImpact] = useState("");
@@ -148,7 +149,7 @@ export default function LogOnWardPage() {
       <div className="mb-5 flex items-center gap-2 rounded-xl border border-lime-deep/40 bg-lime-soft px-3 py-2">
         <Sprout className="h-3.5 w-3.5 text-inksoft" />
         <span className="truncate text-[10px] font-medium text-inksoft">
-          Every task completed is a step forward — capture the win.
+          Every piece of work is a step forward — capture the win.
         </span>
       </div>
 
@@ -189,7 +190,7 @@ export default function LogOnWardPage() {
               <input
                 type="date"
                 value={date}
-                onChange={(e) => setDate(e.target.value || BASE_DATE)}
+                onChange={(e) => setDate(e.target.value || todayISO())}
                 aria-label="Date completed"
                 className="field-input pr-9"
               />
@@ -378,7 +379,9 @@ export default function LogOnWardPage() {
             <span className="text-[12px] font-bold text-ink">Include in my portfolio</span>
             <Toggle checked={inPortfolio} onChange={setInPortfolio} label="Include in my portfolio" />
           </div>
-          <p className="mt-1.5 text-[9px] text-muted">You can review what&apos;s shared before publishing.</p>
+          <p className="mt-1.5 text-[9px] text-muted">
+            The portfolio file is only ever something you download and send. To show this win to other people, write a post about it from its own page.
+          </p>
         </div>
       </div>
 

@@ -2,22 +2,18 @@ import {
   BarChart3,
   Flame,
   FolderOpen,
-  ListTodo,
-  NotebookPen,
   Plus,
   Sprout,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 
-/* One tone for all six: the point is that they belong to the same record, not
+/* One tone for all four: the point is that they belong to the same record, not
    that each corner of the app has its own colour. */
 const NODES = [
-  { label: "Tasks", Icon: ListTodo, angle: -90 },
-  { label: "Notes", Icon: NotebookPen, angle: -30 },
-  { label: "Streaks", Icon: Flame, angle: 30 },
-  { label: "onWards", Icon: Sprout, angle: 90 },
-  { label: "Skills", Icon: BarChart3, angle: 150 },
-  { label: "Portfolio", Icon: FolderOpen, angle: 210 },
+  { label: "onWards", Icon: Sprout, angle: -90 },
+  { label: "Skills", Icon: BarChart3, angle: 0 },
+  { label: "Portfolio", Icon: FolderOpen, angle: 90 },
+  { label: "Streaks", Icon: Flame, angle: 180 },
 ];
 
 const R = 40;
