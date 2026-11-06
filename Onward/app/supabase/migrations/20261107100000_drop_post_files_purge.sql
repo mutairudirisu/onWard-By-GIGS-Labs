@@ -8,7 +8,7 @@
 -- already run and this is what a real database needs to be told.
 begin;
 
-alter table public.posts drop trigger if exists post_files_purge;
+drop trigger if exists post_files_purge on public.posts;
 drop function if exists public.purge_post_files();
 
 commit;
