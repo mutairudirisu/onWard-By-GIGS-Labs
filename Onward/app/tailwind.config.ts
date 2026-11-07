@@ -34,6 +34,7 @@ export default {
           soft: withVar("panel-soft"),
         },
         "on-panel": withVar("on-panel"),
+        danger: withVar("danger"),
       },
       fontFamily: {
         sans: [

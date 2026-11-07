@@ -186,8 +186,7 @@ export function ChecklistWidget({ onHide }: { onHide: () => void }) {
       </div>
 
       {adding ? (
-        <label className="mt-3 flex items-center gap-2 rounded-xl border border-dash bg-paper px-2.5 py-2">
-          <Plus className="h-4 w-4 shrink-0 text-inksoft" strokeWidth={2.4} />
+        <div className="mt-3 flex items-center gap-2 rounded-xl border border-dash bg-paper py-1.5 pl-2.5 pr-1.5">
           <input
             value={draft}
             autoFocus
@@ -206,7 +205,20 @@ export function ChecklistWidget({ onHide }: { onHide: () => void }) {
             aria-label="New checklist item"
             className="min-w-0 flex-1 bg-transparent text-[12px] font-medium text-ink outline-none placeholder:text-faint"
           />
-        </label>
+          <button
+            type="button"
+            onClick={add}
+            disabled={!draft.trim()}
+            aria-label="Add to the checklist"
+            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition ${
+              draft.trim()
+                ? "cursor-pointer bg-lime text-dark hover:bg-lime-deep"
+                : "cursor-not-allowed bg-line text-muted"
+            }`}
+          >
+            <Plus className="h-3.5 w-3.5" strokeWidth={2.8} />
+          </button>
+        </div>
       ) : null}
 
       {items.length ? (
@@ -223,7 +235,7 @@ export function ChecklistWidget({ onHide }: { onHide: () => void }) {
               <li key={item.id} className="relative">
                 <span
                   aria-hidden
-                  className="absolute inset-y-0 right-1 flex items-center gap-1 text-[9.5px] font-bold uppercase tracking-[0.08em] text-muted"
+                  className="absolute inset-y-0 right-1 flex items-center gap-1 text-[9.5px] font-bold uppercase tracking-[0.08em] text-danger"
                   style={{ opacity: offset < -12 ? 1 : 0 }}
                 >
                   <Trash2 className="h-3.5 w-3.5" strokeWidth={2} />

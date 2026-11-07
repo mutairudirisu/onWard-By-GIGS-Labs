@@ -25,6 +25,7 @@
   --panel: 32 33 26;
   --panel-soft: 43 44 35;
   --on-panel: 255 255 255;
+  --danger: 220 38 38;
 }
 
 .dark {
@@ -50,6 +51,7 @@
   --panel: 24 25 20;
   --panel-soft: 42 43 34;
   --on-panel: 243 243 236;
+  --danger: 248 113 113;
 }
 
 html,
