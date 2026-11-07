@@ -8,6 +8,7 @@ import { useNotifications } from "@/components/notifications";
 import { useStore } from "@/components/store";
 import { toastSuccess } from "@/components/toast";
 import { todayISO } from "@/lib/dates";
+import { playAlarm, primeAlarm } from "@/lib/alarm";
 import { useLocalState } from "@/lib/local-state";
 import { haptic } from "@/lib/haptics";
 import { emitNotice } from "@/lib/notices";
@@ -100,6 +101,7 @@ export function PomodoroWidget({ onHide }: { onHide: () => void }) {
         };
       });
       haptic("success", settings.haptics);
+      playAlarm();
       toastSuccess(
         finished === "focus" ? "Focus block done — the break is ready" : "Break over — focus is ready",
       );
@@ -131,6 +133,8 @@ export function PomodoroWidget({ onHide }: { onHide: () => void }) {
 
   function toggleRun() {
     haptic("tap", settings.haptics);
+    // The only tap in the whole block, so this is where the browser lets sound in.
+    primeAlarm();
     setTimer((t) => {
       if (t.endsAt != null) {
         return {
