@@ -32,7 +32,8 @@ drop policy if exists "feedback own read" on public.feedback;
 create policy "feedback own read" on public.feedback for select to authenticated
   using (user_id = auth.uid());
 
-drop policy if exists "feedback own write" on public.feedback for insert to authenticated
+drop policy if exists "feedback own write" on public.feedback;
+create policy "feedback own write" on public.feedback for insert to authenticated
   with check (user_id = auth.uid());
 
 grant select, insert on public.feedback to authenticated;

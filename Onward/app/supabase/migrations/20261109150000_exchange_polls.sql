@@ -64,9 +64,11 @@ alter table public.post_poll_votes   enable row level security;
 -- social table here: results and other people's votes come through the view below.
 -- Nothing is written through a policy at all - both writes are definer functions, so
 -- the closing time is part of the write and not something a client can skip.
+drop policy if exists "polls: own rows" on public.post_polls;
 create policy "polls: own rows" on public.post_polls
   for select to authenticated using (user_id = auth.uid());
 
+drop policy if exists "votes: own rows" on public.post_poll_votes;
 create policy "votes: own rows" on public.post_poll_votes
   for select to authenticated using (user_id = auth.uid());
 
@@ -178,7 +180,7 @@ grant execute on function public.vote_in_poll(uuid) to authenticated;
 -- -------------------------------------------------------------------- the view
 -- What every reader sees: the question, the answers with their counts, whether it is
 -- still open, and which answer is yours.
-create view if not exists public.feed_polls
+create or replace view public.feed_polls
 with (security_barrier = true)
 as
 select

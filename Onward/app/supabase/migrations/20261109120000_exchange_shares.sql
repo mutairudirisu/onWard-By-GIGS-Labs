@@ -48,7 +48,7 @@ grant select, insert, delete on public.post_shares to authenticated;
 --
 -- security_barrier because this reads profiles, which RLS keeps to your own row - the
 -- view runs as the owner, exactly as feed_posts already does for the authors it names.
-create view if not exists public.feed_shares
+create or replace view public.feed_shares
 with (security_barrier = true)
 as
 select
