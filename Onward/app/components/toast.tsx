@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Check } from "lucide-react";
 
 export type ToastKind = "success" | "error";
-export type Toast = { id: number; kind: ToastKind; message: string };
+export type ToastAction = { label: string; onClick: () => void };
+export type Toast = { id: number; kind: ToastKind; message: string; action?: ToastAction };
 
 // A module store rather than a context: the data layer reports its own outcomes,
 // and it sits below the provider tree.
@@ -22,17 +23,22 @@ export function dismissToast(id: number) {
   emit();
 }
 
-export function pushToast(kind: ToastKind, message: string) {
+export function pushToast(kind: ToastKind, message: string, action?: ToastAction) {
   const id = ++seq;
   // Repeating the same message replaces it, so a burst of saves stays readable.
   const kept = toasts.filter((t) => !(t.kind === kind && t.message === message));
-  toasts = [...kept, { id, kind, message }].slice(-3);
+  toasts = [...kept, { id, kind, message, action }].slice(-3);
   emit();
-  setTimeout(() => dismissToast(id), kind === "error" ? 5200 : 2600);
+  // An undo has to be readable and reachable, so it waits longer than a plain tick.
+  const ms = kind === "error" ? 5200 : action ? 5000 : 2600;
+  setTimeout(() => dismissToast(id), ms);
 }
 
 export const toastSuccess = (message: string) => pushToast("success", message);
 export const toastError = (message: string) => pushToast("error", message);
+/** The app did the thing and can take it back - say both in one place. */
+export const toastUndoable = (message: string, label: string, onClick: () => void) =>
+  pushToast("success", message, { label, onClick });
 
 export function ToastHost() {
   const [items, setItems] = useState<Toast[]>([]);
@@ -72,21 +78,34 @@ export function ToastHost() {
           <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-paper">
             {toast.message}
           </span>
-          <button
-            type="button"
-            aria-label="Dismiss"
-            onClick={() => dismissToast(toast.id)}
-            className="-mr-1.5 shrink-0 rounded-full p-1.5 text-paper/60 transition hover:text-paper"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path
-                d="M5 5l14 14M19 5 5 19"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
+          {toast.action ? (
+            <button
+              type="button"
+              onClick={() => {
+                dismissToast(toast.id);
+                toast.action?.onClick();
+              }}
+              className="-mr-1.5 shrink-0 cursor-pointer rounded-full px-2.5 py-1 text-[11.5px] font-bold text-lime transition hover:bg-lime/15"
+            >
+              {toast.action.label}
+            </button>
+          ) : (
+            <button
+              type="button"
+              aria-label="Dismiss"
+              onClick={() => dismissToast(toast.id)}
+              className="-mr-1.5 shrink-0 rounded-full p-1.5 text-paper/60 transition hover:text-paper"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path
+                  d="M5 5l14 14M19 5 5 19"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
+          )}
         </div>
       ))}
     </div>

@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 
+import { DottedO } from "./logo";
+
 const WORD = "onWard";
 
 /**
@@ -118,22 +120,32 @@ export function FooterWordmark() {
           only stopped cropping above 406px and sliced both ends on every phone. */}
       <span className="relative block whitespace-nowrap text-[clamp(48px,29vw,700px)] font-bold leading-[0.8] tracking-[-0.045em]">
         <span className="relative left-1/2 inline-block -translate-x-1/2 translate-y-[20%]">
-          {WORD.split("").map((ch, i) => (
-            <span
-              key={`${ch}-${i}`}
-              ref={(el) => {
-                letterRefs.current[i] = el;
-              }}
-              className="inline-block bg-clip-text text-transparent will-change-transform"
-              style={{
-                backgroundImage:
-                  "linear-gradient(180deg, rgba(255,255,255,0.24), rgba(255,255,255,0.07))",
-                WebkitBackgroundClip: "text",
-              }}
-            >
-              {ch}
-            </span>
-          ))}
+          {WORD.split("").map((ch, i) => {
+            // The brand mark leads the word: dotted, lime, and it ripples with the rest.
+            const mark = i === 0;
+            return (
+              <span
+                key={`${ch}-${i}`}
+                ref={(el) => {
+                  letterRefs.current[i] = el;
+                }}
+                className={`inline-block will-change-transform ${
+                  mark ? "text-lime" : "bg-clip-text text-transparent"
+                }`}
+                style={
+                  mark
+                    ? undefined
+                    : {
+                        backgroundImage:
+                          "linear-gradient(180deg, rgba(255,255,255,0.24), rgba(255,255,255,0.07))",
+                        WebkitBackgroundClip: "text",
+                      }
+                }
+              >
+                {mark ? <DottedO /> : ch}
+              </span>
+            );
+          })}
         </span>
       </span>
     </div>

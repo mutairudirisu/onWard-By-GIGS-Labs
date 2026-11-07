@@ -8,6 +8,7 @@ import {
   LifeBuoy,
   LogOut,
   Megaphone,
+  MessageSquareHeart,
   ScrollText,
   Settings,
   Users,
@@ -19,6 +20,7 @@ const PRIMARY = [
   { href: "/", label: "Overview", Icon: LayoutDashboard },
   { href: "/users", label: "Users", Icon: Users },
   { href: "/broadcasts", label: "Broadcasts", Icon: Megaphone },
+  { href: "/feedback", label: "Feedback", Icon: MessageSquareHeart },
 ];
 
 const SECONDARY = [

@@ -8,7 +8,7 @@ import { ShareSheet, wardShareText } from "@/components/share-sheet";
 import { BackLink, Button, Tag } from "@/components/ui";
 import { useStore } from "@/components/store";
 import type { Evidence } from "@/lib/data";
-import { ArrowUpRight, Check, File as FileIcon, Folder, Globe, Image as ImageIcon, Share2, Star, TrendingUp, Users } from "lucide-react";
+import { ArrowUpRight, Check, File as FileIcon, Folder, Globe, Image as ImageIcon, Pencil, Share2, Star, TrendingUp, Users } from "lucide-react";
 
 function EvidenceIcon({ kind }: { kind: Evidence["kind"] }) {
   const cls = "h-[15px] w-[15px]";
@@ -44,7 +44,16 @@ export default function OnWardDetailPage() {
     <PhoneShell>
       <div className="mb-4 flex items-center gap-1">
         <BackLink href="/onwards" label="Back to onWards" />
-        <h1 className="text-[17px] font-bold tracking-tight text-ink">Your onWard</h1>
+        <h1 className="min-w-0 flex-1 truncate text-[17px] font-bold tracking-tight text-ink">
+          Your onWard
+        </h1>
+        <Link
+          href={`/onwards/new?edit=${ward.id}`}
+          aria-label="Edit this onWard"
+          className="-mr-1 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-inksoft transition hover:bg-cream active:scale-90"
+        >
+          <Pencil className="h-4 w-4" />
+        </Link>
       </div>
 
       <div className="mb-3 flex items-center justify-between">
@@ -165,7 +174,7 @@ export default function OnWardDetailPage() {
         <div className="flex items-start gap-2.5 border-t border-lime-deep/30 px-3.5 py-3">
           <Users className="mt-0.5 h-3.5 w-3.5 shrink-0 text-inksoft" />
           <span className="flex-1">
-            <span className="block text-[11px] font-bold text-ink">Share to Posts</span>
+            <span className="block text-[11px] font-bold text-ink">Share to the Exchange</span>
             <span className="block text-[9px] text-muted">
               Opens the composer with this entry&rsquo;s text in it. Nothing is public until you
               post what you end up writing.
@@ -180,16 +189,22 @@ export default function OnWardDetailPage() {
         </div>
       </section>
 
+      {/* Half-width, so both labels have to stay on one line or the pair goes uneven. */}
       <div className="grid grid-cols-2 gap-2.5">
         <Button
           variant="secondary"
           onClick={() => setSharing(true)}
-          icon={<Share2 className="h-4 w-4" strokeWidth={2.2} />}
+          className="whitespace-nowrap"
+          icon={<Share2 className="h-4 w-4 shrink-0" strokeWidth={2.2} />}
         >
           Share
         </Button>
-        <Button href="/portfolio" icon={<ArrowUpRight className="h-4 w-4" strokeWidth={2.2} />}>
-          View in my portfolio
+        <Button
+          href="/portfolio"
+          className="whitespace-nowrap"
+          icon={<ArrowUpRight className="h-4 w-4 shrink-0" strokeWidth={2.2} />}
+        >
+          My portfolio
         </Button>
       </div>
 

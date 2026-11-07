@@ -5,6 +5,7 @@ import {
   type OnWard,
   type Plan,
   type Settings,
+  type Theme,
 } from "./data";
 import { toISO, wardDateLabel } from "./dates";
 import { EMPTY_CV_DOC, type CvDoc } from "./cv";
@@ -87,7 +88,7 @@ type EvidenceRow = {
 
 type SettingsRow = {
   user_id: string;
-  theme: "light" | "dark";
+  theme: Theme;
   notifications: boolean;
   weekly_digest: boolean;
   haptics: boolean;
@@ -374,7 +375,15 @@ export const POST_MEDIA_BUCKET = "post-media";
 export const POST_MEDIA_MAX_BYTES = 26_214_400;
 export const POST_MEDIA_MAX_PER_POST = 5;
 export const POST_BODY_MAX = 2000;
+export const POST_TITLE_MAX = 140;
 export const POST_COMMENT_MAX = 500;
+export const POST_POLL_QUESTION_MAX = 200;
+export const POST_POLL_OPTION_MAX = 120;
+export const POST_POLL_MIN_OPTIONS = 2;
+export const POST_POLL_MAX_OPTIONS = 6;
+/** The shortest and longest runs a poll can be given, kept in step with create_poll. */
+export const POST_POLL_MIN_MS = 10 * 60_000;
+export const POST_POLL_MAX_MS = 30 * 86_400_000;
 
 /** Kept in step with the bucket's allowed_mime_types, so a pick the server would
  *  refuse never reaches an upload. */
@@ -402,10 +411,26 @@ export type PostComment = {
   initials: string;
   createdAt: string;
   mine: boolean;
+  likes: number;
+  liked: boolean;
+};
+
+/** The entry a reshare carries. It is the original, not a copy of the whole card:
+ *  no counts, no thread, and nothing to reshare again from inside it. */
+export type ResharedEntry = {
+  id: string;
+  title: string;
+  body: string;
+  fullName: string;
+  initials: string;
+  avatarUrl: string | null;
+  createdAt: string;
+  media: PostMedia[];
 };
 
 export type FeedPost = {
   id: string;
+  title: string;
   body: string;
   wardId: string | null;
   fullName: string;
@@ -418,6 +443,11 @@ export type FeedPost = {
   likes: number;
   comments: number;
   recentComments: PostComment[];
+  reshares: number;
+  reshared: boolean;
+  /** Set on a repost: whose entry this is passing on. */
+  reshareOf: string | null;
+  reshare: ResharedEntry | null;
 };
 
 type CommentJson = {
@@ -427,11 +457,25 @@ type CommentJson = {
   initials: string | null;
   created_at: string;
   mine?: boolean | null;
+  likes?: number | null;
+  liked?: boolean | null;
+};
+
+type ReshareJson = {
+  id: string;
+  title: string | null;
+  body: string;
+  full_name: string | null;
+  initials: string | null;
+  avatar_url: string | null;
+  created_at: string;
+  media: PostMedia[] | null;
 };
 
 type FeedRow = {
   id: string;
   body: string;
+  title: string | null;
   ward_id: string | null;
   full_name: string | null;
   initials: string | null;
@@ -443,6 +487,10 @@ type FeedRow = {
   likes: number | null;
   comments: number | null;
   recent_comments: CommentJson[] | null;
+  reshares: number | null;
+  reshared: boolean | null;
+  reshare_of: string | null;
+  reshare: ReshareJson | null;
 };
 
 function commentFromJson(row: CommentJson): PostComment {
@@ -453,12 +501,31 @@ function commentFromJson(row: CommentJson): PostComment {
     initials: row.initials ?? "",
     createdAt: row.created_at,
     mine: row.mine ?? false,
+    // The two newest replies carried on a card come from the view's jsonb, which
+    // counts nothing, so they read as unliked rather than wrong.
+    likes: row.likes ?? 0,
+    liked: row.liked ?? false,
+  };
+}
+
+function reshareFromJson(row: ReshareJson | null): ResharedEntry | null {
+  if (!row) return null;
+  return {
+    id: row.id,
+    title: row.title ?? "",
+    body: row.body,
+    fullName: row.full_name ?? "",
+    initials: row.initials ?? "",
+    avatarUrl: row.avatar_url ?? null,
+    createdAt: row.created_at,
+    media: row.media ?? [],
   };
 }
 
 function postFromRow(row: FeedRow): FeedPost {
   return {
     id: row.id,
+    title: row.title ?? "",
     body: row.body,
     wardId: row.ward_id,
     fullName: row.full_name ?? "",
@@ -471,11 +538,15 @@ function postFromRow(row: FeedRow): FeedPost {
     likes: row.likes ?? 0,
     comments: row.comments ?? 0,
     recentComments: (row.recent_comments ?? []).map(commentFromJson),
+    reshares: row.reshares ?? 0,
+    reshared: row.reshared ?? false,
+    reshareOf: row.reshare_of,
+    reshare: reshareFromJson(row.reshare),
   };
 }
 
 const FEED_COLUMNS =
-  "id, body, ward_id, full_name, initials, avatar_url, role, created_at, mine, media, likes, comments, recent_comments";
+  "id, body, ward_id, full_name, initials, avatar_url, role, created_at, mine, media, likes, comments, recent_comments, title, reshare_of, reshares, reshared, reshare";
 
 /** A public object in a public bucket needs no token, which is what lets an <img>
  *  tag work for someone who has never signed in. */
@@ -494,6 +565,17 @@ export async function fetchFeed(limit = 40): Promise<FeedPost[]> {
   return (data as FeedRow[] | null ?? []).map(postFromRow);
 }
 
+/** What the Exchange tab badge needs: a number, not another page of rows. */
+export async function countNewExchangePosts(sinceIso: string): Promise<number> {
+  const { count, error } = await supabase
+    .from("feed_posts")
+    .select("id", { count: "exact", head: true })
+    .eq("mine", false)
+    .gt("created_at", sinceIso);
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
 export async function fetchPost(id: string): Promise<FeedPost | null> {
   const { data, error } = await supabase
     .from("feed_posts")
@@ -507,7 +589,7 @@ export async function fetchPost(id: string): Promise<FeedPost | null> {
 export async function fetchComments(postId: string): Promise<PostComment[]> {
   const { data, error } = await supabase
     .from("feed_comments")
-    .select("id, body, full_name, initials, created_at, mine")
+    .select("id, body, full_name, initials, created_at, mine, likes, liked")
     .eq("post_id", postId)
     .order("created_at");
   if (error) throw new Error(error.message);
@@ -595,6 +677,191 @@ export async function unlikePost(postId: string) {
   if (error) throw new Error(error.message);
 }
 
+/**
+ * Passing someone's entry into your own stream. The row is yours and carries the pointer
+ * plus whatever you chose to say about it, so the reshare count is a count of rows and
+ * undoing it is a delete of your own row - the original is never touched. Most reposts
+ * say nothing, which is why the thought is optional.
+ */
+export async function reshare(postId: string, thought = "") {
+  const { error } = await supabase
+    .from("posts")
+    .insert({ reshare_of: postId, body: thought.trim().slice(0, POST_BODY_MAX) });
+  if (error) throw new Error(error.message);
+}
+
+export async function unreshare(postId: string) {
+  const { error } = await supabase
+    .from("posts")
+    .delete()
+    .eq("reshare_of", postId)
+    .eq("user_id", await signedInUserId());
+  if (error) throw new Error(error.message);
+}
+
+/** The two taps the feedback card offers. Anything finer asks too much of a tap. */
+export type FeedbackAnswer = "love_it" | "not_really";
+
+/**
+ * One answer to the feedback card. The words are optional, so the row always carries
+ * the tap; `screen` says where the question was asked, which is what makes a "not
+ * really" from a first week mean something different from one after a month away.
+ */
+export async function sendFeedback(input: {
+  answer: FeedbackAnswer;
+  body: string;
+  screen: string;
+}) {
+  const { error } = await supabase.from("feedback").insert({
+    answer: input.answer,
+    body: input.body.trim().slice(0, 1000),
+    screen: input.screen,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/** Someone in onWard the share drawer can hand a post to. */
+export type ExchangePerson = {
+  id: string;
+  name: string;
+  initials: string;
+  avatarUrl: string | null;
+  role: string | null;
+};
+
+export type SharedPost = {
+  id: string;
+  postId: string;
+  createdAt: string;
+  /** True when you handed it to somebody, false when it was handed to you. */
+  mine: boolean;
+  fromName: string;
+  fromInitials: string;
+  fromAvatarUrl: string | null;
+  toName: string;
+  post: ResharedEntry;
+};
+
+type PersonJson = {
+  id: string;
+  display_name: string | null;
+  initials: string | null;
+  avatar_url: string | null;
+  role: string | null;
+};
+
+type ShareRow = {
+  id: string;
+  post_id: string;
+  created_at: string;
+  mine: boolean | null;
+  from_name: string | null;
+  from_initials: string | null;
+  from_avatar_url: string | null;
+  to_name: string | null;
+  post: ReshareJson | null;
+};
+
+/**
+ * The picker's list. Empty query is the pull the drawer opens with; the function leaves
+ * out your own row, so nobody is offered a post they wrote.
+ */
+export async function searchPeople(query = ""): Promise<ExchangePerson[]> {
+  const { data, error } = await supabase.rpc("search_people", { p_query: query });
+  fail(error);
+  return (data as PersonJson[] | null ?? []).map(
+    (row) =>
+      ({
+        id: row.id,
+        name: row.display_name ?? "",
+        initials: row.initials ?? "",
+        avatarUrl: row.avatar_url,
+        role: row.role,
+      }) as ExchangePerson,
+  );
+}
+
+/**
+ * Handing the post to one person. The row names the original rather than copying it, so
+ * there is one post and one thread, and a second tap for the same pair changes nothing.
+ */
+export async function sharePostWith(postId: string, userId: string) {
+  const { error } = await supabase
+    .from("post_shares")
+    .upsert(
+      { post_id: postId, to_user: userId },
+      { onConflict: "post_id,from_user,to_user", ignoreDuplicates: true },
+    );
+  fail(error);
+}
+
+export async function unsharePostFrom(postId: string, userId: string) {
+  const { error } = await supabase
+    .from("post_shares")
+    .delete()
+    .eq("post_id", postId)
+    .eq("to_user", userId)
+    .eq("from_user", await signedInUserId());
+  fail(error);
+}
+
+/** Who you have already handed this post to, so the drawer can show it on the name. */
+export async function fetchSharesFor(postId: string): Promise<Set<string>> {
+  const me = await signedInUserId();
+  const { data, error } = await supabase
+    .from("post_shares")
+    .select("to_user")
+    .eq("post_id", postId)
+    .eq("from_user", me);
+  fail(error);
+  return new Set((data as { to_user: string }[] | null ?? []).map((row) => row.to_user));
+}
+
+/** The newest posts other people handed to you, newest first. */
+export async function fetchSharedWithMe(limit = 5): Promise<SharedPost[]> {
+  const { data, error } = await supabase
+    .from("feed_shares")
+    .select(
+      "id, post_id, created_at, mine, from_name, from_initials, from_avatar_url, to_name, post",
+    )
+    .eq("mine", false)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  fail(error);
+  return (data as ShareRow[] | null ?? []).flatMap((row) => {
+    const post = reshareFromJson(row.post);
+    if (!post) return [];
+    return [
+      {
+        id: row.id,
+        postId: row.post_id,
+        createdAt: row.created_at,
+        mine: row.mine ?? false,
+        fromName: row.from_name ?? "",
+        fromInitials: row.from_initials ?? "",
+        fromAvatarUrl: row.from_avatar_url,
+        toName: row.to_name ?? "",
+        post,
+      } as SharedPost,
+    ];
+  });
+}
+
+export async function likeComment(commentId: string) {
+  const { error } = await supabase
+    .from("comment_likes")
+    .insert({ comment_id: commentId });
+  if (error) throw new Error(error.message);
+}
+
+export async function unlikeComment(commentId: string) {
+  const { error } = await supabase
+    .from("comment_likes")
+    .delete()
+    .eq("comment_id", commentId);
+  if (error) throw new Error(error.message);
+}
+
 export async function addComment(
   postId: string,
   body: string,
@@ -632,6 +899,123 @@ export async function deletePost(id: string) {
   if (error) throw new Error(error.message);
 }
 
+// ------------------------------------------------------------------------ polls
+
+/** One choice, with the votes it has. Never a share - the card works that out. */
+export type PollOption = {
+  id: string;
+  label: string;
+  votes: number;
+};
+
+export type PostPoll = {
+  id: string;
+  postId: string;
+  question: string;
+  endsAt: string;
+  closed: boolean;
+  total: number;
+  myOptionId: string | null;
+  options: PollOption[];
+};
+
+/** What the composer sends: the choices as text, and the instant the poll shuts. */
+export type PollDraft = {
+  question: string;
+  options: string[];
+  endsAt: string;
+};
+
+type PollJson = {
+  id: string;
+  post_id: string;
+  question: string;
+  ends_at: string;
+  closed: boolean | null;
+  total: number | null;
+  my_option_id: string | null;
+  options: { id: string; label: string; sort: number; votes: number }[] | null;
+};
+
+function pollFromJson(row: PollJson): PostPoll {
+  return {
+    id: row.id,
+    postId: row.post_id,
+    question: row.question,
+    endsAt: row.ends_at,
+    closed: row.closed ?? false,
+    total: row.total ?? 0,
+    myOptionId: row.my_option_id ?? null,
+    options: (row.options ?? [])
+      .slice()
+      .sort((a, b) => a.sort - b.sort)
+      .map((option) => ({ id: option.id, label: option.label, votes: option.votes })),
+  };
+}
+
+/**
+ * The polls for these posts, keyed by post id. A separate read from a separate view, so
+ * the feed answers on its own and the page simply finds no polls when the migration has
+ * not run yet.
+ */
+export async function fetchPolls(postIds: string[]): Promise<Record<string, PostPoll>> {
+  if (!postIds.length) return {};
+  const { data, error } = await supabase
+    .from("feed_polls")
+    .select("id, post_id, question, ends_at, closed, total, my_option_id, options")
+    .in("post_id", postIds);
+  fail(error);
+  const out: Record<string, PostPoll> = {};
+  for (const row of data as PollJson[] | null ?? []) out[row.post_id] = pollFromJson(row);
+  return out;
+}
+
+/**
+ * Why a poll was refused, before the post goes up. The database says no to the same
+ * things inside create_poll; saying it here saves an author from a post that is created
+ * and then deleted in front of them.
+ */
+export function pollProblem(poll: PollDraft): string | null {
+  const question = poll.question.trim();
+  if (!question) return "A poll needs a question.";
+  if (question.length > POST_POLL_QUESTION_MAX)
+    return `The question is over ${POST_POLL_QUESTION_MAX} characters.`;
+  const labels = poll.options.map((option) => option.trim()).filter(Boolean);
+  if (labels.length < POST_POLL_MIN_OPTIONS)
+    return `A poll takes at least ${POST_POLL_MIN_OPTIONS} choices.`;
+  if (labels.length > POST_POLL_MAX_OPTIONS)
+    return `A poll takes up to ${POST_POLL_MAX_OPTIONS} choices.`;
+  if (labels.some((label) => label.length > POST_POLL_OPTION_MAX))
+    return `A choice is over ${POST_POLL_OPTION_MAX} characters.`;
+  if (new Set(labels.map((label) => label.toLowerCase())).size !== labels.length)
+    return "Two of the choices say the same thing.";
+  const ms = Date.parse(poll.endsAt) - Date.now();
+  if (!Number.isFinite(ms)) return "The poll needs a time it closes at.";
+  if (ms < POST_POLL_MIN_MS) return "A poll stays open for at least ten minutes.";
+  if (ms > POST_POLL_MAX_MS) return "A poll closes within thirty days.";
+  return null;
+}
+
+/**
+ * Voting, or changing your mind. One row per person per poll is the whole rule, and it
+ * lives in the database - so a vote after the close is refused wherever it comes from.
+ */
+export async function voteInPoll(optionId: string): Promise<void> {
+  const { error } = await supabase.rpc("vote_in_poll", { p_option_id: optionId });
+  fail(error);
+}
+
+/** The poll that goes with a new post. create_poll makes the rows; here it is only called. */
+async function createPoll(postId: string, poll: PollDraft): Promise<void> {
+  const { error } = await supabase.rpc("create_poll", {
+    p_post_id: postId,
+    p_question: poll.question.trim(),
+    p_options: poll.options.map((option) => option.trim()).filter(Boolean),
+    p_ends_at: poll.endsAt,
+  });
+  fail(error);
+}
+
 /** Why a pick was refused, in the words the composer shows. */
 export function mediaProblem(files: File[]): string | null {
   if (files.length > POST_MEDIA_MAX_PER_POST) {
@@ -653,24 +1037,31 @@ async function signedInUserId(): Promise<string> {
 
 /**
  * The post row goes first so its id can name the folders the files land in. If an
- * upload fails the files that went up are deleted and the row with them - no
+ * upload or the poll fails the files that went up are deleted and the row with them - no
  * half-published post, and nothing left in storage that no post points at.
  */
 export async function createPost(input: {
+  title?: string;
   body: string;
   files: File[];
   wardId?: string | null;
+  poll?: PollDraft | null;
   onProgress?: (done: number, total: number) => void;
 }): Promise<FeedPost> {
-  const { body, files, wardId = null, onProgress } = input;
+  const { title = "", body, files, wardId = null, poll = null, onProgress } = input;
   const problem = mediaProblem(files);
   if (problem) throw new Error(problem);
-  if (!body.trim() && !files.length) throw new Error("A post needs words or a photo");
+  if (poll) {
+    const why = pollProblem(poll);
+    if (why) throw new Error(why);
+  }
+  if (!title.trim() && !body.trim() && !files.length && !poll?.question.trim())
+    throw new Error("An Exchange entry needs a headline, words, a photo or a poll");
 
   const userId = await signedInUserId();
   const { data: created, error: createError } = await supabase
     .from("posts")
-    .insert({ body, ward_id: wardId })
+    .insert({ title: title.trim(), body, ward_id: wardId })
     .select("id")
     .single();
   if (createError) throw new Error(createError.message);
@@ -701,6 +1092,9 @@ export async function createPost(input: {
       );
       if (error) throw new Error(error.message);
     }
+    // The poll goes last: it is the part most likely to be refused, and the delete
+    // below takes the post with it.
+    if (poll) await createPoll(postId, poll);
   } catch (error) {
     // Anything that did go up is removed by name, and the row delete takes the rest.
     if (paths.length) await supabase.storage.from(POST_MEDIA_BUCKET).remove(paths);
@@ -709,7 +1103,10 @@ export async function createPost(input: {
   }
 
   const post = await fetchPost(postId);
-  if (!post) throw new Error("The post did not come back");
+  if (!post) {
+    if (poll) await supabase.from("posts").delete().eq("id", postId);
+    throw new Error("The post did not come back");
+  }
   return post;
 }
 

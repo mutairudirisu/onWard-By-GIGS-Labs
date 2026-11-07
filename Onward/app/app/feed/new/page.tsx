@@ -3,15 +3,23 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Film, ImagePlus, Loader2, X } from "lucide-react";
+import { BarChart3, Film, ImagePlus, Loader2, X } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { Avatar } from "@/components/feed-post";
+import { PostEditor } from "@/components/post-editor";
+import {
+  PollComposer,
+  newPollDraft,
+  pollEndsAt,
+  type PollComposerDraft,
+} from "@/components/poll-composer";
 import { useStore } from "@/components/store";
 import { useAuth, useCurrentUser } from "@/components/auth";
 import { toastError, toastSuccess } from "@/components/toast";
 import {
   POST_BODY_MAX,
   POST_MEDIA_MAX_PER_POST,
+  POST_TITLE_MAX,
   createPost,
   mediaProblem,
 } from "@/lib/db";
@@ -91,21 +99,22 @@ function Composer() {
   const { onWards } = useStore();
   const { user } = useAuth();
   const me = useCurrentUser();
+  const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [picks, setPicks] = useState<Pick[]>([]);
+  const [poll, setPoll] = useState<PollComposerDraft | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const imageRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
   const keyboard = useKeyboardInset(Boolean(user));
 
-  // Opening this from an onWard carries its text over; the entry itself stays private.
+  // Opening this from an onWard carries its words over; the entry itself stays private.
   useEffect(() => {
     const fromQuery = onWards.find((w) => w.id === params.get("ward"));
     if (!fromQuery) return;
-    setBody(
-      [fromQuery.title, fromQuery.impact, fromQuery.body].filter((line) => line && line.trim()).join("\n\n"),
-    );
+    setTitle(fromQuery.title.slice(0, POST_TITLE_MAX));
+    setBody([fromQuery.impact, fromQuery.body].filter((line) => line && line.trim()).join("\n\n"));
     // Only on the way in: retyping must not be undone by a store refresh.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -118,8 +127,16 @@ function Composer() {
   );
 
   const room = POST_MEDIA_MAX_PER_POST - picks.length;
-  const empty = body.trim().length === 0 && picks.length === 0;
-  const used = body.length / POST_BODY_MAX;
+  // A poll counts as content only once it says something, so an empty half-filled
+  // section cannot send a post with nothing in it.
+  const pollWanted = Boolean(poll?.question.trim() || poll?.options.some((o) => o.trim()));
+  // A poll is its own kind of entry: it is asked with the question and the choices,
+  // so it needs no headline, no words and no picture alongside it.
+  const empty = poll ? !pollWanted : !title.trim() && !body.trim() && !picks.length;
+  // The ring counts the words that are actually going into the post, so a poll does not
+  // inherit the count of the text left behind when the poll form came up.
+  const counted = poll ? 0 : body.length;
+  const used = counted / POST_BODY_MAX;
   const ward = useMemo(
     () => onWards.find((w) => w.id === params.get("ward")),
     [onWards, params],
@@ -157,12 +174,16 @@ function Composer() {
     setProgress(null);
     try {
       await createPost({
-        body: body.trim(),
-        files: picks.map((p) => p.file),
+        title: poll ? "" : title.trim(),
+        body: poll ? "" : body.trim(),
+        files: poll ? [] : picks.map((p) => p.file),
         wardId: ward?.id ?? null,
+        poll: poll && pollWanted
+          ? { question: poll.question, options: poll.options, endsAt: pollEndsAt(poll.hours) }
+          : null,
         onProgress: (done, total) => setProgress({ done, total }),
       });
-      toastSuccess("Posted to the feed");
+      toastSuccess("Shared to the Exchange");
       router.push("/feed");
     } catch (error) {
       setBusy(null);
@@ -176,7 +197,7 @@ function Composer() {
       <div className="mb-3 flex items-center gap-2">
         <Link
           href="/feed"
-          aria-label="Back to the feed"
+          aria-label="Back to the Exchange"
           className="-ml-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-inksoft transition hover:bg-cream"
         >
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -189,7 +210,7 @@ function Composer() {
             />
           </svg>
         </Link>
-        <h1 className="text-[13px] font-bold tracking-tight text-ink">New post</h1>
+        <h1 className="text-[13px] font-bold tracking-tight text-ink">New Exchange post</h1>
       </div>
 
       <div className="card overflow-hidden">
@@ -205,82 +226,114 @@ function Composer() {
           </span>
         </div>
 
-        <textarea
-          autoFocus
-          value={body}
-          onChange={(e) => setBody(e.target.value.slice(0, POST_BODY_MAX))}
-          rows={6}
-          placeholder="What did you get done, and what did it change?"
-          aria-label="Post text"
-          className="wheel w-full resize-none bg-transparent px-4 py-3 text-[13.5px] leading-[1.6] text-ink outline-none placeholder:text-faint"
-        />
+        {poll ? (
+          <PollComposer draft={poll} onChange={setPoll} disabled={Boolean(busy)} />
+        ) : (
+          <>
+            <input
+              autoFocus
+              value={title}
+              onChange={(e) => setTitle(e.target.value.slice(0, POST_TITLE_MAX))}
+              placeholder="Say it in one line"
+              aria-label="Exchange title"
+              className="wheel w-full border-b border-line bg-transparent px-4 py-3 text-[14px] font-bold leading-[1.4] tracking-tight text-ink outline-none placeholder:font-normal placeholder:text-faint"
+            />
 
-        {picks.length ? (
-          <div className="grid grid-cols-3 gap-1.5 px-3 pb-3">
-            {picks.map((pick, index) => (
-              <div
-                key={pick.url}
-                className="relative aspect-square overflow-hidden rounded-xl bg-lime-pale"
-              >
-                {pick.file.type.startsWith("video/") ? (
-                  <video
-                    src={pick.url}
-                    muted
-                    playsInline
-                    preload="metadata"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <img src={pick.url} alt="" className="h-full w-full object-cover" />
-                )}
-                {/* The number is the order the files go up in, which is the order the
-                    feed slides through them. */}
-                <span className="pointer-events-none absolute left-1.5 top-1.5 rounded-full bg-ink/55 px-1.5 text-[9.5px] font-bold tabular-nums text-paper">
-                  {index + 1}
-                </span>
-                <button
-                  type="button"
-                  aria-label={`Remove ${pick.file.name}`}
-                  onClick={() => removeAt(index)}
-                  className="absolute right-1 top-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-ink/60 text-paper transition hover:bg-ink"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
+            <PostEditor
+              initial={body}
+              onChange={setBody}
+              max={POST_BODY_MAX}
+              disabled={Boolean(busy)}
+            />
+
+            {picks.length ? (
+              <div className="grid grid-cols-3 gap-1.5 px-3 pb-3">
+                {picks.map((pick, index) => (
+                  <div
+                    key={pick.url}
+                    className="relative aspect-square overflow-hidden rounded-xl bg-lime-pale"
+                  >
+                    {pick.file.type.startsWith("video/") ? (
+                      <video
+                        src={pick.url}
+                        muted
+                        playsInline
+                        preload="metadata"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <img src={pick.url} alt="" className="h-full w-full object-cover" />
+                    )}
+                    {/* The number is the order the files go up in, which is the order the
+                        feed slides through them. */}
+                    <span className="pointer-events-none absolute left-1.5 top-1.5 rounded-full bg-ink/55 px-1.5 text-[9.5px] font-bold tabular-nums text-paper">
+                      {index + 1}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${pick.file.name}`}
+                      onClick={() => removeAt(index)}
+                      className="absolute right-1 top-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-ink/60 text-paper transition hover:bg-ink"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+                {room > 0 ? (
+                  <button
+                    type="button"
+                    aria-label="Add another"
+                    onClick={() => imageRef.current?.click()}
+                    className="flex aspect-square cursor-pointer items-center justify-center rounded-xl border border-dash text-inksoft transition hover:border-lime-deep hover:text-lime-deep"
+                  >
+                    <ImagePlus className="h-5 w-5" />
+                  </button>
+                ) : null}
               </div>
-            ))}
-            {room > 0 ? (
-              <button
-                type="button"
-                aria-label="Add another"
-                onClick={() => imageRef.current?.click()}
-                className="flex aspect-square cursor-pointer items-center justify-center rounded-xl border border-dash text-inksoft transition hover:border-lime-deep hover:text-lime-deep"
-              >
-                <ImagePlus className="h-5 w-5" />
-              </button>
             ) : null}
-          </div>
-        ) : null}
+          </>
+        )}
 
         <div className="flex items-center gap-1 border-t border-line px-2 py-1.5">
+          {poll ? null : (
+            <>
+              <button
+                type="button"
+                aria-label="Add photos"
+                title="Add photos"
+                onClick={() => imageRef.current?.click()}
+                disabled={room <= 0}
+                className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-inksoft transition hover:bg-cream disabled:cursor-not-allowed disabled:text-faint"
+              >
+                <ImagePlus className="h-[17px] w-[17px]" />
+              </button>
+              <button
+                type="button"
+                aria-label="Add videos"
+                title="Add videos"
+                onClick={() => videoRef.current?.click()}
+                disabled={room <= 0}
+                className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-inksoft transition hover:bg-cream disabled:cursor-not-allowed disabled:text-faint"
+              >
+                <Film className="h-[17px] w-[17px]" />
+              </button>
+            </>
+          )}
           <button
             type="button"
-            onClick={() => imageRef.current?.click()}
-            disabled={room <= 0}
-            className="flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-2 text-[11px] font-semibold text-inksoft transition hover:bg-cream disabled:cursor-not-allowed disabled:text-faint"
+            aria-pressed={Boolean(poll)}
+            onClick={() => setPoll(poll ? null : newPollDraft())}
+            className={`flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-2 text-[11px] font-semibold transition ${
+              poll ? "bg-lime-pale text-ink" : "text-inksoft hover:bg-cream"
+            }`}
           >
-            <ImagePlus className="h-[17px] w-[17px]" /> Photo
+            <BarChart3 className="h-[17px] w-[17px]" /> Poll
           </button>
-          <button
-            type="button"
-            onClick={() => videoRef.current?.click()}
-            disabled={room <= 0}
-            className="flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-2 text-[11px] font-semibold text-inksoft transition hover:bg-cream disabled:cursor-not-allowed disabled:text-faint"
-          >
-            <Film className="h-[17px] w-[17px]" /> Video
-          </button>
-          <span className="ml-auto pr-2 text-[10px] text-faint">
-            {room > 0 ? `${room} of ${POST_MEDIA_MAX_PER_POST} free` : "No room left"}
-          </span>
+          {poll ? null : (
+            <span className="ml-auto pr-2 text-[10px] text-faint">
+              {room > 0 ? `${room} of ${POST_MEDIA_MAX_PER_POST} free` : "No room left"}
+            </span>
+          )}
         </div>
 
         <input
@@ -310,29 +363,29 @@ function Composer() {
       {ward ? (
         <p className="mt-3 text-[10.5px] leading-[1.5] text-muted">
           Written from <span className="font-semibold text-inksoft">{ward.title}</span>. The post
-          goes to the feed; the onWard itself stays private.
+          goes to the Exchange; the onWard itself stays private.
         </p>
       ) : null}
 
-      <p className="mt-3 text-[10px] leading-[1.5] text-muted">
-        {progress
-          ? `Uploading ${progress.done} of ${progress.total}…`
-          : "25MB each. Anyone on onWard can read what you post, so keep it to what you would say out loud."}
-      </p>
+      {progress ? (
+        <p className="mt-3 text-[10px] leading-[1.5] text-muted">
+          Uploading {progress.done} of {progress.total}…
+        </p>
+      ) : null}
 
-      <div className="mt-3">
-        <SubmitRow chars={body.length} used={used} empty={empty} busy={busy} onSubmit={() => void post()} />
+      {/* One Post button at a time. While the keypad is up the in-flow row is somewhere
+          you cannot reach, so that copy rides on top of it instead. */}
+      <div className={`mt-3${keyboard > 0 ? " hidden" : ""}`}>
+        <SubmitRow chars={counted} used={used} empty={empty} busy={busy} onSubmit={() => void post()} />
       </div>
 
-      {/* While the keypad is up the in-flow button is somewhere you cannot reach, so the
-          same row rides on top of it. Nothing else is pinned: the tab bar keeps its place. */}
       {keyboard > 0 ? (
         <div
           className="fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-[400px] bg-cream/95 px-5 pt-2.5 backdrop-blur"
           style={{ paddingBottom: keyboard + 10 }}
         >
           <SubmitRow
-            chars={body.length}
+            chars={counted}
             used={used}
             empty={empty}
             busy={busy}
@@ -344,7 +397,7 @@ function Composer() {
       <p className="mt-4 text-center text-[10px] text-muted">
         Changed your mind?{" "}
         <Link href="/feed" className="cursor-pointer font-bold text-lime-deep hover:underline">
-          Back to the feed
+          Back to the Exchange
         </Link>
       </p>
     </PhoneShell>

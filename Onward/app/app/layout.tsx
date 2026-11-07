@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthGate, AuthProvider } from "@/components/auth";
+import { FeedbackPrompt } from "@/components/feedback-prompt";
 import { NotificationsProvider } from "@/components/notifications";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { Sidebar } from "@/components/sidebar";
@@ -53,6 +54,7 @@ export default function RootLayout({
                 </div>
                 <ServiceWorkerRegister />
                 <UpdatePrompt />
+                <FeedbackPrompt />
                 <ToastHost />
               </NotificationsProvider>
             </AuthGate>

@@ -8,8 +8,10 @@ export const user = {
   bio: "I turn messy workflows into thoughtful systems that help people do their best work.",
 };
 
+export type Theme = "light" | "dark" | "system";
+
 export type Settings = {
-  theme: "light" | "dark";
+  theme: Theme;
   notifications: boolean;
   weeklyDigest: boolean;
   haptics: boolean;

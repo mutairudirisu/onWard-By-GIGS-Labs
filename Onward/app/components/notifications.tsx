@@ -252,7 +252,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
         id: `test-${uid()}`,
         kind: "welcome",
         title: "Alerts are on",
-        body: "onWard will buzz here when something lands in Posts.",
+        body: "onWard will buzz here when something lands in the Exchange.",
       });
     }
     return next;

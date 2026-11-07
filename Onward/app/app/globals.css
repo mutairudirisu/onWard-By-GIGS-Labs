@@ -122,6 +122,34 @@ textarea::placeholder {
     @apply inline-flex items-center rounded-md px-2 py-1 text-[10px] font-semibold text-inksoft;
     background-color: rgb(var(--tag-bg));
   }
+  /* The block every skeleton is built from: a grey shape with light sweeping over it. */
+  .skel {
+    position: relative;
+    overflow: hidden;
+    display: block;
+    border-radius: 6px;
+    background-color: rgb(var(--line) / 0.85);
+  }
+  .skel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgb(var(--paper) / 0.7), transparent);
+    animation: onward-shimmer 1.35s ease-in-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skel::after {
+    animation: none;
+  }
+}
+
+@keyframes onward-shimmer {
+  to {
+    transform: translateX(100%);
+  }
 }
 
 @keyframes onward-fade {

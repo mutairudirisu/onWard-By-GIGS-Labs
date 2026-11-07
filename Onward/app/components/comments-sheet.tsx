@@ -1,30 +1,24 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Loader2, Send, X } from "lucide-react";
+import { Loader2, Send, ThumbsUp, X } from "lucide-react";
 import { useAuth, useCurrentUser } from "@/components/auth";
 import { Avatar } from "@/components/feed-post";
+import { useSheetDrag } from "@/components/sheet-drag";
+import { ThreadSkeleton } from "@/components/skeleton";
 import { toastError } from "@/components/toast";
 import {
   addComment,
   deleteComment,
   fetchComments,
+  likeComment,
+  unlikeComment,
   POST_COMMENT_MAX,
   type PostComment,
 } from "@/lib/db";
 import { timeAgo } from "@/lib/dates";
 import { useKeyboardInset } from "@/lib/keyboard";
-
-/** Where the sheet sits when it arrives, when it is dragged open, and below what
- *  fraction of the screen a release throws it away. All three are read off the
- *  viewport height the moment the sheet opens. */
-const HALF = 0.58;
-const FULL = 0.92;
-const DISMISS = 0.4;
-
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
 
 /**
  * The thread of one post, in a sheet that comes up over the half of the screen the
@@ -37,7 +31,6 @@ export function CommentsSheet({
   open,
   onClose,
   onCountChange,
-  focusField = false,
 }: {
   postId: string;
   open: boolean;
@@ -45,8 +38,6 @@ export function CommentsSheet({
   /** The thread is the truth about how many comments there are, so the card can be
    *  told the number instead of guessing at a plus one. */
   onCountChange: (total: number) => void;
-  /** True when the tap came from "add a comment": the keypad comes up with the sheet. */
-  focusField?: boolean;
 }) {
   const { user } = useAuth();
   const me = useCurrentUser();
@@ -55,31 +46,17 @@ export function CommentsSheet({
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
 
-  const [viewport, setViewport] = useState(0);
-  const [height, setHeight] = useState(0);
-  const [half, setHalf] = useState(0);
-  const [full, setFull] = useState(0);
-  const [dragging, setDragging] = useState(false);
   const keyboard = useKeyboardInset(open);
 
   const fieldRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ from: number; start: number } | null>(null);
+  const { gripProps, shellStyle } = useSheetDrag(open, onClose);
 
-  // Open: measure the screen, take the thread, and stop the page behind scrolling.
+  // Open: take the thread, and stop the page behind scrolling.
   useEffect(() => {
     if (!open) return;
-    const base = window.innerHeight;
-    const h = Math.round(base * HALF);
-    setViewport(base);
-    setHalf(h);
-    setFull(Math.round(base * FULL));
-    setHeight(h);
     setComments(undefined);
     setDraft("");
-
-    const onResize = () => setViewport(window.innerHeight);
-    window.addEventListener("resize", onResize);
 
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -96,7 +73,6 @@ export function CommentsSheet({
       });
 
     return () => {
-      window.removeEventListener("resize", onResize);
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = previous;
     };
@@ -108,47 +84,6 @@ export function CommentsSheet({
     const list = listRef.current;
     if (list) list.scrollTop = list.scrollHeight;
   }, [comments, open]);
-
-  useEffect(() => {
-    if (open && focusField && user) {
-      const timer = window.setTimeout(() => fieldRef.current?.focus(), 220);
-      return () => window.clearTimeout(timer);
-    }
-    return undefined;
-  }, [focusField, open, user]);
-
-  const release = useCallback(() => {
-    const d = drag.current;
-    drag.current = null;
-    setDragging(false);
-    if (!d) return;
-    setHeight((current) => {
-      if (current < viewport * DISMISS) {
-        onClose();
-        return current;
-      }
-      return current > (half + full) / 2 ? full : half;
-    });
-  }, [full, half, onClose, viewport]);
-
-  function gripProps() {
-    return {
-      onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => {
-        if (event.pointerType === "mouse" && event.button !== 0) return;
-        drag.current = { from: event.clientY, start: height };
-        setDragging(true);
-        event.currentTarget.setPointerCapture?.(event.pointerId);
-      },
-      onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => {
-        const d = drag.current;
-        if (!d) return;
-        event.preventDefault();
-        setHeight(clamp(d.start + (d.from - event.clientY), 180, Math.max(240, viewport - 24)));
-      },
-      onPointerUp: release,
-      onPointerCancel: release,
-    };
-  }
 
   function setTotal(next: PostComment[]) {
     setComments(next);
@@ -170,6 +105,8 @@ export function CommentsSheet({
           initials: me.initials || (me.name.slice(0, 1).toUpperCase() || "?"),
           createdAt: created.createdAt,
           mine: true,
+          likes: 0,
+          liked: false,
         },
       ]);
       setDraft("");
@@ -187,6 +124,25 @@ export function CommentsSheet({
       setTotal((comments ?? []).filter((comment) => comment.id !== commentId));
     } catch {
       toastError("Couldn't delete the comment");
+    }
+  }
+
+  /** A comment upvote is cast and uncast in place; the thread holds the number, so
+   *  nothing has to be re-read to show your own. */
+  async function toggleLike(comment: PostComment) {
+    if (!user) return;
+    const next = (comments ?? []).map((row) =>
+      row.id === comment.id
+        ? { ...row, liked: !row.liked, likes: Math.max(0, row.likes + (row.liked ? -1 : 1)) }
+        : row,
+    );
+    setComments(next);
+    try {
+      if (comment.liked) await unlikeComment(comment.id);
+      else await likeComment(comment.id);
+    } catch {
+      setComments(comments ?? []);
+      toastError("Couldn't record that");
     }
   }
 
@@ -219,13 +175,7 @@ export function CommentsSheet({
       />
       <div
         className="relative mt-auto flex w-full max-w-[420px] flex-col overflow-hidden rounded-t-3xl bg-paper shadow-lift"
-        style={{
-          // The frame before the effect has measured anything still has to land at
-          // the halfway mark, so the sheet never flashes at zero height.
-          height: height ? `${height}px` : "58vh",
-          transition: dragging ? "none" : "height 0.22s ease-out",
-          animation: "onward-sheet 0.22s ease-out",
-        }}
+        style={shellStyle}
       >
         <div
           {...gripProps()}
@@ -251,9 +201,7 @@ export function CommentsSheet({
 
         <div ref={listRef} className="wheel min-h-0 flex-1 overflow-y-auto border-t border-line px-4">
           {comments === undefined ? (
-            <div className="flex items-center justify-center gap-2 py-10 text-[11px] text-muted">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading the thread…
-            </div>
+            <ThreadSkeleton rows={5} />
           ) : !comments.length ? (
             <p className="py-10 text-center text-[11.5px] text-muted">
               No comments yet. Say the first thing.
@@ -270,6 +218,27 @@ export function CommentsSheet({
                     </p>
                     <div className="mt-1 flex items-center gap-3 text-[9.5px] text-faint">
                       <span>{timeAgo(comment.createdAt)}</span>
+                      {canType ? (
+                        <button
+                          type="button"
+                          aria-pressed={comment.liked}
+                          aria-label={
+                            comment.liked ? "Remove your upvote" : "Upvote this comment"
+                          }
+                          onClick={() => void toggleLike(comment)}
+                          className="-mx-1 flex cursor-pointer items-center gap-1 px-1 font-semibold text-muted transition hover:text-ink"
+                        >
+                          <ThumbsUp
+                            className={`h-3 w-3 ${
+                              comment.liked ? "fill-current text-lime-deep" : ""
+                            }`}
+                            strokeWidth={comment.liked ? 2.4 : 1.9}
+                          />
+                          {comment.likes > 0 ? (
+                            <span className="tabular-nums">{comment.likes}</span>
+                          ) : null}
+                        </button>
+                      ) : null}
                       {canType && !comment.mine ? (
                         <button
                           type="button"

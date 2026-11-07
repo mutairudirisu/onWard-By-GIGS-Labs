@@ -10,6 +10,7 @@ import { useStore } from "@/components/store";
 import { useAuth } from "@/components/auth";
 import { useNotifications } from "@/components/notifications";
 import { canVibrate, haptic } from "@/lib/haptics";
+import { resolveTheme, useSystemDark } from "@/lib/theme";
 import {
   AtSign,
   Bell,
@@ -54,6 +55,9 @@ export default function SettingsPage() {
   const { settings, setSetting, isPro } = useStore();
   const { signOut: leave, user } = useAuth();
   const { enableAlerts, permission, unread } = useNotifications();
+  // The icon and the System note describe what is on the screen, so both answer with
+  // the resolved theme rather than the word chosen below it.
+  const dark = resolveTheme(settings.theme, useSystemDark()) === "dark";
   const [leaving, setLeaving] = useState(false);
   const [vibrates, setVibrates] = useState<boolean | null>(null);
 
@@ -113,26 +117,27 @@ export default function SettingsPage() {
             <div className="px-4 py-4 lg:px-5">
               <div className="mb-3 flex items-center gap-3">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cream text-inksoft">
-                  {settings.theme === "dark" ? (
-                    <Moon className="h-[18px] w-[18px]" />
-                  ) : (
-                    <Sun className="h-[18px] w-[18px]" />
-                  )}
+                  {dark ? <Moon className="h-[18px] w-[18px]" /> : <Sun className="h-[18px] w-[18px]" />}
                 </span>
                 <span className="text-[13px] font-bold text-ink lg:text-[15px]">Theme</span>
               </div>
               <div className="flex gap-2">
-                {(["light", "dark"] as const).map((t) => (
+                {(["light", "dark", "system"] as const).map((t) => (
                   <Chip
                     key={t}
                     active={settings.theme === t}
                     onClick={() => setSetting("theme", t)}
                     className="flex-1 justify-center py-2.5 capitalize lg:text-[14px]"
                   >
-                    {t === "light" ? "Light" : "Dark"}
+                    {t}
                   </Chip>
                 ))}
               </div>
+              {settings.theme === "system" ? (
+                <p className="mt-2 text-[10px] text-muted lg:text-[11.5px]">
+                  Following your device, which is currently {dark ? "dark" : "light"}.
+                </p>
+              ) : null}
             </div>
             <Row icon={<Vibrate className="h-[18px] w-[18px]" />} title="Reduced motion" hint="Trim animations across the app">
               <Toggle
@@ -152,7 +157,7 @@ export default function SettingsPage() {
               title="Push notifications"
               hint={
                 permission === "granted"
-                  ? "Streak nudges and your wins, in Posts"
+                  ? "Streak nudges and your wins, in the Exchange"
                   : "Allow the browser prompt to get alerts"
               }
             >

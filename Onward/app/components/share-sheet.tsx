@@ -5,7 +5,7 @@ import { Check, Copy } from "lucide-react";
 import { Modal } from "@/components/modal";
 import { TextArea } from "@/components/ui";
 
-type Target = {
+export type Target = {
   id: string;
   label: string;
   badge: string;
@@ -14,7 +14,7 @@ type Target = {
 
 // LinkedIn's feed endpoint is the only one that opens a *post* draft with text
 // prefilled; the share-offsite button drops the body, so we use the feed URL.
-const TARGETS: Target[] = [
+export const TARGETS: Target[] = [
   {
     id: "linkedin",
     label: "LinkedIn post",

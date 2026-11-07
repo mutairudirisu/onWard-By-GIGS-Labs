@@ -88,7 +88,16 @@ export default function ProfilePage() {
               </Link>
             </div>
             <p className="mt-4 max-w-[62ch] text-[12px] leading-[1.65] text-inksoft lg:text-[14px]">
-              {user.bio || "No bio yet — add a line about the work you do and it will head your portfolio."}
+              {user.bio || "No bio yet — a line about the work you do heads your portfolio."}
+              {/* The card's only other way in is the header pencil, which opens the whole
+                  form at the top. This lands on the bio itself. */}
+              <Link
+                href="/profile/edit?field=bio"
+                className="ml-2 inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-dash bg-paper px-2 py-0.5 align-middle text-[9.5px] font-semibold text-inksoft transition hover:border-lime-deep lg:text-[11px]"
+              >
+                <Pencil className="h-2.5 w-2.5" />
+                Edit bio
+              </Link>
             </p>
             <div className="mt-5 grid grid-cols-3 divide-x divide-line border-t border-line pt-4 text-center">
               {[
@@ -189,7 +198,7 @@ export default function ProfilePage() {
               ))}
             </div>
             <p className="mt-2.5 text-[10px] text-muted lg:text-[11.5px]">
-              Skills are added as you log onWards.
+              Tagged on an onWard, or added in Edit profile.
             </p>
           </section>
 

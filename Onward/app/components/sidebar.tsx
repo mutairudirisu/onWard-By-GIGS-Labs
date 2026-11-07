@@ -6,13 +6,14 @@ import { InstallButton } from "@/components/install-button";
 import { Wordmark } from "@/components/wordmark";
 import { useCurrentUser } from "@/components/auth";
 import { UnreadDot, useNotifications } from "@/components/notifications";
+import { useExchangeBadge } from "@/lib/exchange-badge";
 import {
   BarChart3,
   Bell,
   Flame,
   GraduationCap,
   Home,
-  Megaphone,
+  MessagesSquare,
   Plus,
   Sprout,
   Trophy,
@@ -20,9 +21,9 @@ import {
 } from "lucide-react";
 
 const MENU = [
-  { href: "/today", label: "Today", Icon: Home },
+  { href: "/today", label: "Home", Icon: Home },
   { href: "/onwards", label: "onWards", Icon: Sprout },
-  { href: "/feed", label: "Posts", Icon: Megaphone },
+  { href: "/feed", label: "Exchange", Icon: MessagesSquare },
   { href: "/notifications", label: "Notifications", Icon: Bell, badge: true },
   { href: "/profile", label: "You", Icon: User },
 ];
@@ -55,11 +56,13 @@ function NavGroup({
   items,
   pathname,
   unread = 0,
+  newPosts = 0,
 }: {
   title: string;
   items: { href: string; label: string; Icon: typeof Home; badge?: boolean }[];
   pathname: string;
   unread?: number;
+  newPosts?: number;
 }) {
   return (
     <div>
@@ -69,6 +72,7 @@ function NavGroup({
       <div className="space-y-0.5">
         {items.map(({ href, label, Icon, badge }) => {
           const active = isActive(pathname, href);
+          const count = badge ? unread : href === "/feed" ? newPosts : 0;
           return (
             <Link
               key={href}
@@ -85,9 +89,9 @@ function NavGroup({
                 strokeWidth={active ? 2.3 : 2}
               />
               {label}
-              {badge && unread > 0 ? (
-                <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
-                  {unread > 99 ? "99+" : unread}
+              {count > 0 ? (
+                <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white tabular-nums ring-2 ring-paper">
+                  {count > 99 ? "99+" : badge ? count : `+${count}`}
                 </span>
               ) : null}
             </Link>
@@ -102,6 +106,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const user = useCurrentUser();
   const { unread } = useNotifications();
+  const newPosts = useExchangeBadge(isActive(pathname, "/feed"));
   if (AUTH_ROUTES.includes(pathname)) return null;
 
   return (
@@ -120,7 +125,7 @@ export function Sidebar() {
       </Link>
 
       <nav className="flex-1 space-y-5 overflow-y-auto">
-        <NavGroup title="Menu" items={MENU} pathname={pathname} unread={unread} />
+        <NavGroup title="Menu" items={MENU} pathname={pathname} unread={unread} newPosts={newPosts} />
         <NavGroup title="Progress" items={PROGRESS} pathname={pathname} />
       </nav>
 

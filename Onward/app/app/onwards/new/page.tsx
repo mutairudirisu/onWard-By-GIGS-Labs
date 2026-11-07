@@ -4,16 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PhoneShell } from "@/components/phone-shell";
-import { DictateButton } from "@/components/dictate-button";
-import { BackLink, Button, Field, TextArea, TextInput, Toggle } from "@/components/ui";
+import { DictateTextArea } from "@/components/dictate-field";
+import { BackLink, Button, Field, TextInput, Toggle } from "@/components/ui";
 import { ProBadge, UpgradeModal } from "@/components/pro";
 import { useStore } from "@/components/store";
 import { type Evidence } from "@/lib/data";
 import { todayISO } from "@/lib/dates";
 import { uuid } from "@/lib/db";
-import { appendDictation } from "@/lib/dictation";
 import {
   CalendarDays,
+  Check,
   File as FileIcon,
   Globe,
   Image as ImageIcon,
@@ -33,7 +33,17 @@ function kindIcon(kind: Evidence["kind"], className = "h-4 w-4") {
 
 export default function LogOnWardPage() {
   const router = useRouter();
-  const { selectedDate, skills: allSkills, addSkill, addOnWard, wardsThisMonth, limits } = useStore();
+  const {
+    onWards,
+    hydrated,
+    selectedDate,
+    skills: allSkills,
+    addSkill,
+    addOnWard,
+    updateOnWard,
+    wardsThisMonth,
+    limits,
+  } = useStore();
   const [wardGate, setWardGate] = useState(false);
   const [evidenceGate, setEvidenceGate] = useState(false);
 
@@ -50,12 +60,19 @@ export default function LogOnWardPage() {
 
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [urlDraft, setUrlDraft] = useState("");
+  /** Set from ?edit= on the way in, so a reload lands back on the same entry. */
+  const [editId, setEditId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLInputElement>(null);
 
   // Student cards arrive as /onwards/new?title=Coursework&project=Coursework.
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
+    const editing = query.get("edit");
+    if (editing) {
+      setEditId(editing);
+      return;
+    }
     const presetProject = query.get("project");
     const presetTitle = query.get("title");
     if (!presetProject && !presetTitle) return;
@@ -71,6 +88,24 @@ export default function LogOnWardPage() {
     }
     window.history.replaceState(null, "", window.location.pathname);
   }, []);
+
+  const ward = editId ? onWards.find((w) => w.id === editId) : undefined;
+
+  // Once, from whatever the store holds when the entry turns up: after this the
+  // fields are yours, and a background refresh must not rewrite what you typed.
+  const [prefilled, setPrefilled] = useState(false);
+  useEffect(() => {
+    if (!ward || prefilled) return;
+    setTitle(ward.title);
+    setDate(ward.date ?? todayISO());
+    setProject(ward.project ?? "");
+    setBody(ward.body ?? "");
+    setImpact(ward.impact ?? "");
+    setSkills(ward.skills);
+    setEvidence(ward.evidence ?? []);
+    setInPortfolio(ward.inPortfolio);
+    setPrefilled(true);
+  }, [ward, prefilled]);
 
   const toggleSkill = (name: string) =>
     setSkills((list) => (list.includes(name) ? list.filter((x) => x !== name) : [...list, name]));
@@ -120,11 +155,7 @@ export default function LogOnWardPage() {
 
   const save = () => {
     if (!canSave) return;
-    if (limits.wardsPerMonth != null && wardsThisMonth >= limits.wardsPerMonth) {
-      setWardGate(true);
-      return;
-    }
-    const id = addOnWard({
+    const data = {
       title: title.trim(),
       impact: impact.trim(),
       body: body.trim() || undefined,
@@ -133,27 +164,61 @@ export default function LogOnWardPage() {
       evidence,
       inPortfolio,
       date,
-    });
+    };
+    // Rewriting an entry you already have costs no new slot from the monthly cap.
+    if (ward) {
+      updateOnWard(ward.id, data);
+      router.push(`/onwards/${ward.id}`);
+      return;
+    }
+    if (limits.wardsPerMonth != null && wardsThisMonth >= limits.wardsPerMonth) {
+      setWardGate(true);
+      return;
+    }
+    const id = addOnWard(data);
     router.push(`/onwards/${id}`);
   };
 
   const suggestions = allSkills.filter((s) => !skills.includes(s)).slice(0, 4);
 
+  // Nothing is editable until the entry is in hand: an empty form that fills itself
+  // in a moment later would sit on top of whatever you had started typing.
+  if (editId && !ward) {
+    return (
+      <PhoneShell>
+        <div className="mb-4 flex items-center gap-1">
+          <BackLink href={`/onwards/${editId}`} label="Back to the onWard" />
+          <h1 className="text-[17px] font-bold tracking-tight text-ink">Edit this onWard</h1>
+        </div>
+        <p className="card px-4 py-6 text-center text-[12px] text-muted">
+          {hydrated ? "This onWard is no longer in your journal." : "Fetching this onWard…"}
+        </p>
+      </PhoneShell>
+    );
+  }
+
   return (
     <PhoneShell>
       <div className="mb-4 flex items-center gap-1">
-        <BackLink href="/onwards" label="Back to onWards" />
-        <h1 className="text-[17px] font-bold tracking-tight text-ink">Log an onWard</h1>
+        <BackLink
+          href={ward ? `/onwards/${ward.id}` : "/onwards"}
+          label={ward ? "Back to the onWard" : "Back to onWards"}
+        />
+        <h1 className="text-[17px] font-bold tracking-tight text-ink">
+          {ward ? "Edit this onWard" : "Log an onWard"}
+        </h1>
       </div>
 
-      <div className="mb-5 flex items-center gap-2 rounded-xl border border-lime-deep/40 bg-lime-soft px-3 py-2">
-        <Sprout className="h-3.5 w-3.5 text-inksoft" />
-        <span className="truncate text-[10px] font-medium text-inksoft">
-          Every piece of work is a step forward — capture the win.
-        </span>
-      </div>
+      {ward ? null : (
+        <div className="mb-5 flex items-center gap-2 rounded-xl border border-lime-deep/40 bg-lime-soft px-3 py-2">
+          <Sprout className="h-3.5 w-3.5 text-inksoft" />
+          <span className="truncate text-[10px] font-medium text-inksoft">
+            Every piece of work is a step forward — capture the win.
+          </span>
+        </div>
+      )}
 
-      {limits.wardsPerMonth != null ? (
+      {limits.wardsPerMonth != null && !ward ? (
         <div className="mb-5 flex items-center justify-between rounded-xl bg-cream px-3 py-2">
           <span className="text-[10.5px] font-semibold text-inksoft">
             {Math.min(wardsThisMonth, limits.wardsPerMonth)} of {limits.wardsPerMonth} free onWards used this month
@@ -171,16 +236,10 @@ export default function LogOnWardPage() {
         <Field label="Give your work a title">
           <TextInput
             id="ward-title"
-            autoFocus
+            autoFocus={!editId}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="What did you accomplish?"
-            trailing={
-              <DictateButton
-                label="Dictate the title"
-                onText={(text) => setTitle((value) => appendDictation(value, text))}
-              />
-            }
           />
         </Field>
 
@@ -203,30 +262,20 @@ export default function LogOnWardPage() {
         </div>
 
         <Field label="What did you do?">
-          <TextArea
+          <DictateTextArea
             value={body}
-            onChange={(e) => setBody(e.target.value)}
+            onChange={setBody}
             placeholder="Describe the work behind the win."
-            trailing={
-              <DictateButton
-                label="Dictate what you did"
-                onText={(text) => setBody((value) => appendDictation(value, text))}
-              />
-            }
+            label="Dictate what you did"
           />
         </Field>
 
         <Field label="What changed because of your work?">
-          <TextArea
+          <DictateTextArea
             value={impact}
-            onChange={(e) => setImpact(e.target.value)}
+            onChange={setImpact}
             placeholder="The specific result."
-            trailing={
-              <DictateButton
-                label="Dictate the result"
-                onText={(text) => setImpact((value) => appendDictation(value, text))}
-              />
-            }
+            label="Dictate the result"
           />
           <p className="mt-1.5 text-[9px] text-muted">
             Specific results turn a busy day into credible evidence.
@@ -386,8 +435,8 @@ export default function LogOnWardPage() {
       </div>
 
       <div className="mt-6">
-        <Button onClick={save} iconLeft={<Trophy className="h-4 w-4" />}>
-          Save this onWard
+        <Button onClick={save} iconLeft={ward ? <Check className="h-4 w-4" /> : <Trophy className="h-4 w-4" />}>
+          {ward ? "Save changes" : "Save this onWard"}
         </Button>
       </div>
       <p className="mt-3 text-center text-[9px] text-faint">

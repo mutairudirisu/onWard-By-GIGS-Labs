@@ -100,6 +100,20 @@ export function timeAgo(stamp: string, now = Date.now()) {
 
 export type WeekCell = { iso: string; inMonth: boolean };
 
+/** How long a poll has left, in the same breath as timeAgo: "42m", "6h", "3d". */
+export function timeUntil(stamp: string, now = Date.now()) {
+  const then = new Date(stamp).getTime();
+  if (Number.isNaN(then)) return "";
+  const mins = Math.round((then - now) / 60000);
+  if (mins <= 0) return "";
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d`;
+  return `${Math.floor(days / 7)}w`;
+}
+
 // The 7 days (Mon-first) of the week containing `iso`.
 export function weekOf(iso: string): WeekCell[] {
   const start = parseISO(startOfWeek(iso));

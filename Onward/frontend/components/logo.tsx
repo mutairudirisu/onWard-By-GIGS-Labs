@@ -1,3 +1,28 @@
+/**
+ * The brand's first letter is a mark, not a glyph: a ring of eight lime blocks.
+ * Sized in em and hung off the baseline, so it follows the size of the lockup.
+ */
+export function DottedO({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className={`mr-[0.04em] inline-block h-[0.7em] w-[0.6em] align-baseline ${className}`}
+    >
+      <ellipse
+        cx="12"
+        cy="12"
+        rx="8.8"
+        ry="10.3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="3.4"
+        strokeDasharray="4.2 3.31"
+      />
+    </svg>
+  );
+}
+
 export function LogoMark({
   dark = false,
   className = "h-8 w-8",
@@ -40,7 +65,7 @@ export function Logo({
         }`}
       >
         <span>
-          <span className={dark ? "text-lime" : "text-lime-deep"}>o</span>nWard
+          <DottedO className={dark ? "text-lime" : "text-lime-deep"} />nWard
         </span>
         <span className="flex translate-y-[1px] gap-px flex-col items-start leading-[1.05]">
           <span

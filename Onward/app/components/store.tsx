@@ -85,6 +85,7 @@ type NewWard = {
 type Store = State & {
   hydrated: boolean;
   addOnWard: (data: NewWard) => string;
+  updateOnWard: (id: string, data: NewWard) => void;
   togglePortfolio: (id: string) => void;
   toggleFavourite: (id: string) => void;
   addSkill: (name: string) => void;
@@ -249,6 +250,45 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [commit, userId],
   );
 
+  // Same row, new contents: sync() sees a different object and upserts it, so an
+  // edit never needs its own write path.
+  const updateOnWard = useCallback(
+    (id: string, data: NewWard) => {
+      const date = data.date ?? todayISO();
+      commit(
+        (s) => ({
+          ...s,
+          onWards: s.onWards.map((w) =>
+            w.id === id
+              ? {
+                  ...w,
+                  date,
+                  dateLabel: wardDateLabel(date),
+                  title: data.title,
+                  impact: data.impact,
+                  body: data.body,
+                  project: data.project,
+                  skills: data.skills,
+                  evidence: data.evidence,
+                  files: data.evidence.length,
+                  inPortfolio: data.inPortfolio,
+                }
+              : w,
+          ),
+          skills: [
+            ...new Set([
+              ...s.skills,
+              ...data.skills.filter((x) => !s.skills.includes(x)),
+            ]),
+          ],
+        }),
+        { ok: "onWard updated", fail: "Couldn't save the changes" },
+      );
+      haptic("success", stateRef.current.settings.haptics);
+    },
+    [commit],
+  );
+
   const togglePortfolio = useCallback(
     (id: string) => {
       const before = stateRef.current.onWards.find((w) => w.id === id);
@@ -324,6 +364,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       ...state,
       hydrated,
       addOnWard,
+      updateOnWard,
       togglePortfolio,
       toggleFavourite,
       addSkill,
@@ -338,6 +379,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       state,
       hydrated,
       addOnWard,
+      updateOnWard,
       togglePortfolio,
       toggleFavourite,
       addSkill,

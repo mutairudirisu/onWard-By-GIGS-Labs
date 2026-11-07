@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Copy, Gift, Loader2 } from "lucide-react";
+import { Check, Copy, Gift } from "lucide-react";
+import { BlockSkeleton, Sk } from "@/components/skeleton";
 import { fetchMyReferrals, type MyReferrals } from "@/lib/db";
 import { useAuth } from "./auth";
 import { ShareButton } from "./share-button";
@@ -33,8 +34,9 @@ export function ReferralCard() {
 
   if (state === "loading") {
     return (
-      <section className="card flex items-center justify-center gap-2 px-5 py-6 text-[11px] text-muted">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading your invite code…
+      <section className="card px-5 py-5">
+        <Sk className="h-3.5 w-32" />
+        <BlockSkeleton lines={2} />
       </section>
     );
   }

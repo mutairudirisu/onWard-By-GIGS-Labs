@@ -43,6 +43,7 @@ export function appendDictation(current: string, text: string) {
 export function useDictation(onText: (text: string) => void) {
   const [supported, setSupported] = useState(false);
   const [listening, setListening] = useState(false);
+  const [interim, setInterim] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const onTextRef = useRef(onText);
@@ -68,16 +69,25 @@ export function useDictation(onText: (text: string) => void) {
       const recognition = new Ctor();
       recognition.lang = document.documentElement.lang || navigator.language || "en-US";
       recognition.continuous = true;
-      recognition.interimResults = false;
+      // The words shown while you are still speaking come from here, which is what
+      // makes the box keep up with the voice instead of filling in at the end.
+      recognition.interimResults = true;
       recognition.maxAlternatives = 1;
       recognition.onresult = (event) => {
-        let text = "";
+        let final = "";
+        let heard = "";
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const result = event.results[i];
-          if (result.isFinal) text += result[0]?.transcript ?? "";
+          const transcript = result[0]?.transcript ?? "";
+          if (result.isFinal) final += transcript;
+          else heard += transcript;
         }
-        const clean = text.trim();
-        if (clean) onTextRef.current(clean);
+        setInterim(heard.trim());
+        const clean = final.trim();
+        if (clean) {
+          setInterim("");
+          onTextRef.current(clean);
+        }
       };
       recognition.onerror = (event) => {
         if (event.error === "aborted" || event.error === "no-speech") return;
@@ -93,6 +103,7 @@ export function useDictation(onText: (text: string) => void) {
       // it while the user still has dictation switched on.
       recognition.onend = () => {
         setListening(false);
+        setInterim("");
         if (!stoppingRef.current) {
           try {
             recognition.start();
@@ -117,6 +128,7 @@ export function useDictation(onText: (text: string) => void) {
     stoppingRef.current = true;
     recognitionRef.current?.stop();
     setListening(false);
+    setInterim("");
   }, []);
 
   const toggle = useCallback(() => {
@@ -124,5 +136,5 @@ export function useDictation(onText: (text: string) => void) {
     else start();
   }, [listening, start, stop]);
 
-  return { supported, listening, error, start, stop, toggle };
+  return { supported, listening, interim, error, start, stop, toggle };
 }

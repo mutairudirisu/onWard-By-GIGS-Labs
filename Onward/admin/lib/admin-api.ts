@@ -147,6 +147,61 @@ export async function fetchAdminOverview(): Promise<AdminOverview> {
   };
 }
 
+export type AdminFeedbackAnswer = "love_it" | "not_really";
+
+export type AdminFeedback = {
+  id: string;
+  answer: AdminFeedbackAnswer;
+  body: string;
+  /** Where the card was asked: the Exchange, or on a return after a long gap. */
+  screen: string;
+  name: string;
+  email: string;
+  role: string;
+  plan: AdminPlan;
+  when: string;
+};
+
+type RawFeedback = {
+  id: string;
+  created_at: string | null;
+  answer: string | null;
+  body: string | null;
+  screen: string | null;
+  display_name: string | null;
+  email: string | null;
+  role: string | null;
+  plan: string | null;
+};
+
+function mapFeedback(row: RawFeedback): AdminFeedback {
+  const when = row.created_at ? Date.parse(row.created_at) : NaN;
+  return {
+    id: row.id,
+    answer: row.answer === "love_it" ? "love_it" : "not_really",
+    body: row.body ?? "",
+    screen: row.screen ?? "",
+    name: row.display_name?.trim() || (row.email ?? "").split("@")[0] || "onWard member",
+    email: row.email ?? "",
+    role: row.role?.trim() || "—",
+    plan: effectivePlan(row.plan, null),
+    when: Number.isNaN(when)
+      ? "—"
+      : new Date(when).toLocaleString(undefined, {
+          day: "numeric",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+  };
+}
+
+export async function fetchAdminFeedback(): Promise<AdminFeedback[]> {
+  const { data, error } = await supabase.rpc("admin_feedback");
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as RawFeedback[]).map(mapFeedback);
+}
+
 export function usersToCsv(rows: AdminUser[]) {
   const header = [
     "name", "email", "role", "plan", "status", "streak", "longest",

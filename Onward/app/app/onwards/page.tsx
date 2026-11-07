@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { PhoneShell } from "@/components/phone-shell";
 import { NewButton, PageHeader, Tag } from "@/components/ui";
+import { WardSkeleton } from "@/components/skeleton";
 import { useStore } from "@/components/store";
 import type { Evidence, OnWard } from "@/lib/data";
 import { dayHeading, formatDue } from "@/lib/dates";
@@ -141,7 +142,7 @@ const GRID = "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3";
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 export default function OnWardsPage() {
-  const { onWards, favourites, toggleFavourite, settings } = useStore();
+  const { onWards, favourites, toggleFavourite, settings, hydrated } = useStore();
   const [tab, setTab] = useState<Tab>("Timeline");
   const [query, setQuery] = useState("");
   const [sharing, setSharing] = useState<OnWard | null>(null);
@@ -182,7 +183,7 @@ export default function OnWardsPage() {
         eyebrow={
           <span className="flex items-center gap-1.5">
             <Trophy className="h-3.5 w-3.5 text-lime-deep" /> {onWards.length} onWards ·{" "}
-            {selectedCount} in portfolio
+            {selectedCount} selected
           </span>
         }
         actions={<NewButton href="/onwards/new">Log an onWard</NewButton>}
@@ -226,27 +227,32 @@ export default function OnWardsPage() {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {!hydrated ? (
+        <div className={GRID}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <WardSkeleton key={i} />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
         <p className="py-10 text-center text-[13px] text-muted lg:text-[15px]">
           No onWards match &ldquo;{query.trim()}&rdquo;.
         </p>
       ) : tab === "Timeline" ? (
-        groupByDay(filtered).map((day) => (
-          <section key={`${day.key}:${day.wards[0]?.id ?? ""}`} className="mb-6 lg:mb-8">
-            <SectionHead heading={day.heading} caption={plural(day.wards.length, "onWard", "onWards")} />
-            <div className={GRID}>
-              {day.wards.map((ward) => (
-                <WardCard
-                  key={ward.id}
-                  ward={ward}
-                  favourite={favourites.includes(ward.id)}
-                  onFavourite={buzzFavourite}
-                  onShare={setSharing}
-                />
-              ))}
-            </div>
-          </section>
-        ))
+        // Grouping only sets the order here. Every card already carries its own date,
+        // so a heading row above each day repeats what is underneath it.
+        <div className={GRID}>
+          {groupByDay(filtered)
+            .flatMap((day) => day.wards)
+            .map((ward) => (
+              <WardCard
+                key={ward.id}
+                ward={ward}
+                favourite={favourites.includes(ward.id)}
+                onFavourite={buzzFavourite}
+                onShare={setSharing}
+              />
+            ))}
+        </div>
       ) : tab === "Portfolio" ? (
         <section>
           <SectionHead heading="In your portfolio" caption={`${portfolio.length} selected`} />

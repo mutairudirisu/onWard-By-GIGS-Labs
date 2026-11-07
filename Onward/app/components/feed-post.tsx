@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Heart, MessageCircle, MoreHorizontal } from "lucide-react";
-import { ShareButton } from "@/components/share-button";
-import { mediaUrl, type FeedPost, type PostMedia } from "@/lib/db";
+import { MessageCircle, MoreHorizontal, Repeat2, Share2, ThumbsUp } from "lucide-react";
+import { mediaUrl, type FeedPost, type PostMedia, type PostPoll } from "@/lib/db";
+import { PollBlock } from "@/components/post-poll";
+import { PostText } from "@/components/post-text";
 import { timeAgo } from "@/lib/dates";
 
 /** Initials tile, or the person's own picture when they have one. */
@@ -89,42 +90,82 @@ function MediaStage({ media, className = "" }: { media: PostMedia[]; className?:
   );
 }
 
+/** The words and files a card shows — an entry of your own, or one a reshare carries. */
+function PostBody({
+  entry,
+  clamp = false,
+}: {
+  entry: { title: string; body: string; media: PostMedia[] };
+  clamp?: boolean;
+}) {
+  return (
+    <>
+      {entry.title ? (
+        <p className="text-[13px] font-bold leading-[1.35] tracking-tight text-ink [overflow-wrap:anywhere]">
+          {entry.title}
+        </p>
+      ) : null}
+      {entry.body ? (
+        <PostText
+          text={entry.body}
+          className={`text-[12px] leading-[1.55] text-ink ${entry.title ? "mt-1" : ""} ${
+            clamp ? "line-clamp-3" : ""
+          }`}
+        />
+      ) : null}
+      <MediaStage media={entry.media} className={entry.title || entry.body ? "mt-2.5" : ""} />
+    </>
+  );
+}
+
 /**
- * One post, start to finish: who made it, what it shows, the row of things a
- * stranger can do to it, and the two newest replies. Used by the timeline and by
- * the page a share link opens, so a post looks like the same object in both.
+ * One Exchange entry, start to finish: who made it, what it says, the row of things
+ * someone can do with it, and the two newest replies. Used by the timeline and by the
+ * page a share link opens, so an entry looks like the same object in both.
  */
 export function PostBlock({
   post,
   liked,
   likes,
+  reshares,
+  reshared,
   signedIn,
-  me,
+  poll = null,
+  onVote,
   onLike,
+  onReshare,
+  onShare,
   onOpen,
-  onAddComment,
   onManage,
   previewThread = true,
 }: {
   post: FeedPost;
   liked: boolean;
   likes: number;
+  reshares: number;
+  reshared: boolean;
   signedIn: boolean;
-  /** Whose face goes in the comment field at the bottom of the card. */
-  me: { initials: string; avatarUrl: string | null };
+  /** The poll the entry carries, when it carries one. Read separately from the feed. */
+  poll?: PostPoll | null;
+  /** Tapping a choice. The post it belongs to comes back with it, because that is the
+   *  key the page keeps its polls under. */
+  onVote: (postId: string, optionId: string) => void;
+  voting?: boolean;
   onLike: (id: string) => void;
+  onReshare: (id: string) => void;
+  /** Opens the drawer that hands the post to a person, or to anywhere outside onWard. */
+  onShare: (id: string) => void;
   onOpen: (id: string) => void;
-  /** The same thread, opened with the keypad already up. */
-  onAddComment?: (id: string) => void;
   onManage?: (post: FeedPost) => void;
   /** Off where the whole thread is already on the page underneath. */
   previewThread?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const long = post.body.length > 180;
-  // A post always carries the name its author shows, including to themselves.
+  // An entry always carries the name its author shows, including to themselves.
   const name = post.fullName || "Someone";
-  const permalink = `${window.location.origin}/feed/${post.id}`;
+  // What is being passed on, when this card is a reshare rather than a writing.
+  const carried = post.reshare;
 
   return (
     <article className="border-b border-line pb-3.5">
@@ -153,15 +194,34 @@ export function PostBlock({
         ) : null}
       </header>
 
-      {post.body ? (
-        <p
-          className={`text-[12px] leading-[1.55] text-ink [overflow-wrap:anywhere] ${
-            long && !expanded ? "line-clamp-3" : ""
-          }`}
-        >
-          {post.body}
-        </p>
-      ) : null}
+      {carried ? (
+        <>
+          {post.body ? (
+            <Link href={`/feed/${post.id}`} className="block cursor-pointer">
+              <PostText
+                text={post.body}
+                className={`text-[12px] leading-[1.55] text-ink ${
+                  long && !expanded ? "line-clamp-3" : ""
+                }`}
+              />
+            </Link>
+          ) : null}
+          <div className="rounded-2xl border border-line bg-cream px-3 pb-3 pt-2.5">
+            <p className="flex items-center gap-1.5 pb-2 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-muted">
+              <Repeat2 className="h-3.5 w-3.5" />
+              Reshared from {carried.fullName || "someone"}
+            </p>
+            <Link href={`/feed/${carried.id}`} className="block cursor-pointer">
+              <PostBody entry={carried} />
+            </Link>
+          </div>
+        </>
+      ) : (
+        <Link href={`/feed/${post.id}`} className="block cursor-pointer">
+          <PostBody entry={post} clamp={long && !expanded} />
+        </Link>
+      )}
+
       {long && !expanded ? (
         <button
           type="button"
@@ -172,19 +232,25 @@ export function PostBlock({
         </button>
       ) : null}
 
-      <MediaStage media={post.media} className={post.body ? "mt-2.5" : ""} />
+      {poll && !carried ? (
+        <PollBlock
+          poll={poll}
+          signedIn={signedIn}
+          onVote={(optionId) => onVote(post.id, optionId)}
+        />
+      ) : null}
 
       <div className="flex items-center gap-4 pb-1 pt-2.5">
         <button
           type="button"
           aria-pressed={liked}
-          aria-label={liked ? "Remove your like" : "Like this"}
+          aria-label={liked ? "Remove your upvote" : "Upvote this"}
           onClick={() => onLike(post.id)}
           className="flex cursor-pointer items-center gap-1.5 text-ink transition hover:text-lime-deep"
         >
-          <Heart
-            className={`h-[19px] w-[19px] ${liked ? "fill-current text-red-500" : ""}`}
-            strokeWidth={liked ? 2.4 : 1.9}
+          <ThumbsUp
+            className={`h-[18px] w-[18px] ${liked ? "fill-current text-lime-deep" : ""}`}
+            strokeWidth={liked ? 2.2 : 1.9}
           />
           {likes > 0 ? <span className="text-[11px] font-bold tabular-nums">{likes}</span> : null}
         </button>
@@ -199,12 +265,32 @@ export function PostBlock({
             <span className="text-[11px] font-bold tabular-nums">{post.comments}</span>
           ) : null}
         </button>
-        <ShareButton
-          text={post.body.slice(0, 120) || `${name} posted on onWard`}
-          url={permalink}
-          label=""
+        {/* A reshare of a reshare would carry an entry with nothing inside it, so the
+            action is only offered on something somebody actually wrote. */}
+        {!carried ? (
+          <button
+            type="button"
+            aria-pressed={reshared}
+            aria-label={reshared ? "Undo your reshare" : "Reshare to your own stream"}
+            onClick={() => onReshare(post.id)}
+            className={`flex cursor-pointer items-center gap-1.5 transition ${
+              reshared ? "text-lime-deep" : "text-ink hover:text-lime-deep"
+            }`}
+          >
+            <Repeat2 className="h-[18px] w-[18px]" strokeWidth={reshared ? 2.4 : 1.9} />
+            {reshares > 0 ? (
+              <span className="text-[11px] font-bold tabular-nums">{reshares}</span>
+            ) : null}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          aria-label="Share this post"
+          onClick={() => onShare(post.id)}
           className="flex cursor-pointer items-center text-ink transition hover:text-lime-deep"
-        />
+        >
+          <Share2 className="h-[18px] w-[18px]" strokeWidth={1.9} />
+        </button>
         <span className="ml-auto text-[9.5px] tracking-[0.06em] text-faint">
           {timeAgo(post.createdAt)}
         </span>
@@ -232,23 +318,14 @@ export function PostBlock({
         </div>
       ) : null}
 
-      {signedIn ? (
-        <button
-          type="button"
-          onClick={() => (onAddComment ?? onOpen)(post.id)}
-          className="mt-2.5 flex w-full cursor-pointer items-center gap-2 rounded-full border border-line bg-paper py-1.5 pl-1.5 pr-4 text-left transition hover:border-dash"
-        >
-          <Avatar initials={me.initials} src={me.avatarUrl} />
-          <span className="text-[11.5px] text-muted">Add a comment…</span>
-        </button>
-      ) : (
+      {!signedIn ? (
         <Link
           href="/sign-in"
           className="mt-2.5 inline-block cursor-pointer text-[10.5px] font-semibold text-lime-deep hover:underline"
         >
-          Sign in to like or comment
+          Sign in to upvote, comment or reshare
         </Link>
-      )}
+      ) : null}
     </article>
   );
 }

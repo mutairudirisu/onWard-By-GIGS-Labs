@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { PhoneShell } from "@/components/phone-shell";
 import { DateStrip } from "@/components/date-strip";
+import { HomeWidgets } from "@/components/home-widgets";
 import { Button } from "@/components/ui";
 import { useStore } from "@/components/store";
 import { useCurrentUser } from "@/components/auth";
@@ -83,6 +84,8 @@ export default function TodayPage() {
 
         <div className="lg:col-start-1">
           <DateStrip />
+
+          <HomeWidgets />
 
           <section className="mt-4">
             <div className="mb-2 flex items-center gap-3">

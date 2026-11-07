@@ -6,7 +6,8 @@ import { ShareButton } from "@/components/share-button";
 import { BackLink, Chip } from "@/components/ui";
 import { useAuth, useCurrentUser } from "@/components/auth";
 import { fetchLeaderboard, type LeaderboardRow } from "@/lib/db";
-import { Crown, Flame, Loader2, Trophy } from "lucide-react";
+import { Crown, Flame, Trophy } from "lucide-react";
+import { BoardSkeleton } from "@/components/skeleton";
 
 const PERIODS = ["This week", "This month", "All time"] as const;
 type Period = (typeof PERIODS)[number];
@@ -80,8 +81,8 @@ export default function LeaderboardPage() {
       </div>
 
       {state === "loading" ? (
-        <div className="card flex items-center justify-center gap-2 px-4 py-10 text-[11px] text-muted">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading the board…
+        <div className="card px-4 py-1">
+          <BoardSkeleton rows={7} />
         </div>
       ) : state === "error" ? (
         <div className="card px-4 py-8 text-center">
