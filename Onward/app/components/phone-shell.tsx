@@ -1,5 +1,8 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { BottomNav, type TabId } from "./bottom-nav";
+import { useKeyboardInset } from "@/lib/keyboard";
 import { Wordmark } from "./wordmark";
 
 export function HomeIndicator() {
@@ -23,6 +26,10 @@ export function PhoneShell({
 }) {
   const showNav = Boolean(tab);
   const hasFooter = showNav || indicator;
+  // The keyboard takes the bottom of the screen, and a bar pinned there ends up
+  // floating over the keypad and drifting with the page. Nothing to tap while
+  // typing, so it goes away until the keypad does.
+  const keypadUp = useKeyboardInset(hasFooter) > 0;
 
   return (
     <div className="flex flex-col min-h-dvh">
@@ -40,7 +47,12 @@ export function PhoneShell({
         </div>
       </main>
       {hasFooter ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[400px] bg-cream md:hidden">
+        <div
+          className={`fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[400px] bg-cream transition-opacity duration-150 md:hidden ${
+            keypadUp ? "pointer-events-none opacity-0" : "opacity-100"
+          }`}
+          aria-hidden={keypadUp || undefined}
+        >
           <div className="pointer-events-none absolute inset-x-0 -top-8 h-8 bg-gradient-to-t from-cream via-cream/70 to-transparent" />
           {showNav ? <BottomNav active={tab!} /> : null}
           {indicator ? <HomeIndicator /> : null}
