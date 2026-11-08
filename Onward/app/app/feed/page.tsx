@@ -1,17 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Plus, Trash2 } from "lucide-react";
+import { Bell, Hash, Plus, Search, Trash2 } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { FeedSkeleton } from "@/components/skeleton";
 import { Modal } from "@/components/modal";
 import { CommentsSheet } from "@/components/comments-sheet";
 import { ExchangeShareSheet, type ShareTarget } from "@/components/exchange-share-sheet";
+import { ExchangeSearchSheet } from "@/components/exchange-search-sheet";
 import { Avatar, PostBlock } from "@/components/feed-post";
 import { withVote } from "@/components/post-poll";
 import { ReshareSheet, type ReshareTarget } from "@/components/reshare-sheet";
+import { PostOptionsSheet } from "@/components/post-options-sheet";
 import { useAuth } from "@/components/auth";
 import { UnreadDot, useNotifications } from "@/components/notifications";
 import { Wordmark } from "@/components/wordmark";
@@ -46,6 +48,9 @@ function authorKey(post: FeedPost) {
   return `${post.mine ? "you" : "other"}:${name.toLowerCase()}:${post.initials}`;
 }
 
+/** How often the Exchange looks for anything written since you arrived. */
+const REFRESH_MS = 20_000;
+
 function interactionLine(item: FeedInteraction, post: FeedPost) {
   const who = post.mine ? "your" : `${post.fullName || "someone"}'s`;
   const target = post.media.length ? `${who} photo` : `${who} post`;
@@ -64,6 +69,7 @@ export default function FeedPage() {
   const [reshared, setReshared] = useState<Set<string>>(new Set());
   const [reshareCounts, setReshareCounts] = useState<Record<string, number>>({});
   const [author, setAuthor] = useState<string | null>(null);
+  const [options, setOptions] = useState<FeedPost | null>(null);
   const [pending, setPending] = useState<FeedPost | null>(null);
   const [thread, setThread] = useState<string | null>(null);
   const [sharing, setSharing] = useState<ShareTarget | null>(null);
@@ -72,9 +78,14 @@ export default function FeedPage() {
   const [engaged, setEngaged] = useState<FeedInteraction[]>([]);
   const [handed, setHanded] = useState<SharedPost[]>([]);
   const [polls, setPolls] = useState<Record<string, PostPoll>>({});
+  const [searchOpen, setSearchOpen] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
+  // Every read of the Exchange carries a token, so a slow answer cannot land on top
+  // of a newer one.
+  const inflight = useRef(0);
+
+  const load = useCallback(() => {
+    const token = ++inflight.current;
     setState("loading");
     Promise.all([
       fetchFeed(),
@@ -85,7 +96,7 @@ export default function FeedPage() {
       user ? fetchSharedWithMe().catch(() => [] as SharedPost[]) : Promise.resolve([]),
     ])
       .then(([next, likedSet, interactions, shared]) => {
-        if (cancelled) return;
+        if (token !== inflight.current) return;
         setPosts(next);
         setLiked(likedSet);
         setCounts(Object.fromEntries(next.map((post) => [post.id, post.likes])));
@@ -98,17 +109,87 @@ export default function FeedPage() {
         // table has not been created yet, so a failure here only means no polls.
         void fetchPolls(next.map((post) => post.id))
           .then((found) => {
-            if (!cancelled) setPolls(found);
+            if (token === inflight.current) setPolls(found);
           })
           .catch(() => {});
       })
       .catch(() => {
-        if (!cancelled) setState("error");
+        if (token === inflight.current) setState("error");
       });
-    return () => {
-      cancelled = true;
-    };
   }, [user]);
+
+  /**
+   * The quiet read behind the first one: the timeline and its polls, nothing else. A
+   * post written on someone else's phone arrives here without anyone reloading, while
+   * the taps you have just made stay exactly as you left them.
+   */
+  const refresh = useCallback(() => {
+    const token = ++inflight.current;
+    void fetchFeed()
+      .then((next) => {
+        if (token !== inflight.current) return;
+        setPosts(next);
+        setCounts(Object.fromEntries(next.map((post) => [post.id, post.likes])));
+        setReshareCounts(Object.fromEntries(next.map((post) => [post.id, post.reshares])));
+        return fetchPolls(next.map((post) => post.id))
+          .then((found) => {
+            if (token === inflight.current) setPolls(found);
+          })
+          .catch(() => {});
+      })
+      .catch(() => {
+        /* a quiet read that fails leaves the timeline as it was */
+      });
+  }, []);
+
+  useEffect(() => {
+    load();
+    return () => {
+      inflight.current++;
+    };
+  }, [load]);
+
+  /**
+   * Keeping the Exchange current for everyone reading it. Only while the page is on
+   * screen, and only from the top of the list - new posts land above the ones you are
+   * reading, so dropping them in halfway down would shove your card off the screen.
+   * Scrolling back up picks up anything that was held back.
+   */
+  useEffect(() => {
+    if (state !== "ready") return;
+    let missed = false;
+    let lastAt = 0;
+
+    const nearTop = () => window.scrollY < 120;
+    const run = () => {
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - lastAt < 4000) return;
+      if (!nearTop()) {
+        missed = true;
+        return;
+      }
+      missed = false;
+      lastAt = now;
+      refresh();
+    };
+    const onScroll = () => {
+      if (missed) run();
+    };
+
+    const timer = window.setInterval(run, REFRESH_MS);
+    document.addEventListener("visibilitychange", run);
+    window.addEventListener("focus", run);
+    window.addEventListener("online", run);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", run);
+      window.removeEventListener("focus", run);
+      window.removeEventListener("online", run);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [refresh, state]);
 
   const toggleLike = useCallback(
     (id: string) => {
@@ -286,7 +367,7 @@ export default function FeedPage() {
 
   return (
     <PhoneShell tab="feed">
-      <div className="mb-3.5 flex items-center">
+      <div className="relative mb-3.5 flex items-center">
         <button
           type="button"
           aria-label="New Exchange post"
@@ -295,14 +376,35 @@ export default function FeedPage() {
         >
           <Plus className="h-[22px] w-[22px]" strokeWidth={2.2} />
         </button>
-        <Wordmark className="flex-1 text-center text-[17px]" />
+        {/* Centred on the phone, not on the space left over, so the two icons on the
+            right cannot push the brand off its axis. */}
+        <Wordmark className="pointer-events-none absolute inset-x-0 text-center text-[17px]" />
+        <div className="ml-auto flex items-center">
+          <button
+            type="button"
+            aria-label="Search the Exchange"
+            onClick={() => setSearchOpen(true)}
+            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-ink transition hover:bg-cream"
+          >
+            <Search className="h-[20px] w-[20px]" strokeWidth={2} />
+          </button>
+          <Link
+            href="/notifications"
+            aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}
+            className="relative -mr-2 flex h-9 w-9 items-center justify-center rounded-full text-ink transition hover:bg-cream"
+          >
+            <Bell className="h-[21px] w-[21px]" strokeWidth={2} />
+            <UnreadDot />
+          </Link>
+        </div>
+      </div>
+
+      <div className="mb-3 flex items-center border-t border-line pt-2">
         <Link
-          href="/notifications"
-          aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}
-          className="relative -mr-2 flex h-9 w-9 items-center justify-center rounded-full text-ink transition hover:bg-cream"
+          href="/channels"
+          className="flex cursor-pointer items-center gap-1.5 text-[10.5px] font-semibold text-inksoft transition hover:text-ink"
         >
-          <Bell className="h-[21px] w-[21px]" strokeWidth={2} />
-          <UnreadDot />
+          <Hash className="h-3.5 w-3.5" strokeWidth={2.2} /> Channels
         </Link>
       </div>
 
@@ -443,7 +545,7 @@ export default function FeedPage() {
                 onReshare={tapReshare}
                 onShare={openShare}
                 onOpen={setThread}
-                onManage={setPending}
+                onManage={setOptions}
               />
             ))}
           </div>
@@ -485,6 +587,8 @@ export default function FeedPage() {
         }}
       />
 
+      <ExchangeSearchSheet open={searchOpen} onClose={() => setSearchOpen(false)} />
+
       <ExchangeShareSheet target={sharing} open={Boolean(sharing)} onClose={() => setSharing(null)} />
 
       <ReshareSheet
@@ -492,6 +596,16 @@ export default function FeedPage() {
         open={Boolean(reposting)}
         onClose={() => setReposting(null)}
         onConfirm={(thought) => void confirmRepost(thought)}
+      />
+
+      <PostOptionsSheet
+        post={options}
+        reshared={options ? reshared.has(options.id) : false}
+        open={Boolean(options)}
+        onClose={() => setOptions(null)}
+        onShare={openShare}
+        onReshare={tapReshare}
+        onDelete={setPending}
       />
 
       <Modal open={Boolean(pending)} onClose={() => setPending(null)} title="Delete this post?">

@@ -21,7 +21,9 @@ import {
   POST_MEDIA_MAX_PER_POST,
   POST_TITLE_MAX,
   createPost,
+  fetchChannel,
   mediaProblem,
+  type ChannelCard,
 } from "@/lib/db";
 import { useKeyboardInset } from "@/lib/keyboard";
 
@@ -102,12 +104,31 @@ function Composer() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [picks, setPicks] = useState<Pick[]>([]);
-  const [poll, setPoll] = useState<PollComposerDraft | null>(null);
+  // Post and Poll are two modes of one composer, so switching between them keeps
+  // whatever is already written in either of them.
+  const [mode, setMode] = useState<"post" | "poll">("post");
+  const [pollDraft, setPollDraft] = useState<PollComposerDraft>(newPollDraft);
   const [busy, setBusy] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [channel, setChannel] = useState<ChannelCard | null>(null);
   const imageRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
   const keyboard = useKeyboardInset(Boolean(user));
+
+  // Which room this is going into, so the page can say its name rather than an id.
+  const channelParam = params.get("channel");
+  useEffect(() => {
+    if (!channelParam) return;
+    let cancelled = false;
+    void fetchChannel(channelParam)
+      .then((found) => {
+        if (!cancelled) setChannel(found);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [channelParam]);
 
   // Opening this from an onWard carries its words over; the entry itself stays private.
   useEffect(() => {
@@ -127,20 +148,25 @@ function Composer() {
   );
 
   const room = POST_MEDIA_MAX_PER_POST - picks.length;
+  const isPoll = mode === "poll";
   // A poll counts as content only once it says something, so an empty half-filled
   // section cannot send a post with nothing in it.
-  const pollWanted = Boolean(poll?.question.trim() || poll?.options.some((o) => o.trim()));
+  const pollWanted = Boolean(
+    pollDraft.question.trim() || pollDraft.options.some((option) => option.trim()),
+  );
   // A poll is its own kind of entry: it is asked with the question and the choices,
   // so it needs no headline, no words and no picture alongside it.
-  const empty = poll ? !pollWanted : !title.trim() && !body.trim() && !picks.length;
+  const empty = isPoll ? !pollWanted : !title.trim() && !body.trim() && !picks.length;
   // The ring counts the words that are actually going into the post, so a poll does not
   // inherit the count of the text left behind when the poll form came up.
-  const counted = poll ? 0 : body.length;
+  const counted = isPoll ? 0 : body.length;
   const used = counted / POST_BODY_MAX;
   const ward = useMemo(
     () => onWards.find((w) => w.id === params.get("ward")),
     [onWards, params],
   );
+  // A channel post is an ordinary Exchange post with a room named on it.
+  const channelId = channelParam;
   const initials = me.initials || (me.name.slice(0, 1).toUpperCase() || "?");
 
   function addFiles(list: FileList | null) {
@@ -174,12 +200,17 @@ function Composer() {
     setProgress(null);
     try {
       await createPost({
-        title: poll ? "" : title.trim(),
-        body: poll ? "" : body.trim(),
-        files: poll ? [] : picks.map((p) => p.file),
+        title: isPoll ? "" : title.trim(),
+        body: isPoll ? "" : body.trim(),
+        files: isPoll ? [] : picks.map((p) => p.file),
         wardId: ward?.id ?? null,
-        poll: poll && pollWanted
-          ? { question: poll.question, options: poll.options, endsAt: pollEndsAt(poll.hours) }
+        channelId: channelId ?? null,
+        poll: isPoll && pollWanted
+          ? {
+              question: pollDraft.question,
+              options: pollDraft.options,
+              endsAt: pollEndsAt(pollDraft.hours),
+            }
           : null,
         onProgress: (done, total) => setProgress({ done, total }),
       });
@@ -226,8 +257,8 @@ function Composer() {
           </span>
         </div>
 
-        {poll ? (
-          <PollComposer draft={poll} onChange={setPoll} disabled={Boolean(busy)} />
+        {isPoll ? (
+          <PollComposer draft={pollDraft} onChange={setPollDraft} disabled={Boolean(busy)} />
         ) : (
           <>
             <input
@@ -295,7 +326,34 @@ function Composer() {
         )}
 
         <div className="flex items-center gap-1 border-t border-line px-2 py-1.5">
-          {poll ? null : (
+          {/* Both kinds stay on screen, so a poll is never a one-way door. */}
+          <div
+            role="group"
+            aria-label="What kind of post"
+            className="flex shrink-0 items-center gap-0.5 rounded-full bg-cream p-0.5"
+          >
+            <button
+              type="button"
+              aria-pressed={!isPoll}
+              onClick={() => setMode("post")}
+              className={`cursor-pointer rounded-full px-3 py-1.5 text-[11px] font-semibold transition ${
+                !isPoll ? "bg-paper text-ink shadow-card" : "text-inksoft hover:text-ink"
+              }`}
+            >
+              Post
+            </button>
+            <button
+              type="button"
+              aria-pressed={isPoll}
+              onClick={() => setMode("poll")}
+              className={`flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold transition ${
+                isPoll ? "bg-paper text-ink shadow-card" : "text-inksoft hover:text-ink"
+              }`}
+            >
+              <BarChart3 className="h-[15px] w-[15px]" /> Poll
+            </button>
+          </div>
+          {isPoll ? null : (
             <>
               <button
                 type="button"
@@ -319,17 +377,7 @@ function Composer() {
               </button>
             </>
           )}
-          <button
-            type="button"
-            aria-pressed={Boolean(poll)}
-            onClick={() => setPoll(poll ? null : newPollDraft())}
-            className={`flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-2 text-[11px] font-semibold transition ${
-              poll ? "bg-lime-pale text-ink" : "text-inksoft hover:bg-cream"
-            }`}
-          >
-            <BarChart3 className="h-[17px] w-[17px]" /> Poll
-          </button>
-          {poll ? null : (
+          {isPoll ? null : (
             <span className="ml-auto pr-2 text-[10px] text-faint">
               {room > 0 ? `${room} of ${POST_MEDIA_MAX_PER_POST} free` : "No room left"}
             </span>
@@ -364,6 +412,19 @@ function Composer() {
         <p className="mt-3 text-[10.5px] leading-[1.5] text-muted">
           Written from <span className="font-semibold text-inksoft">{ward.title}</span>. The post
           goes to the Exchange; the onWard itself stays private.
+        </p>
+      ) : null}
+
+      {channel ? (
+        <p className="mt-3 text-[10.5px] leading-[1.5] text-muted">
+          Going into{" "}
+          <Link
+            href={`/channels/${channel.id}`}
+            className="cursor-pointer font-semibold text-lime-deep hover:underline"
+          >
+            {channel.name}
+          </Link>
+          . It is still a public Exchange post, readable by people who have not joined.
         </p>
       ) : null}
 

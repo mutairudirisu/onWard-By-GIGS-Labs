@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { MessageCircle, MoreHorizontal, Repeat2, Share2, ThumbsUp } from "lucide-react";
 import { mediaUrl, type FeedPost, type PostMedia, type PostPoll } from "@/lib/db";
-import { PollBlock } from "@/components/post-poll";
+import { CarriedPollBlock, PollBlock } from "@/components/post-poll";
 import { PostText } from "@/components/post-text";
 import { timeAgo } from "@/lib/dates";
 
@@ -90,12 +90,12 @@ function MediaStage({ media, className = "" }: { media: PostMedia[]; className?:
   );
 }
 
-/** The words and files a card shows — an entry of your own, or one a reshare carries. */
-function PostBody({
+/** The words of an entry, with no files under them. */
+function PostWords({
   entry,
   clamp = false,
 }: {
-  entry: { title: string; body: string; media: PostMedia[] };
+  entry: { title: string; body: string };
   clamp?: boolean;
 }) {
   return (
@@ -113,6 +113,21 @@ function PostBody({
           }`}
         />
       ) : null}
+    </>
+  );
+}
+
+/** The words and files a card shows — an entry of your own, or one a reshare carries. */
+function PostBody({
+  entry,
+  clamp = false,
+}: {
+  entry: { title: string; body: string; media: PostMedia[] };
+  clamp?: boolean;
+}) {
+  return (
+    <>
+      <PostWords entry={entry} clamp={clamp} />
       <MediaStage media={entry.media} className={entry.title || entry.body ? "mt-2.5" : ""} />
     </>
   );
@@ -167,13 +182,34 @@ export function PostBlock({
   // What is being passed on, when this card is a reshare rather than a writing.
   const carried = post.reshare;
 
+  /**
+   * Long words are their own control: a tap opens them out, a second tap folds them
+   * back. Short ones keep opening the post's own page, which is what a tap means
+   * everywhere else in the card.
+   */
+  const words = (entry: { title: string; body: string }, entryLong: boolean) =>
+    entryLong ? (
+      <button
+        type="button"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((open) => !open)}
+        className="block w-full cursor-pointer text-left"
+      >
+        <PostWords entry={entry} clamp={!expanded} />
+      </button>
+    ) : (
+      <Link href={`/feed/${post.id}`} className="block cursor-pointer">
+        <PostWords entry={entry} />
+      </Link>
+    );
+
   return (
     <article className="border-b border-line pb-3.5">
       <header className="flex items-center gap-2.5 py-2.5">
         <Avatar initials={post.initials} src={post.avatarUrl} />
         <span className="min-w-0 flex-1">
           <Link
-            href={`/feed/${post.id}`}
+            href={post.authorId ? `/people/${post.authorId}` : `/feed/${post.id}`}
             className="block cursor-pointer truncate text-[12px] font-bold tracking-tight text-ink hover:underline"
           >
             {name}
@@ -182,7 +218,7 @@ export function PostBlock({
             {post.role || timeAgo(post.createdAt)}
           </span>
         </span>
-        {post.mine && onManage ? (
+        {onManage ? (
           <button
             type="button"
             aria-label="Post options"
@@ -196,41 +232,50 @@ export function PostBlock({
 
       {carried ? (
         <>
-          {post.body ? (
-            <Link href={`/feed/${post.id}`} className="block cursor-pointer">
-              <PostText
-                text={post.body}
-                className={`text-[12px] leading-[1.55] text-ink ${
-                  long && !expanded ? "line-clamp-3" : ""
-                }`}
-              />
-            </Link>
-          ) : null}
+          {post.body ? words(post, long) : null}
+          {/* The entry being passed on, shown the way its author wrote it: their face,
+              their name, every word and every file. */}
           <div className="rounded-2xl border border-line bg-cream px-3 pb-3 pt-2.5">
-            <p className="flex items-center gap-1.5 pb-2 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-muted">
-              <Repeat2 className="h-3.5 w-3.5" />
-              Reshared from {carried.fullName || "someone"}
-            </p>
+            <header className="flex items-center gap-2 pb-2">
+              <Avatar initials={carried.initials} src={carried.avatarUrl} />
+              <span className="min-w-0 flex-1">
+                {carried.authorId ? (
+                  <Link
+                    href={`/people/${carried.authorId}`}
+                    className="block truncate text-[11px] font-bold tracking-tight text-ink hover:underline"
+                  >
+                    {carried.fullName || "Someone"}
+                  </Link>
+                ) : (
+                  <span className="block truncate text-[11px] font-bold tracking-tight text-ink">
+                    {carried.fullName || "Someone"}
+                  </span>
+                )}
+                <span className="block truncate text-[9px] text-muted">
+                  {timeAgo(carried.createdAt)}
+                </span>
+              </span>
+              <Repeat2 className="h-3.5 w-3.5 shrink-0 text-muted" strokeWidth={2} />
+            </header>
             <Link href={`/feed/${carried.id}`} className="block cursor-pointer">
               <PostBody entry={carried} />
+              {carried.poll ? <CarriedPollBlock poll={carried.poll} /> : null}
             </Link>
           </div>
         </>
       ) : (
-        <Link href={`/feed/${post.id}`} className="block cursor-pointer">
-          <PostBody entry={post} clamp={long && !expanded} />
-        </Link>
+        <>
+          {post.title || post.body ? words(post, long) : null}
+          {post.media.length ? (
+            <Link href={`/feed/${post.id}`} className="block cursor-pointer">
+              <MediaStage
+                media={post.media}
+                className={post.title || post.body ? "mt-2.5" : ""}
+              />
+            </Link>
+          ) : null}
+        </>
       )}
-
-      {long && !expanded ? (
-        <button
-          type="button"
-          onClick={() => setExpanded(true)}
-          className="mt-0.5 cursor-pointer text-[11px] font-semibold text-muted hover:text-ink"
-        >
-          more
-        </button>
-      ) : null}
 
       {poll && !carried ? (
         <PollBlock

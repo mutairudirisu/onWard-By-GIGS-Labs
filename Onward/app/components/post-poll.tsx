@@ -1,7 +1,7 @@
 "use client";
 
 import { BarChart3, Check } from "lucide-react";
-import type { PostPoll, PollOption } from "@/lib/db";
+import type { CarriedPoll, PostPoll, PollOption } from "@/lib/db";
 import { timeAgo, timeUntil } from "@/lib/dates";
 
 /** The share of the vote one choice has taken, rounded the way the bar is drawn. */
@@ -103,6 +103,60 @@ export function PollBlock({
           <span>{left ? `${left} left · tap a choice to vote` : "tap a choice to vote"}</span>
         ) : (
           <span>{left ? `${left} left · sign in to vote` : "sign in to vote"}</span>
+        )}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * The poll a repost carries. Read-only on purpose: the box sits inside the link to the
+ * post that holds the poll, so a vote is cast there and not from inside somebody's card.
+ */
+export function CarriedPollBlock({ poll }: { poll: CarriedPoll }) {
+  const left = timeUntil(poll.endsAt);
+  return (
+    <div className="mt-2.5 rounded-2xl border border-line bg-paper px-3 pb-2.5 pt-3">
+      <p className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-muted">
+        <BarChart3 className="h-3.5 w-3.5" /> Poll
+      </p>
+      <p className="mt-1.5 text-[12px] font-bold leading-[1.4] tracking-tight text-ink [overflow-wrap:anywhere]">
+        {poll.question}
+      </p>
+
+      <div className="mt-2.5 space-y-1.5">
+        {poll.options.map((option) => {
+          const pct = shareOf(option, poll.total);
+          return (
+            <div
+              key={option.id}
+              className="relative flex w-full items-center gap-2 overflow-hidden rounded-xl border border-line px-2.5 py-2"
+            >
+              <span
+                aria-hidden
+                className="absolute inset-y-0 left-0 bg-lime-pale"
+                style={{ width: `${pct}%` }}
+              />
+              <span className="relative min-w-0 flex-1 truncate text-[11.5px] font-semibold text-ink">
+                {option.label}
+              </span>
+              <span className="relative shrink-0 text-[10.5px] font-bold tabular-nums text-inksoft">
+                {pct}%
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="mt-2 flex flex-wrap items-center gap-x-1.5 text-[9.5px] text-muted">
+        <span className="tabular-nums">
+          {poll.total} {poll.total === 1 ? "vote" : "votes"}
+        </span>
+        <span aria-hidden>·</span>
+        {poll.closed ? (
+          <span>closed {timeAgo(poll.endsAt)} ago</span>
+        ) : (
+          <span>{left ? `${left} left` : "closing"} · open it to vote</span>
         )}
       </p>
     </div>

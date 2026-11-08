@@ -415,6 +415,17 @@ export type PostComment = {
   liked: boolean;
 };
 
+/** The poll a reshare carries: a question and its counts to read, never a vote to cast
+ *  from inside somebody else's card. Tapping the box opens the post that holds it. */
+export type CarriedPoll = {
+  id: string;
+  question: string;
+  endsAt: string;
+  closed: boolean;
+  total: number;
+  options: PollOption[];
+};
+
 /** The entry a reshare carries. It is the original, not a copy of the whole card:
  *  no counts, no thread, and nothing to reshare again from inside it. */
 export type ResharedEntry = {
@@ -424,8 +435,11 @@ export type ResharedEntry = {
   fullName: string;
   initials: string;
   avatarUrl: string | null;
+  /** Who wrote it, so the carried card can lead to their profile. */
+  authorId: string | null;
   createdAt: string;
   media: PostMedia[];
+  poll: CarriedPoll | null;
 };
 
 export type FeedPost = {
@@ -439,6 +453,8 @@ export type FeedPost = {
   role: string | null;
   createdAt: string;
   mine: boolean;
+  /** The author's account, for the profile link. Null until the feed view exposes it. */
+  authorId: string | null;
   media: PostMedia[];
   likes: number;
   comments: number;
@@ -448,6 +464,9 @@ export type FeedPost = {
   /** Set on a repost: whose entry this is passing on. */
   reshareOf: string | null;
   reshare: ResharedEntry | null;
+  /** The channel this entry belongs to, when it was written into one. */
+  channelId: string | null;
+  channelName: string | null;
 };
 
 type CommentJson = {
@@ -468,8 +487,17 @@ type ReshareJson = {
   full_name: string | null;
   initials: string | null;
   avatar_url: string | null;
+  user_id?: string | null;
   created_at: string;
   media: PostMedia[] | null;
+  poll?: {
+    id: string;
+    question: string;
+    ends_at: string;
+    closed: boolean | null;
+    total: number | null;
+    options: { id: string; label: string; sort: number; votes: number }[] | null;
+  } | null;
 };
 
 type FeedRow = {
@@ -483,6 +511,8 @@ type FeedRow = {
   role: string | null;
   created_at: string;
   mine: boolean | null;
+  /** Present once the feed view carries the author's account id. */
+  author_id?: string | null;
   media: PostMedia[] | null;
   likes: number | null;
   comments: number | null;
@@ -491,6 +521,8 @@ type FeedRow = {
   reshared: boolean | null;
   reshare_of: string | null;
   reshare: ReshareJson | null;
+  channel_id?: string | null;
+  channel_name?: string | null;
 };
 
 function commentFromJson(row: CommentJson): PostComment {
@@ -517,8 +549,22 @@ function reshareFromJson(row: ReshareJson | null): ResharedEntry | null {
     fullName: row.full_name ?? "",
     initials: row.initials ?? "",
     avatarUrl: row.avatar_url ?? null,
+    authorId: row.user_id ?? null,
     createdAt: row.created_at,
     media: row.media ?? [],
+    poll: row.poll
+      ? {
+          id: row.poll.id,
+          question: row.poll.question,
+          endsAt: row.poll.ends_at,
+          closed: row.poll.closed ?? false,
+          total: row.poll.total ?? 0,
+          options: (row.poll.options ?? [])
+            .slice()
+            .sort((a, b) => a.sort - b.sort)
+            .map((option) => ({ id: option.id, label: option.label, votes: option.votes })),
+        }
+      : null,
   };
 }
 
@@ -534,6 +580,7 @@ function postFromRow(row: FeedRow): FeedPost {
     role: row.role ?? null,
     createdAt: row.created_at,
     mine: row.mine ?? false,
+    authorId: row.author_id ?? null,
     media: row.media ?? [],
     likes: row.likes ?? 0,
     comments: row.comments ?? 0,
@@ -542,11 +589,13 @@ function postFromRow(row: FeedRow): FeedPost {
     reshared: row.reshared ?? false,
     reshareOf: row.reshare_of,
     reshare: reshareFromJson(row.reshare),
+    channelId: row.channel_id ?? null,
+    channelName: row.channel_name ?? null,
   };
 }
 
 const FEED_COLUMNS =
-  "id, body, ward_id, full_name, initials, avatar_url, role, created_at, mine, media, likes, comments, recent_comments, title, reshare_of, reshares, reshared, reshare";
+  "id, body, ward_id, full_name, initials, avatar_url, role, created_at, mine, media, likes, comments, recent_comments, title, reshare_of, reshares, reshared, reshare, author_id, channel_id, channel_name";
 
 /** A public object in a public bucket needs no token, which is what lets an <img>
  *  tag work for someone who has never signed in. */
@@ -1045,10 +1094,11 @@ export async function createPost(input: {
   body: string;
   files: File[];
   wardId?: string | null;
+  channelId?: string | null;
   poll?: PollDraft | null;
   onProgress?: (done: number, total: number) => void;
 }): Promise<FeedPost> {
-  const { title = "", body, files, wardId = null, poll = null, onProgress } = input;
+  const { title = "", body, files, wardId = null, channelId = null, poll = null, onProgress } = input;
   const problem = mediaProblem(files);
   if (problem) throw new Error(problem);
   if (poll) {
@@ -1061,7 +1111,14 @@ export async function createPost(input: {
   const userId = await signedInUserId();
   const { data: created, error: createError } = await supabase
     .from("posts")
-    .insert({ title: title.trim(), body, ward_id: wardId })
+    // The channel goes in only when there is one: naming the column before the pass
+    // that adds it would refuse every post in the Exchange.
+    .insert({
+      title: title.trim(),
+      body,
+      ward_id: wardId,
+      ...(channelId ? { channel_id: channelId } : {}),
+    })
     .select("id")
     .single();
   if (createError) throw new Error(createError.message);
@@ -1205,4 +1262,349 @@ export async function redeemReferral(code: string): Promise<boolean> {
   const { data, error } = await supabase.rpc("redeem_referral", { p_code: code });
   if (error) return false;
   return data === true;
+}
+
+// ------------------------------------------------------- Exchange people and rooms
+
+/** A person as the Exchange shows them: the header of their profile, with its numbers. */
+export type ProfileCard = {
+  id: string;
+  fullName: string;
+  initials: string;
+  avatarUrl: string | null;
+  role: string | null;
+  location: string | null;
+  bio: string | null;
+  joinedAt: string;
+  mine: boolean;
+  followers: number;
+  following: number;
+  posts: number;
+  comments: number;
+  /** Whether the reader already follows them. */
+  followed: boolean;
+};
+
+export type ProfileComment = {
+  id: string;
+  postId: string;
+  body: string;
+  createdAt: string;
+  postTitle: string;
+  postBody: string;
+  postAuthor: string;
+};
+
+/** A channel: a named room in the Exchange, who opened it, and who is in it. */
+export type ChannelCard = {
+  id: string;
+  name: string;
+  about: string;
+  ownerId: string;
+  ownerName: string;
+  ownerInitials: string;
+  ownerAvatarUrl: string | null;
+  createdAt: string;
+  mine: boolean;
+  members: number;
+  posts: number;
+  joined: boolean;
+};
+
+export type SearchHits = {
+  people: ExchangePerson[];
+  channels: { id: string; name: string; about: string; ownerName: string; members: number }[];
+  posts: {
+    id: string;
+    title: string;
+    body: string;
+    fullName: string;
+    initials: string;
+    avatarUrl: string | null;
+    createdAt: string;
+  }[];
+};
+
+type ProfileCardRow = {
+  id: string;
+  full_name: string | null;
+  initials: string | null;
+  avatar_url: string | null;
+  role: string | null;
+  location: string | null;
+  bio: string | null;
+  joined_at: string;
+  mine: boolean | null;
+  followers: number | null;
+  following: number | null;
+  posts: number | null;
+  comments: number | null;
+  followed: boolean | null;
+};
+
+type ChannelCardRow = {
+  id: string;
+  name: string;
+  about: string | null;
+  owner_id: string;
+  owner_name: string | null;
+  owner_initials: string | null;
+  owner_avatar_url: string | null;
+  created_at: string;
+  mine: boolean | null;
+  members: number | null;
+  posts: number | null;
+  joined: boolean | null;
+};
+
+type ProfileCommentRow = {
+  id: string;
+  post_id: string;
+  body: string;
+  created_at: string;
+  post_title: string | null;
+  post_body: string | null;
+  post_author: string | null;
+};
+
+type FollowRow = {
+  id: string;
+  full_name: string | null;
+  initials: string | null;
+  avatar_url: string | null;
+  role: string | null;
+};
+
+function personFromRow(row: FollowRow): ExchangePerson {
+  return {
+    id: row.id,
+    name: row.full_name ?? "",
+    initials: row.initials ?? "",
+    avatarUrl: row.avatar_url ?? null,
+    role: row.role ?? null,
+  };
+}
+
+export async function fetchProfileCard(id: string): Promise<ProfileCard | null> {
+  const { data, error } = await supabase
+    .from("profile_cards")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  fail(error);
+  const row = data as ProfileCardRow | null;
+  if (!row) return null;
+  return {
+    id: row.id,
+    fullName: row.full_name ?? "",
+    initials: row.initials ?? "",
+    avatarUrl: row.avatar_url ?? null,
+    role: row.role ?? null,
+    location: row.location ?? null,
+    bio: row.bio ?? null,
+    joinedAt: row.joined_at,
+    mine: row.mine ?? false,
+    followers: row.followers ?? 0,
+    following: row.following ?? 0,
+    posts: row.posts ?? 0,
+    comments: row.comments ?? 0,
+    followed: row.followed ?? false,
+  };
+}
+
+/** Following is one row written in your own name; the table refuses a row to yourself. */
+export async function followPerson(id: string): Promise<void> {
+  const me = await signedInUserId();
+  const { error } = await supabase.from("follows").insert({ follower_id: me, following_id: id });
+  fail(error);
+}
+
+export async function unfollowPerson(id: string): Promise<void> {
+  const me = await signedInUserId();
+  const { error } = await supabase
+    .from("follows")
+    .delete()
+    .eq("follower_id", me)
+    .eq("following_id", id);
+  fail(error);
+}
+
+export async function fetchFollowList(
+  personId: string,
+  kind: "followers" | "following",
+): Promise<ExchangePerson[]> {
+  const { data, error } = await supabase.rpc("follow_list", { p_person: personId, p_kind: kind });
+  fail(error);
+  return (data as FollowRow[] | null ?? []).map(personFromRow);
+}
+
+/** One person's entries, newest first: the Posts tab of a profile. */
+export async function fetchPersonPosts(id: string, limit = 40): Promise<FeedPost[]> {
+  const { data, error } = await supabase
+    .from("feed_posts")
+    .select(FEED_COLUMNS)
+    .eq("author_id", id)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  fail(error);
+  return (data as FeedRow[] | null ?? []).map(postFromRow);
+}
+
+export async function fetchPersonComments(id: string, limit = 40): Promise<ProfileComment[]> {
+  const { data, error } = await supabase
+    .from("profile_comments")
+    .select("id, post_id, body, created_at, post_title, post_body, post_author")
+    .eq("author_id", id)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  fail(error);
+  return (data as ProfileCommentRow[] | null ?? []).map((row) => ({
+    id: row.id,
+    postId: row.post_id,
+    body: row.body,
+    createdAt: row.created_at,
+    postTitle: row.post_title ?? "",
+    postBody: row.post_body ?? "",
+    postAuthor: row.post_author ?? "",
+  }));
+}
+
+function channelFromRow(row: ChannelCardRow): ChannelCard {
+  return {
+    id: row.id,
+    name: row.name,
+    about: row.about ?? "",
+    ownerId: row.owner_id,
+    ownerName: row.owner_name ?? "",
+    ownerInitials: row.owner_initials ?? "",
+    ownerAvatarUrl: row.owner_avatar_url ?? null,
+    createdAt: row.created_at,
+    mine: row.mine ?? false,
+    members: row.members ?? 0,
+    posts: row.posts ?? 0,
+    joined: row.joined ?? false,
+  };
+}
+
+export async function fetchChannels(limit = 40): Promise<ChannelCard[]> {
+  const { data, error } = await supabase
+    .from("channel_cards")
+    .select("*")
+    .order("members", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  fail(error);
+  return (data as ChannelCardRow[] | null ?? []).map(channelFromRow);
+}
+
+export async function fetchChannel(id: string): Promise<ChannelCard | null> {
+  const { data, error } = await supabase
+    .from("channel_cards")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  fail(error);
+  return data ? channelFromRow(data as ChannelCardRow) : null;
+}
+
+/** The name is the key, so two rooms cannot answer to the same word. */
+export async function createChannel(name: string, about: string): Promise<ChannelCard> {
+  const trimmed = name.trim();
+  if (trimmed.length < 2 || trimmed.length > 40)
+    throw new Error("A channel name is two to forty letters");
+  if (about.trim().length > 280) throw new Error("Keep the channel note under 280 letters");
+  const me = await signedInUserId();
+  const { data, error } = await supabase
+    .from("channels")
+    .insert({ name: trimmed, about: about.trim(), owner_id: me })
+    .select("id")
+    .single();
+  fail(error);
+  const id = data?.id as string | undefined;
+  const channel = id ? await fetchChannel(id) : null;
+  if (!channel) throw new Error("The channel did not come back");
+  return channel;
+}
+
+export async function joinChannel(id: string): Promise<void> {
+  const me = await signedInUserId();
+  const { error } = await supabase.from("channel_members").insert({ channel_id: id, user_id: me });
+  fail(error);
+}
+
+export async function leaveChannel(id: string): Promise<void> {
+  const me = await signedInUserId();
+  const { error } = await supabase
+    .from("channel_members")
+    .delete()
+    .eq("channel_id", id)
+    .eq("user_id", me);
+  fail(error);
+}
+
+export async function fetchChannelPosts(id: string, limit = 40): Promise<FeedPost[]> {
+  const { data, error } = await supabase
+    .from("feed_posts")
+    .select(FEED_COLUMNS)
+    .eq("channel_id", id)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  fail(error);
+  return (data as FeedRow[] | null ?? []).map(postFromRow);
+}
+
+/** People, rooms and entries in one answer, so the search sheet makes one round trip. */
+export async function searchExchange(query = ""): Promise<SearchHits> {
+  const { data, error } = await supabase.rpc("search_exchange", { p_query: query });
+  fail(error);
+  const payload = (data ?? {}) as {
+    people?: {
+      id: string;
+      full_name: string | null;
+      initials: string | null;
+      avatar_url: string | null;
+      role: string | null;
+    }[] | null;
+    channels?: {
+      id: string;
+      name: string;
+      about: string | null;
+      owner_name: string | null;
+      members: number | null;
+    }[] | null;
+    posts?: {
+      id: string;
+      title: string | null;
+      body: string | null;
+      full_name: string | null;
+      initials: string | null;
+      avatar_url: string | null;
+      created_at: string;
+    }[] | null;
+  };
+  return {
+    people: (payload.people ?? []).map((row) => ({
+      id: row.id,
+      name: row.full_name ?? "",
+      initials: row.initials ?? "",
+      avatarUrl: row.avatar_url ?? null,
+      role: row.role ?? null,
+    })),
+    channels: (payload.channels ?? []).map((row) => ({
+      id: row.id,
+      name: row.name,
+      about: row.about ?? "",
+      ownerName: row.owner_name ?? "",
+      members: row.members ?? 0,
+    })),
+    posts: (payload.posts ?? []).map((row) => ({
+      id: row.id,
+      title: row.title ?? "",
+      body: row.body ?? "",
+      fullName: row.full_name ?? "",
+      initials: row.initials ?? "",
+      avatarUrl: row.avatar_url ?? null,
+      createdAt: row.created_at,
+    })),
+  };
 }
