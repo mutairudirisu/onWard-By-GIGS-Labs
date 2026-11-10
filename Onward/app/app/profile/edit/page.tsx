@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Camera, Loader2 } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
+import { Avatar } from "@/components/feed-post";
 import { BackLink, Button, Field, TextArea, TextInput } from "@/components/ui";
 import { useAuth, useCurrentUser } from "@/components/auth";
 import { useStore } from "@/components/store";
+import { toastError, toastSuccess } from "@/components/toast";
+import { uploadAvatar } from "@/lib/db";
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -22,6 +26,15 @@ export default function EditProfilePage() {
   const [skillDraft, setSkillDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
+  // The preview is a local blob: let it go once the saved photo takes over.
+  useEffect(() => {
+    if (!photoPreview) return;
+    return () => URL.revokeObjectURL(photoPreview);
+  }, [photoPreview]);
 
   // The profile card links here asking for the bio alone, so it should arrive in the
   // bio, not at the top of a long form. Read from the location rather than
@@ -37,6 +50,38 @@ export default function EditProfilePage() {
     addSkill(skill);
     setSkillDraft("");
     setShowSkillInput(false);
+  }
+
+  // The photo saves on its own, the moment it is picked - it is not part of the
+  // form below, so leaving without Save still keeps the new face.
+  async function pickPhoto(list: FileList | null) {
+    const file = list?.[0];
+    if (!file || !authUser || avatarBusy) return;
+    if (!file.type.startsWith("image/")) {
+      toastError("Pick an image for your photo");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toastError("Keep the photo under 5MB");
+      return;
+    }
+    setPhotoPreview(URL.createObjectURL(file));
+    setAvatarBusy(true);
+    try {
+      const url = await uploadAvatar(authUser.id, file);
+      const result = await updateProfile({ avatarUrl: url });
+      setPhotoPreview(null);
+      if (result.error) {
+        toastError(result.error);
+        return;
+      }
+      toastSuccess("Photo updated");
+    } catch {
+      setPhotoPreview(null);
+      toastError("Couldn't upload that photo");
+    } finally {
+      setAvatarBusy(false);
+    }
   }
 
   async function save() {
@@ -68,22 +113,38 @@ export default function EditProfilePage() {
       </div>
 
       <div className="mb-5 flex items-center gap-3">
-        {profile.avatarUrl ? (
-          <img
-            src={profile.avatarUrl}
-            alt=""
-            className="h-14 w-14 rounded-full bg-lime-soft object-cover"
-          />
-        ) : (
-          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-lime-soft text-[15px] font-bold text-ink">
-            {profile.initials}
-          </span>
-        )}
-        <p className="text-[10px] leading-[1.5] text-muted">
-          {profile.avatarUrl
-            ? "Your Google photo is your avatar."
-            : "Your avatar uses your initials."}
-        </p>
+        <Avatar initials={profile.initials} src={photoPreview ?? profile.avatarUrl} size="md" />
+        <div className="min-w-0 flex-1">
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={avatarBusy}
+            className="flex cursor-pointer items-center gap-1.5 rounded-full border border-dash bg-paper px-3 py-1.5 text-[10px] font-semibold text-inksoft transition hover:border-lime-deep disabled:cursor-wait"
+          >
+            {avatarBusy ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Camera className="h-3 w-3" strokeWidth={2} />
+            )}
+            {avatarBusy ? "Uploading…" : profile.avatarUrl ? "Change photo" : "Add a photo"}
+          </button>
+          <p className="mt-1.5 text-[10px] leading-[1.5] text-muted">
+            {profile.avatarUrl
+              ? "This is the face people see on your posts and profile."
+              : "Your initials stand in until you add one."}
+          </p>
+        </div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          aria-label="Profile photo"
+          className="hidden"
+          onChange={(event) => {
+            void pickPhoto(event.target.files);
+            event.target.value = "";
+          }}
+        />
       </div>
 
       <div className="space-y-4">

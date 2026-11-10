@@ -16,6 +16,7 @@ import {
   fetchPersonPosts,
   fetchProfileCard,
   followPerson,
+  mediaUrl,
   unfollowPerson,
   type ExchangePerson,
   type FeedPost,
@@ -25,6 +26,44 @@ import {
 import { timeAgo } from "@/lib/dates";
 
 type Tab = "posts" | "comments" | "about";
+
+/**
+ * The brand mark, repeated as a quiet field behind the header. It is the same sprout
+ * the wordmark grows from, drawn thin enough to read as paper grain, and it stops
+ * where the tabs begin so the reading below sits on plain paper.
+ */
+function SproutField() {
+  return (
+    <svg
+      aria-hidden
+      className="pointer-events-none absolute inset-0 h-full w-full text-lime-deep opacity-[0.09]"
+    >
+      <defs>
+        <pattern
+          id="profile-sprout-field"
+          width="58"
+          height="58"
+          patternUnits="userSpaceOnUse"
+          patternTransform="rotate(-8)"
+        >
+          <g
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M7 20h10" />
+            <path d="M10 20c5.5-2.5.8-6.4 3-10" />
+            <path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z" />
+            <path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z" />
+          </g>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#profile-sprout-field)" />
+    </svg>
+  );
+}
 
 /** The list behind the follower and following numbers: names, nothing else. */
 function PeopleSheet({
@@ -272,7 +311,9 @@ export default function PersonPage() {
         <h1 className="text-[13px] font-bold tracking-tight text-ink">Profile</h1>
       </div>
 
-      <header>
+      <div className="relative -mx-5 overflow-hidden bg-lime-soft/45 px-5 pb-3 pt-1 md:mx-0 md:rounded-3xl">
+        <SproutField />
+        <header className="relative">
         <div className="flex items-start gap-3">
           <Avatar initials={card.initials} src={card.avatarUrl} size="lg" />
           <div className="min-w-0 flex-1">
@@ -336,16 +377,19 @@ export default function PersonPage() {
             {card.followed ? "Following" : "Follow"}
           </button>
         )}
-      </header>
+        </header>
+      </div>
 
-      <nav className="mt-4 flex gap-1 border-b border-line" aria-label="Profile sections">
+      {/* Three equal columns edge to edge, the way a profile's sections read on a
+          phone: the whole width is the tab bar, not a row of loose words. */}
+      <nav className="mt-4 grid grid-cols-3 border-b border-line" aria-label="Profile sections">
         {tabs.map((item) => (
           <button
             key={item.key}
             type="button"
             onClick={() => setTab(item.key)}
             aria-current={tab === item.key}
-            className={`cursor-pointer px-3 pb-2 pt-1 text-[11.5px] font-semibold transition ${
+            className={`cursor-pointer pb-2 pt-1 text-[11.5px] font-semibold transition ${
               tab === item.key
                 ? "border-b-2 border-lime-deep text-ink"
                 : "border-b-2 border-transparent text-muted hover:text-ink"
@@ -362,30 +406,53 @@ export default function PersonPage() {
             <p className="py-6 text-[11.5px] text-muted">Loading…</p>
           ) : posts.length ? (
             posts.map((post) => (
-              <Link
-                key={post.id}
-                href={`/feed/${post.id}`}
-                className="block cursor-pointer border-b border-line py-3"
-              >
-                {post.title ? (
-                  <p className="text-[12.5px] font-bold leading-[1.35] tracking-tight text-ink [overflow-wrap:anywhere]">
-                    {post.title}
-                  </p>
+              <article key={post.id} className="border-b border-line py-3">
+                <Link href={`/feed/${post.id}`} className="block cursor-pointer">
+                  {post.title ? (
+                    <p className="text-[12.5px] font-bold leading-[1.35] tracking-tight text-ink [overflow-wrap:anywhere]">
+                      {post.title}
+                    </p>
+                  ) : null}
+                  {post.body ? (
+                    <PostText
+                      text={post.body}
+                      className={`text-[11.5px] leading-[1.5] text-ink ${
+                        post.title ? "mt-0.5" : ""
+                      }`}
+                    />
+                  ) : null}
+                </Link>
+                {post.media.length ? (
+                  <div className="mt-2 grid gap-1.5">
+                    {post.media.map((file) =>
+                      file.kind === "image" ? (
+                        <img
+                          key={file.id}
+                          src={mediaUrl(file.path)}
+                          alt=""
+                          loading="lazy"
+                          className="max-h-[280px] w-full rounded-xl object-cover"
+                        />
+                      ) : (
+                        <video
+                          key={file.id}
+                          src={mediaUrl(file.path)}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          className="max-h-[280px] w-full rounded-xl bg-ink"
+                        />
+                      ),
+                    )}
+                  </div>
                 ) : null}
-                {post.body ? (
-                  <PostText
-                    text={post.body}
-                    className={`line-clamp-2 text-[11.5px] leading-[1.5] text-ink ${
-                      post.title ? "mt-0.5" : ""
-                    }`}
-                  />
+                {!post.title && !post.body && !post.media.length ? (
+                  <p className="text-[11.5px] italic text-muted">A poll</p>
                 ) : null}
-                {!post.title && !post.body ? (
-                  <p className="text-[11.5px] italic text-muted">
-                    {post.media.length ? "A post of photos and clips" : "A poll"}
-                  </p>
-                ) : null}
-                <p className="mt-1.5 flex items-center gap-3 text-[9.5px] text-faint tabular-nums">
+                <Link
+                  href={`/feed/${post.id}`}
+                  className="mt-1.5 flex cursor-pointer items-center gap-3 text-[9.5px] text-faint tabular-nums transition hover:text-muted"
+                >
                   <span className="flex items-center gap-1">
                     <ThumbsUp className="h-3 w-3" strokeWidth={2} /> {post.likes}
                   </span>
@@ -394,8 +461,8 @@ export default function PersonPage() {
                   </span>
                   {post.reshares ? <span>{post.reshares} reposts</span> : null}
                   <span>{timeAgo(post.createdAt)}</span>
-                </p>
-              </Link>
+                </Link>
+              </article>
             ))
           ) : (
             <p className="py-6 text-[11.5px] text-muted">Nothing written here yet.</p>

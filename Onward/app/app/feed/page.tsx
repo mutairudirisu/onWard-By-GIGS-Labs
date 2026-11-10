@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Hash, Plus, Search, Trash2 } from "lucide-react";
+import { Bell, ChevronRight, Hash, Plus, Search, Trash2, X } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
+import { CreateMenu, EXCHANGE_CREATES } from "@/components/create-menu";
 import { FeedSkeleton } from "@/components/skeleton";
 import { Modal } from "@/components/modal";
 import { CommentsSheet } from "@/components/comments-sheet";
@@ -79,6 +80,16 @@ export default function FeedPage() {
   const [handed, setHanded] = useState<SharedPost[]>([]);
   const [polls, setPolls] = useState<Record<string, PostPoll>>({});
   const [searchOpen, setSearchOpen] = useState(false);
+  const [choosing, setChoosing] = useState(false);
+
+  useEffect(() => {
+    if (!choosing) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setChoosing(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [choosing]);
 
   // Every read of the Exchange carries a token, so a slow answer cannot land on top
   // of a newer one.
@@ -370,12 +381,31 @@ export default function FeedPage() {
       <div className="relative mb-3.5 flex items-center">
         <button
           type="button"
-          aria-label="New Exchange post"
-          onClick={() => router.push(user ? "/feed/new" : "/sign-in")}
+          aria-label="Create"
+          aria-expanded={choosing}
+          onClick={() => {
+            if (!user) return router.push("/sign-in");
+            setChoosing((open) => !open);
+          }}
           className="-ml-2 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-ink transition hover:bg-cream"
         >
-          <Plus className="h-[22px] w-[22px]" strokeWidth={2.2} />
+          {choosing ? (
+            <X className="h-[22px] w-[22px]" strokeWidth={2.2} />
+          ) : (
+            <Plus className="h-[22px] w-[22px]" strokeWidth={2.2} />
+          )}
         </button>
+        {choosing ? (
+          <CreateMenu
+            choices={EXCHANGE_CREATES}
+            className="left-0 top-11 items-start"
+            onClose={() => setChoosing(false)}
+            onPick={(href) => {
+              setChoosing(false);
+              router.push(href);
+            }}
+          />
+        ) : null}
         {/* Centred on the phone, not on the space left over, so the two icons on the
             right cannot push the brand off its axis. */}
         <Wordmark className="pointer-events-none absolute inset-x-0 text-center text-[17px]" />
@@ -402,9 +432,12 @@ export default function FeedPage() {
       <div className="mb-3 flex items-center border-t border-line pt-2">
         <Link
           href="/channels"
-          className="flex cursor-pointer items-center gap-1.5 text-[10.5px] font-semibold text-inksoft transition hover:text-ink"
+          className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-paper py-1.5 pl-3 pr-2.5 text-[10.5px] font-semibold text-inksoft transition hover:border-dash hover:text-ink"
         >
-          <Hash className="h-3.5 w-3.5" strokeWidth={2.2} /> Channels
+          <Hash className="h-3.5 w-3.5" strokeWidth={2.2} />
+          Channels
+          <span className="font-normal text-muted">· browse or open one</span>
+          <ChevronRight className="h-3.5 w-3.5 text-faint" strokeWidth={2} />
         </Link>
       </div>
 

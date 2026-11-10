@@ -603,6 +603,18 @@ export function mediaUrl(path: string): string {
   return supabase.storage.from(POST_MEDIA_BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
+/** The one photo a profile shows. It lives in the owner's own folder of the
+ *  post-media bucket, so the same insert policy covers it, and the stamp keeps
+ *  caches from showing the face that was there before. */
+export async function uploadAvatar(userId: string, file: File): Promise<string> {
+  const path = `${userId}/avatar.jpg`;
+  const { error } = await supabase.storage
+    .from(POST_MEDIA_BUCKET)
+    .upload(path, file, { upsert: true, contentType: file.type });
+  if (error) throw new Error(error.message);
+  return `${mediaUrl(path)}?v=${Date.now()}`;
+}
+
 /** Reads the feed view: everything a stranger is allowed to see, in one round trip. */
 export async function fetchFeed(limit = 40): Promise<FeedPost[]> {
   const { data, error } = await supabase

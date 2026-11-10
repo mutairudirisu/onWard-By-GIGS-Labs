@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Home, MessagesSquare, Plus, Sprout, User, X } from "lucide-react";
 import { useStore } from "@/components/store";
+import { CreateMenu, EXCHANGE_CREATES } from "@/components/create-menu";
 import { UnreadDot } from "@/components/notifications";
 import { useExchangeBadge } from "@/lib/exchange-badge";
 import { haptic } from "@/lib/haptics";
@@ -42,9 +43,10 @@ export function BottomNav({ active }: { active: TabId }) {
 
   const buzz = (kind: "tap" | "success") => haptic(kind, settings.haptics);
 
-  // On the two pages that are about one thing, the button goes straight there.
-  const straightTo =
-    active === "feed" ? "/feed/new" : active === "onwards" ? "/onwards/new" : null;
+  // On the page that is about one thing, the button goes straight there. On the
+  // Exchange the + offers the three things you can make in it.
+  const straightTo = active === "onwards" ? "/onwards/new" : null;
+  const creates = active === "feed" ? EXCHANGE_CREATES : CREATES;
 
   useEffect(() => setChoosing(false), [pathname]);
 
@@ -66,37 +68,12 @@ export function BottomNav({ active }: { active: TabId }) {
   return (
     <nav className="relative z-40 bg-cream px-5 pb-3 pt-3">
       {choosing ? (
-        <>
-          {/* No panel behind the choices - the page itself is frosted over, so the two
-              things you can make are the only things in focus. */}
-          <div
-            className="fixed inset-0 z-30 backdrop-blur-[14px]"
-            style={{ animation: "onward-fade 0.15s ease-out" }}
-            onClick={() => setChoosing(false)}
-            aria-hidden="true"
-          />
-          <div
-            role="menu"
-            aria-label="Create"
-            className="absolute bottom-[116px] right-3 z-50 flex flex-col items-end gap-4"
-            style={{ animation: "onward-sheet 0.18s ease-out" }}
-          >
-            {CREATES.map(({ label, href, Icon }) => (
-              <button
-                key={href}
-                type="button"
-                role="menuitem"
-                onClick={() => go(href)}
-                className="flex w-max cursor-pointer items-center gap-2.5"
-              >
-                <span className="text-[11.5px] font-bold text-ink">{label}</span>
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-lime text-dark shadow-[0_8px_20px_rgba(16,17,8,0.18)]">
-                  <Icon className="h-[19px] w-[19px]" strokeWidth={2.2} />
-                </span>
-              </button>
-            ))}
-          </div>
-        </>
+        <CreateMenu
+          choices={creates}
+          className="bottom-[116px] right-3 items-end"
+          onClose={() => setChoosing(false)}
+          onPick={go}
+        />
       ) : null}
 
       <div className="relative z-40 flex items-center justify-center gap-2">
@@ -138,9 +115,7 @@ export function BottomNav({ active }: { active: TabId }) {
 
         <button
           type="button"
-          aria-label={
-            straightTo ? (active === "feed" ? "New Exchange post" : "Log an onWard") : "Create"
-          }
+          aria-label={straightTo ? "Log an onWard" : "Create"}
           aria-expanded={choosing}
           onClick={() => {
             if (straightTo) return go(straightTo);

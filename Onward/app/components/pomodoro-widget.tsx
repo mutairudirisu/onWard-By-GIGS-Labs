@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BellRing, EyeOff, Minus, MoreHorizontal, Pause, Play, Plus, RotateCcw } from "lucide-react";
+import { BellRing, Check, EyeOff, Minus, MoreHorizontal, Music2, Pause, Play, Plus, RotateCcw } from "lucide-react";
 import { useAuth } from "@/components/auth";
 import { Modal } from "@/components/modal";
 import { useNotifications } from "@/components/notifications";
 import { useStore } from "@/components/store";
 import { toastSuccess } from "@/components/toast";
 import { todayISO } from "@/lib/dates";
-import { playAlarm, primeAlarm } from "@/lib/alarm";
+import { ALARM_TONES, playAlarm, primeAlarm, useAlarmTone } from "@/lib/alarm";
 import { useLocalState } from "@/lib/local-state";
 import { haptic } from "@/lib/haptics";
 import { emitNotice } from "@/lib/notices";
@@ -70,6 +70,7 @@ export function PomodoroWidget({ onHide }: { onHide: () => void }) {
   );
   const [now, setNow] = useState(() => Date.now());
   const [menu, setMenu] = useState(false);
+  const [tone, setTone] = useAlarmTone(user ? user.id : null);
   const settled = useRef(false);
 
   const running = timer.endsAt != null;
@@ -101,7 +102,7 @@ export function PomodoroWidget({ onHide }: { onHide: () => void }) {
         };
       });
       haptic("success", settings.haptics);
-      playAlarm();
+      playAlarm(tone);
       toastSuccess(
         finished === "focus" ? "Focus block done — the break is ready" : "Break over — focus is ready",
       );
@@ -115,7 +116,7 @@ export function PomodoroWidget({ onHide }: { onHide: () => void }) {
         href: "/today",
       });
     },
-    [setTimer, settings.haptics, timer.breakMin, timer.focusMin],
+    [setTimer, settings.haptics, timer.breakMin, timer.focusMin, tone],
   );
 
   // A block that reaches zero while you are on another screen still settles the
@@ -327,6 +328,36 @@ export function PomodoroWidget({ onHide }: { onHide: () => void }) {
               Turn on alerts
             </button>
           )}
+
+          <div className="mt-1 border-t border-line pt-2">
+            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">
+              Alarm tone
+            </p>
+            {ALARM_TONES.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => {
+                  setTone(option.id);
+                  // The tap itself is what lets the browser play the preview.
+                  primeAlarm();
+                  playAlarm(option.id);
+                }}
+                className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[12.5px] font-semibold text-ink transition hover:bg-cream"
+              >
+                <Music2 className="h-4 w-4 shrink-0 text-inksoft" strokeWidth={2} />
+                <span className="min-w-0 flex-1">{option.label}</span>
+                {tone === option.id ? (
+                  <Check className="h-4 w-4 shrink-0 text-lime-deep" strokeWidth={2.4} />
+                ) : null}
+              </button>
+            ))}
+            <p className="px-3 pb-1 pt-1 text-[10px] leading-[1.5] text-muted">
+              Tap a tone to hear it. The checklist reminder rings with the same one.
+            </p>
+          </div>
+
+          <div className="mt-2 border-t border-line" aria-hidden />
 
           <button
             type="button"

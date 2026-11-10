@@ -105,8 +105,11 @@ function Composer() {
   const [body, setBody] = useState("");
   const [picks, setPicks] = useState<Pick[]>([]);
   // Post and Poll are two modes of one composer, so switching between them keeps
-  // whatever is already written in either of them.
-  const [mode, setMode] = useState<"post" | "poll">("post");
+  // whatever is already written in either of them. The chooser can ask for the poll
+  // straight away.
+  const [mode, setMode] = useState<"post" | "poll">(
+    params.get("mode") === "poll" ? "poll" : "post",
+  );
   const [pollDraft, setPollDraft] = useState<PollComposerDraft>(newPollDraft);
   const [busy, setBusy] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);

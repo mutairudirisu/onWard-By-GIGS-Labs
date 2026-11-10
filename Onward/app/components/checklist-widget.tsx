@@ -1,13 +1,15 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { EyeOff, MoreHorizontal, Plus, Trash2, GripVertical } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { EyeOff, Minus, MoreHorizontal, Pause, Play, Plus, Timer, Trash2, GripVertical } from "lucide-react";
 import { useAuth } from "@/components/auth";
 import { Modal } from "@/components/modal";
 import { useStore } from "@/components/store";
-import { toastUndoable } from "@/components/toast";
+import { toastSuccess, toastUndoable } from "@/components/toast";
+import { playAlarm, primeAlarm, useAlarmTone } from "@/lib/alarm";
 import { useLocalState } from "@/lib/local-state";
 import { haptic } from "@/lib/haptics";
+import { emitNotice } from "@/lib/notices";
 import { uuid } from "@/lib/db";
 
 /**
@@ -21,6 +23,18 @@ type Item = { id: string; text: string };
 const SWIPE_DELETE = 56;
 const MAX_TEXT = 120;
 
+/** The quiet reminder that sits under the list. Kept apart from the items so the
+ *  two never share a storage key, and kept as an end time so a reload does not
+ *  hand the minutes back. */
+type Reminder = { minutes: number; remainingSec: number; endsAt: number | null };
+
+const REMINDER = { min: 5, max: 60, step: 5 };
+
+const freshReminder = (): Reminder => ({ minutes: 5, remainingSec: 5 * 60, endsAt: null });
+
+const reminderClock = (seconds: number) =>
+  `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+
 export function ChecklistWidget({ onHide }: { onHide: () => void }) {
   const { user } = useAuth();
   const { settings } = useStore();
@@ -33,6 +47,79 @@ export function ChecklistWidget({ onHide }: { onHide: () => void }) {
   const [menu, setMenu] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [offsets, setOffsets] = useState<Record<string, number>>({});
+  const [reminder, setReminder] = useLocalState<Reminder>(
+    user ? `onward.checklist-timer.v1:${user.id}` : null,
+    freshReminder(),
+  );
+  const [tone] = useAlarmTone(user ? user.id : null);
+  const [now, setNow] = useState(() => Date.now());
+  const settled = useRef(false);
+
+  const running = reminder.endsAt != null;
+  const remaining = running
+    ? Math.max(0, Math.round(((reminder.endsAt ?? 0) - now) / 1000))
+    : reminder.remainingSec;
+
+  useEffect(() => {
+    if (!running) return;
+    setNow(Date.now());
+    const id = window.setInterval(() => setNow(Date.now()), 500);
+    return () => window.clearInterval(id);
+  }, [running]);
+
+  const ring = useCallback(() => {
+    setReminder((r) => ({ ...r, endsAt: null, remainingSec: r.minutes * 60 }));
+    haptic("success", settings.haptics);
+    playAlarm(tone);
+    toastSuccess("Checklist reminder — time to look at your list");
+    emitNotice({
+      kind: "win",
+      title: "Checklist reminder",
+      body: "The reminder you set on the checklist just rang.",
+      href: "/today",
+    });
+  }, [setReminder, settings.haptics, tone]);
+
+  // A reminder that reaches zero while another screen is up still rings once,
+  // the moment this one paints again.
+  useEffect(() => {
+    if (!running || remaining > 0) return;
+    if (settled.current) return;
+    settled.current = true;
+    ring();
+  }, [ring, remaining, running]);
+
+  useEffect(() => {
+    if (!running) settled.current = false;
+  }, [running]);
+
+  function toggleReminder() {
+    haptic("tap", settings.haptics);
+    // The starting tap is what lets the browser play the ring at the end.
+    primeAlarm();
+    setReminder((r) => {
+      if (r.endsAt != null) {
+        return {
+          ...r,
+          endsAt: null,
+          remainingSec: Math.max(0, Math.round((r.endsAt - Date.now()) / 1000)),
+        };
+      }
+      const secs = r.remainingSec > 0 ? r.remainingSec : r.minutes * 60;
+      return { ...r, remainingSec: secs, endsAt: Date.now() + secs * 1000 };
+    });
+  }
+
+  function nudgeReminder(direction: 1 | -1) {
+    setReminder((r) => {
+      if (r.endsAt != null) return r;
+      const minutes = Math.min(
+        REMINDER.max,
+        Math.max(REMINDER.min, r.minutes + direction * REMINDER.step),
+      );
+      return { ...r, minutes, remainingSec: minutes * 60 };
+    });
+  }
 
   const swipe = useRef<{ id: string; x: number; y: number; axis: "none" | "x" | "y" } | null>(
     null,
@@ -281,6 +368,47 @@ export function ChecklistWidget({ onHide }: { onHide: () => void }) {
           Nothing on it. One thing you can finish today is enough.
         </p>
       )}
+
+      <div className="mt-3 flex items-center gap-1.5 border-t border-line pt-3">
+        <Timer className="h-3.5 w-3.5 shrink-0 text-faint" strokeWidth={2} />
+        <span className="text-[10px] font-semibold text-muted">Remind me in</span>
+        <span className="min-w-0 flex-1" />
+        <button
+          type="button"
+          aria-label="Shorten the reminder"
+          disabled={running}
+          onClick={() => nudgeReminder(-1)}
+          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-inksoft transition hover:bg-cream disabled:cursor-default disabled:text-faint"
+        >
+          <Minus className="h-3.5 w-3.5" strokeWidth={2.4} />
+        </button>
+        <span className="w-[42px] text-center text-[12px] font-bold leading-none text-ink tabular-nums">
+          {reminderClock(remaining)}
+        </span>
+        <button
+          type="button"
+          aria-label="Lengthen the reminder"
+          disabled={running}
+          onClick={() => nudgeReminder(1)}
+          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-inksoft transition hover:bg-cream disabled:cursor-default disabled:text-faint"
+        >
+          <Plus className="h-3.5 w-3.5" strokeWidth={2.4} />
+        </button>
+        <button
+          type="button"
+          onClick={toggleReminder}
+          aria-label={
+            running ? `Pause the reminder, ${reminderClock(remaining)} left` : "Start the reminder"
+          }
+          className="ml-1 flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-line text-ink transition hover:border-dash"
+        >
+          {running ? (
+            <Pause className="h-3 w-3 fill-current" strokeWidth={0} />
+          ) : (
+            <Play className="h-3 w-3 fill-current" strokeWidth={0} />
+          )}
+        </button>
+      </div>
 
       <Modal open={menu} onClose={() => setMenu(false)} title="Checklist">
         <div className="flex flex-col gap-1">

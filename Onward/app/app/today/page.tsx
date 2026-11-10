@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { PhoneShell } from "@/components/phone-shell";
 import { DateStrip } from "@/components/date-strip";
+import { Avatar } from "@/components/feed-post";
 import { HomeWidgets } from "@/components/home-widgets";
 import { Button } from "@/components/ui";
 import { useStore } from "@/components/store";
@@ -65,9 +66,9 @@ export default function TodayPage() {
               <Link
                 href="/profile"
                 aria-label="Your profile"
-                className="relative flex h-8 w-8 items-center justify-center rounded-full bg-lime-soft text-[10px] font-bold text-ink"
+                className="relative flex cursor-pointer items-center justify-center rounded-full"
               >
-                {user.initials}
+                <Avatar initials={user.initials} src={user.avatarUrl} />
                 <UnreadDot />
               </Link>
               <Link

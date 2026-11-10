@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Hash, Loader2, Users } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { Avatar } from "@/components/feed-post";
@@ -17,12 +18,26 @@ import { timeAgo } from "@/lib/dates";
  * not you are a member. Joining says which rooms are yours, it does not lock a door.
  */
 export default function ChannelsPage() {
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, ready } = useAuth();
   const [channels, setChannels] = useState<ChannelCard[] | null>(null);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [about, setAbout] = useState("");
   const [busy, setBusy] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const handledQuery = useRef(false);
+
+  // The Exchange chooser sends people here asking to open a room, so arrive with
+  // the form already up. Without a session there is nothing to open it under.
+  useEffect(() => {
+    if (!ready || handledQuery.current) return;
+    if (new URLSearchParams(window.location.search).get("new") !== "1") return;
+    handledQuery.current = true;
+    if (user) setCreating(true);
+    else router.replace("/sign-in");
+  }, [ready, user, router]);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,12 +46,21 @@ export default function ChannelsPage() {
         if (!cancelled) setChannels(rows);
       })
       .catch(() => {
-        if (!cancelled) setChannels([]);
+        if (!cancelled) {
+          setChannels([]);
+          setLoadError("Couldn't load channels. Check your connection and try again.");
+        }
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadAttempt]);
+
+  function retryLoading() {
+    setChannels(null);
+    setLoadError(null);
+    setLoadAttempt((attempt) => attempt + 1);
+  }
 
   async function open() {
     if (busy) return;
@@ -67,7 +91,7 @@ export default function ChannelsPage() {
         <h1 className="flex-1 text-[13px] font-bold tracking-tight text-ink">Channels</h1>
         <button
           type="button"
-          onClick={() => setCreating(true)}
+          onClick={() => (user ? setCreating(true) : router.push("/sign-in"))}
           className="cursor-pointer rounded-full bg-lime px-4 py-2 text-[11.5px] font-bold text-dark transition hover:bg-lime-deep"
         >
           New channel
@@ -76,6 +100,19 @@ export default function ChannelsPage() {
 
       {channels === null ? (
         <p className="py-8 text-center text-[11.5px] text-muted">Loading the rooms…</p>
+      ) : loadError ? (
+        <div className="card px-4 py-8 text-center">
+          <p role="alert" className="text-[12px] font-semibold text-ink">
+            {loadError}
+          </p>
+          <button
+            type="button"
+            onClick={retryLoading}
+            className="mt-3 cursor-pointer rounded-full border border-line bg-paper px-4 py-2 text-[11px] font-semibold text-inksoft transition hover:bg-cream"
+          >
+            Try again
+          </button>
+        </div>
       ) : channels.length ? (
         <ul className="border-t border-line">
           {channels.map((channel) => (

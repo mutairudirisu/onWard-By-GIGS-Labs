@@ -1,5 +1,6 @@
 "use client";
 
+import { ListChecks, Timer } from "lucide-react";
 import { useAuth } from "@/components/auth";
 import { ChecklistWidget } from "@/components/checklist-widget";
 import { PomodoroWidget } from "@/components/pomodoro-widget";
@@ -20,19 +21,23 @@ export function HomeWidgets() {
     { timer: false, checklist: false },
   );
 
-  const show = (key: keyof Hidden) => (
-    <button
-      type="button"
-      onClick={() => setHidden((prev) => ({ ...prev, [key]: false }))}
-      className="cursor-pointer text-[10px] font-semibold text-muted underline transition hover:text-ink lg:text-[12px]"
-    >
-      Show the {key === "timer" ? "timer" : "checklist"}
-    </button>
-  );
+  const show = (key: keyof Hidden) => {
+    const Icon = key === "timer" ? Timer : ListChecks;
+    return (
+      <button
+        type="button"
+        onClick={() => setHidden((prev) => ({ ...prev, [key]: false }))}
+        className="flex w-max cursor-pointer items-center gap-1.5 rounded-full border border-line bg-paper px-3.5 py-2 text-[10.5px] font-semibold text-inksoft transition hover:border-dash hover:text-ink lg:text-[11.5px]"
+      >
+        <Icon className="h-3.5 w-3.5" strokeWidth={2} />
+        Show the {key === "timer" ? "timer" : "checklist"}
+      </button>
+    );
+  };
 
   if (hidden.timer && hidden.checklist) {
     return (
-      <div className="mt-4 flex items-center gap-4">
+      <div className="mt-4 flex items-center gap-2.5">
         {show("timer")}
         {show("checklist")}
       </div>

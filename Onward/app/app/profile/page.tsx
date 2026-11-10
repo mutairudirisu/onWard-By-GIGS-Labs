@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Avatar } from "@/components/feed-post";
 import { HeatLegend, HeatMap } from "@/components/heat-map";
 import { InstallButton } from "@/components/install-button";
 import { PhoneShell } from "@/components/phone-shell";
@@ -70,9 +71,7 @@ export default function ProfilePage() {
         <div className="space-y-4">
           <section className="card px-5 py-5">
             <div className="flex items-start gap-4">
-              <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-lime-soft text-[16px] font-bold text-ink lg:h-20 lg:w-20 lg:text-[20px]">
-                {user.initials}
-              </span>
+              <Avatar initials={user.initials} src={user.avatarUrl} size="xl" />
               <div className="min-w-0 flex-1">
                 <h2 className="text-[17px] font-bold tracking-tight text-ink lg:text-[22px]">
                   {user.name}
