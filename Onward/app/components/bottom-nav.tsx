@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, MessagesSquare, Plus, Sprout, User, X } from "lucide-react";
+import { Home, MessagesSquare, Plus, Sprout, User, UsersRound, X } from "lucide-react";
 import { useStore } from "@/components/store";
 import { CreateMenu, EXCHANGE_CREATES } from "@/components/create-menu";
 import { UnreadDot } from "@/components/notifications";
@@ -14,6 +14,7 @@ const TABS = [
   { id: "today", label: "Home", href: "/today", Icon: Home },
   { id: "onwards", label: "onWards", href: "/onwards", Icon: Sprout },
   { id: "feed", label: "Exchange", href: "/feed", Icon: MessagesSquare },
+  { id: "network", label: "My Network", href: "/network", Icon: UsersRound },
   { id: "you", label: "You", href: "/profile", Icon: User },
 ] as const;
 
@@ -78,7 +79,7 @@ export function BottomNav({ active }: { active: TabId }) {
 
       <div className="relative z-40 flex items-center justify-center gap-2">
         {/* One fixed width, so swapping which label is open moves nothing else. */}
-        <div className="flex w-[272px] items-center justify-between rounded-full bg-paper px-2 py-2 shadow-[0_10px_30px_rgba(16,17,8,0.08)]">
+        <div className="flex w-full min-w-0 max-w-[280px] items-center justify-between rounded-full bg-paper px-1.5 py-2 shadow-[0_10px_30px_rgba(16,17,8,0.08)]">
           {TABS.map(({ id, label, href, Icon }) =>
             id === active ? (
               <Link
@@ -86,14 +87,14 @@ export function BottomNav({ active }: { active: TabId }) {
                 href={href}
                 aria-current="page"
                 onClick={() => buzz("tap")}
-                className="flex h-11 items-center gap-1.5 rounded-full bg-lime-soft px-3.5 ring-1 ring-inset ring-lime/40"
+                className="flex h-9 items-center gap-1 rounded-full bg-lime-soft px-2 ring-1 ring-inset ring-lime/40"
               >
                 <span className="relative flex">
                   <Icon className="h-[18px] w-[18px] text-lime-deep" strokeWidth={2.2} />
                   {id === "you" ? <UnreadDot /> : null}
                   {id === "feed" ? <ExchangeBadge count={newPosts} /> : null}
                 </span>
-                <span className="text-[11.5px] font-bold text-ink">{label}</span>
+                <span className="text-[9.5px] font-bold text-ink">{label}</span>
               </Link>
             ) : (
               <Link
@@ -101,7 +102,7 @@ export function BottomNav({ active }: { active: TabId }) {
                 href={href}
                 aria-label={label}
                 onClick={() => buzz("tap")}
-                className="flex h-11 w-11 items-center justify-center rounded-full text-faint transition hover:text-lime-deep"
+                className="flex h-9 w-7 items-center justify-center rounded-full text-faint transition hover:text-lime-deep"
               >
                 <span className="relative flex">
                   <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
