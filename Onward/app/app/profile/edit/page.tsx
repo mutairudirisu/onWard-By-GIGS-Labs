@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Camera, Loader2 } from "lucide-react";
+import { Loader2, Pencil } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { Avatar } from "@/components/feed-post";
 import { BackLink, Button, Field, TextArea, TextInput } from "@/components/ui";
@@ -113,25 +113,29 @@ export default function EditProfilePage() {
       </div>
 
       <div className="mb-5 flex items-center gap-3">
-        <Avatar initials={profile.initials} src={photoPreview ?? profile.avatarUrl} size="md" />
-        <div className="min-w-0 flex-1">
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={avatarBusy}
-            className="flex cursor-pointer items-center gap-1.5 rounded-full border border-dash bg-paper px-3 py-1.5 text-[10px] font-semibold text-inksoft transition hover:border-lime-deep disabled:cursor-wait"
-          >
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={avatarBusy}
+          aria-label={avatarBusy ? "Uploading profile photo" : "Edit profile photo"}
+          className="group relative shrink-0 cursor-pointer rounded-full disabled:cursor-wait"
+        >
+          <Avatar initials={profile.initials} src={photoPreview ?? profile.avatarUrl} size="md" />
+          <span className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-paper bg-lime text-dark shadow-card transition group-hover:bg-lime-deep">
             {avatarBusy ? (
               <Loader2 className="h-3 w-3 animate-spin" />
             ) : (
-              <Camera className="h-3 w-3" strokeWidth={2} />
+              <Pencil className="h-3 w-3" strokeWidth={2.2} />
             )}
-            {avatarBusy ? "Uploading…" : profile.avatarUrl ? "Change photo" : "Add a photo"}
-          </button>
+          </span>
+        </button>
+        <div className="min-w-0 flex-1">
           <p className="mt-1.5 text-[10px] leading-[1.5] text-muted">
-            {profile.avatarUrl
+            {avatarBusy
+              ? "Uploading your photo…"
+              : profile.avatarUrl
               ? "This is the face people see on your posts and profile."
-              : "Your initials stand in until you add one."}
+              : "Tap your photo to add one."}
           </p>
         </div>
         <input

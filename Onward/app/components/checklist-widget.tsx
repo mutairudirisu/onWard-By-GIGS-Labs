@@ -1,7 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { EyeOff, Minus, MoreHorizontal, Pause, Play, Plus, Timer, Trash2, GripVertical } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  AlarmClock,
+  EyeOff,
+  MoreHorizontal,
+  Plus,
+  Trash2,
+  GripVertical,
+} from "lucide-react";
 import { useAuth } from "@/components/auth";
 import { Modal } from "@/components/modal";
 import { useStore } from "@/components/store";
@@ -18,22 +25,16 @@ import { uuid } from "@/lib/db";
  * spot — with an Undo in case that was a slip. It lives on this device only.
  */
 
-type Item = { id: string; text: string };
+type Item = { id: string; text: string; reminderAt?: string | null };
 
 const SWIPE_DELETE = 56;
 const MAX_TEXT = 120;
 
-/** The quiet reminder that sits under the list. Kept apart from the items so the
- *  two never share a storage key, and kept as an end time so a reload does not
- *  hand the minutes back. */
-type Reminder = { minutes: number; remainingSec: number; endsAt: number | null };
-
-const REMINDER = { min: 5, max: 60, step: 5 };
-
-const freshReminder = (): Reminder => ({ minutes: 5, remainingSec: 5 * 60, endsAt: null });
-
-const reminderClock = (seconds: number) =>
-  `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+function localDateTimeValue(date: Date) {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 16);
+}
 
 export function ChecklistWidget({ onHide }: { onHide: () => void }) {
   const { user } = useAuth();
@@ -47,79 +48,9 @@ export function ChecklistWidget({ onHide }: { onHide: () => void }) {
   const [menu, setMenu] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [offsets, setOffsets] = useState<Record<string, number>>({});
-  const [reminder, setReminder] = useLocalState<Reminder>(
-    user ? `onward.checklist-timer.v1:${user.id}` : null,
-    freshReminder(),
-  );
-  const [tone] = useAlarmTone(user ? user.id : null);
-  const [now, setNow] = useState(() => Date.now());
-  const settled = useRef(false);
-
-  const running = reminder.endsAt != null;
-  const remaining = running
-    ? Math.max(0, Math.round(((reminder.endsAt ?? 0) - now) / 1000))
-    : reminder.remainingSec;
-
-  useEffect(() => {
-    if (!running) return;
-    setNow(Date.now());
-    const id = window.setInterval(() => setNow(Date.now()), 500);
-    return () => window.clearInterval(id);
-  }, [running]);
-
-  const ring = useCallback(() => {
-    setReminder((r) => ({ ...r, endsAt: null, remainingSec: r.minutes * 60 }));
-    haptic("success", settings.haptics);
-    playAlarm(tone);
-    toastSuccess("Checklist reminder — time to look at your list");
-    emitNotice({
-      kind: "win",
-      title: "Checklist reminder",
-      body: "The reminder you set on the checklist just rang.",
-      href: "/today",
-    });
-  }, [setReminder, settings.haptics, tone]);
-
-  // A reminder that reaches zero while another screen is up still rings once,
-  // the moment this one paints again.
-  useEffect(() => {
-    if (!running || remaining > 0) return;
-    if (settled.current) return;
-    settled.current = true;
-    ring();
-  }, [ring, remaining, running]);
-
-  useEffect(() => {
-    if (!running) settled.current = false;
-  }, [running]);
-
-  function toggleReminder() {
-    haptic("tap", settings.haptics);
-    // The starting tap is what lets the browser play the ring at the end.
-    primeAlarm();
-    setReminder((r) => {
-      if (r.endsAt != null) {
-        return {
-          ...r,
-          endsAt: null,
-          remainingSec: Math.max(0, Math.round((r.endsAt - Date.now()) / 1000)),
-        };
-      }
-      const secs = r.remainingSec > 0 ? r.remainingSec : r.minutes * 60;
-      return { ...r, remainingSec: secs, endsAt: Date.now() + secs * 1000 };
-    });
-  }
-
-  function nudgeReminder(direction: 1 | -1) {
-    setReminder((r) => {
-      if (r.endsAt != null) return r;
-      const minutes = Math.min(
-        REMINDER.max,
-        Math.max(REMINDER.min, r.minutes + direction * REMINDER.step),
-      );
-      return { ...r, minutes, remainingSec: minutes * 60 };
-    });
-  }
+  const [reminderItemId, setReminderItemId] = useState<string | null>(null);
+  const [reminderDraft, setReminderDraft] = useState("");
+  const [reminderError, setReminderError] = useState("");
 
   const swipe = useRef<{ id: string; x: number; y: number; axis: "none" | "x" | "y" } | null>(
     null,
@@ -129,9 +60,52 @@ export function ChecklistWidget({ onHide }: { onHide: () => void }) {
   function add() {
     const text = draft.trim().slice(0, MAX_TEXT);
     if (!text) return;
-    setItems((prev) => [...prev, { id: uuid(), text }]);
+    setItems((prev) => [...prev, { id: uuid(), text, reminderAt: null }]);
     setDraft("");
     haptic("tap", settings.haptics);
+  }
+
+  function openReminder(item: Item) {
+    const existing = item.reminderAt ? Date.parse(item.reminderAt) : NaN;
+    const initial =
+      Number.isFinite(existing) && existing > Date.now()
+        ? new Date(existing)
+        : new Date(Date.now() + 60 * 60 * 1000);
+    setReminderDraft(localDateTimeValue(initial));
+    setReminderError("");
+    setReminderItemId(item.id);
+  }
+
+  function closeReminder() {
+    setReminderItemId(null);
+    setReminderError("");
+  }
+
+  function saveReminder() {
+    const at = new Date(reminderDraft).getTime();
+    if (!Number.isFinite(at) || at <= Date.now()) {
+      setReminderError("Choose a date and time in the future.");
+      return;
+    }
+    if (!reminderItemId) return;
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === reminderItemId ? { ...item, reminderAt: new Date(at).toISOString() } : item,
+      ),
+    );
+    primeAlarm();
+    haptic("tap", settings.haptics);
+    closeReminder();
+  }
+
+  function removeReminder() {
+    if (!reminderItemId) return;
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === reminderItemId ? { ...item, reminderAt: null } : item,
+      ),
+    );
+    closeReminder();
   }
 
   function remove(target: Item, phrase: string) {
@@ -310,12 +284,12 @@ export function ChecklistWidget({ onHide }: { onHide: () => void }) {
 
       {items.length ? (
         <p className="mt-2.5 text-[10.5px] leading-[1.5] text-muted">
-          Checking one off finishes it. Drag the grip to arrange, slide a row left to delete.
+          Tap the clock to set a reminder. Drag the grip to arrange, or slide left to delete.
         </p>
       ) : null}
 
       {items.length ? (
-        <ul className="wheel mt-1 max-h-[188px] divide-y divide-line overflow-y-auto">
+        <ul className="wheel mt-1 max-h-[188px] space-y-1 overflow-y-auto">
           {items.map((item) => {
             const offset = offsets[item.id] ?? 0;
             return (
@@ -329,7 +303,7 @@ export function ChecklistWidget({ onHide }: { onHide: () => void }) {
                   Delete
                 </span>
                 <div
-                  className="relative flex touch-pan-y items-center gap-2.5 bg-paper pl-0.5 pr-1"
+                  className="relative flex touch-pan-y items-center gap-2.5 rounded-xl bg-lime-pale px-2"
                   style={{
                     transform: `translateX(${offset}px)`,
                     transition: swipe.current?.id === item.id ? "none" : "transform 0.18s ease-out",
@@ -346,7 +320,32 @@ export function ChecklistWidget({ onHide }: { onHide: () => void }) {
                   />
                   <span className="min-w-0 flex-1 py-2.5 text-[12px] leading-[1.45] text-ink [overflow-wrap:anywhere]">
                     {item.text}
+                    {item.reminderAt ? (
+                      <span className="mt-0.5 block text-[9.5px] font-medium text-muted">
+                        {new Date(item.reminderAt).toLocaleString([], {
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    ) : null}
                   </span>
+                  <button
+                  type="button"
+                  aria-label={
+                    item.reminderAt
+                      ? `Change reminder for "${item.text}"`
+                      : `Set reminder for "${item.text}"`
+                  }
+                  aria-haspopup="dialog"
+                  onClick={() => openReminder(item)}
+                  className={`flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full transition hover:bg-lime-soft ${
+                    item.reminderAt ? "text-lime-deep" : "text-muted"
+                  }`}
+                  >
+                  <AlarmClock className="h-4 w-4" strokeWidth={2} />
+                  </button>
                   <span
                     role="button"
                     aria-label={`Drag to arrange "${item.text}"`}
@@ -368,47 +367,6 @@ export function ChecklistWidget({ onHide }: { onHide: () => void }) {
           Nothing on it. One thing you can finish today is enough.
         </p>
       )}
-
-      <div className="mt-3 flex items-center gap-1.5 border-t border-line pt-3">
-        <Timer className="h-3.5 w-3.5 shrink-0 text-faint" strokeWidth={2} />
-        <span className="text-[10px] font-semibold text-muted">Remind me in</span>
-        <span className="min-w-0 flex-1" />
-        <button
-          type="button"
-          aria-label="Shorten the reminder"
-          disabled={running}
-          onClick={() => nudgeReminder(-1)}
-          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-inksoft transition hover:bg-cream disabled:cursor-default disabled:text-faint"
-        >
-          <Minus className="h-3.5 w-3.5" strokeWidth={2.4} />
-        </button>
-        <span className="w-[42px] text-center text-[12px] font-bold leading-none text-ink tabular-nums">
-          {reminderClock(remaining)}
-        </span>
-        <button
-          type="button"
-          aria-label="Lengthen the reminder"
-          disabled={running}
-          onClick={() => nudgeReminder(1)}
-          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-inksoft transition hover:bg-cream disabled:cursor-default disabled:text-faint"
-        >
-          <Plus className="h-3.5 w-3.5" strokeWidth={2.4} />
-        </button>
-        <button
-          type="button"
-          onClick={toggleReminder}
-          aria-label={
-            running ? `Pause the reminder, ${reminderClock(remaining)} left` : "Start the reminder"
-          }
-          className="ml-1 flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-line text-ink transition hover:border-dash"
-        >
-          {running ? (
-            <Pause className="h-3 w-3 fill-current" strokeWidth={0} />
-          ) : (
-            <Play className="h-3 w-3 fill-current" strokeWidth={0} />
-          )}
-        </button>
-      </div>
 
       <Modal open={menu} onClose={() => setMenu(false)} title="Checklist">
         <div className="flex flex-col gap-1">
@@ -438,6 +396,129 @@ export function ChecklistWidget({ onHide }: { onHide: () => void }) {
           row left to delete it.
         </p>
       </Modal>
+
+      <Modal open={reminderItemId !== null} onClose={closeReminder} title="Set a reminder">
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            saveReminder();
+          }}
+        >
+          <label className="block">
+            <span className="label">Date and time</span>
+            <input
+              type="datetime-local"
+              value={reminderDraft}
+              min={localDateTimeValue(new Date())}
+              onChange={(event) => {
+                setReminderDraft(event.target.value);
+                setReminderError("");
+              }}
+              required
+              className="field-input"
+            />
+          </label>
+          <p className="mt-2 text-[10.5px] leading-[1.5] text-muted">
+            onWard checks for this reminder while the app is open.
+          </p>
+          {reminderError ? (
+            <p role="alert" className="mt-3 text-[11px] font-semibold text-danger">
+              {reminderError}
+            </p>
+          ) : null}
+          <div className="mt-5 flex gap-2.5">
+            {items.find((item) => item.id === reminderItemId)?.reminderAt ? (
+              <button
+                type="button"
+                onClick={removeReminder}
+                className="flex-1 cursor-pointer rounded-btn border border-line bg-paper px-3 py-3 text-[12px] font-semibold text-inksoft transition hover:bg-cream"
+              >
+                Remove
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={closeReminder}
+              className="flex-1 cursor-pointer rounded-btn border border-line bg-paper px-3 py-3 text-[12px] font-semibold text-inksoft transition hover:bg-cream"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex-1 cursor-pointer rounded-btn bg-lime px-3 py-3 text-[12px] font-bold text-dark transition hover:bg-lime-deep"
+            >
+              Set reminder
+            </button>
+          </div>
+        </form>
+      </Modal>
     </section>
   );
+}
+
+/** Keep scheduled checklist reminders active while the user moves around the app. */
+export function ChecklistReminderScheduler() {
+  const { user } = useAuth();
+  const { settings } = useStore();
+  const [items, setItems, itemsLoaded] = useLocalState<Item[]>(
+    user ? `onward.checklist.v1:${user.id}` : null,
+    [],
+  );
+  const [tone] = useAlarmTone(user ? user.id : null);
+  const [now, setNow] = useState(() => Date.now());
+  const handledReminders = useRef(new Set<string>());
+  const hasReminders = items.some((item) => Boolean(item.reminderAt));
+
+  useEffect(() => {
+    if (!hasReminders) return;
+    setNow(Date.now());
+    const update = () => setNow(Date.now());
+    const id = window.setInterval(update, 1000);
+    document.addEventListener("visibilitychange", update);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", update);
+    };
+  }, [hasReminders]);
+
+  useEffect(() => {
+    if (!itemsLoaded) return;
+    const due = items.filter(
+      (item) => item.reminderAt && Date.parse(item.reminderAt) <= now,
+    );
+    const freshDue = due.filter((item) => {
+      const key = `${item.id}:${item.reminderAt}`;
+      if (handledReminders.current.has(key)) return false;
+      handledReminders.current.add(key);
+      return true;
+    });
+    if (!freshDue.length) return;
+
+    const dueKeys = new Set(freshDue.map((item) => `${item.id}:${item.reminderAt}`));
+    setItems((prev) =>
+      prev.map((item) =>
+        item.reminderAt && dueKeys.has(`${item.id}:${item.reminderAt}`)
+          ? { ...item, reminderAt: null }
+          : item,
+      ),
+    );
+    haptic("success", settings.haptics);
+    playAlarm(tone);
+    toastSuccess(
+      freshDue.length === 1
+        ? `Checklist reminder — ${freshDue[0].text}`
+        : `${freshDue.length} checklist reminders are due`,
+    );
+    for (const item of freshDue) {
+      emitNotice({
+        id: `checklist-${item.id}-${Date.parse(item.reminderAt!)}`,
+        kind: "win",
+        title: `Time for ${item.text}`,
+        body: "Your checklist reminder is due.",
+        href: "/today",
+      });
+    }
+  }, [items, itemsLoaded, now, setItems, settings.haptics, tone]);
+
+  return null;
 }
