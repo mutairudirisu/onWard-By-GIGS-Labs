@@ -3,17 +3,19 @@
 import { useEffect, useRef, useState } from "react";
 import {
   AlarmClock,
+  Check,
   EyeOff,
   MoreHorizontal,
   Plus,
   Trash2,
   GripVertical,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth";
 import { Modal } from "@/components/modal";
 import { useNotifications } from "@/components/notifications";
 import { useStore } from "@/components/store";
-import { toastError, toastSuccess, toastUndoable } from "@/components/toast";
+import { toastError, toastUndoable } from "@/components/toast";
 import { playAlarm, primeAlarm, useAlarmTone } from "@/lib/alarm";
 import { useLocalState } from "@/lib/local-state";
 import {
@@ -553,6 +555,7 @@ export function ChecklistWidget({ onHide }: { onHide: () => void }) {
 
 /** Keep scheduled checklist reminders active while the user moves around the app. */
 export function ChecklistReminderScheduler() {
+  const router = useRouter();
   const { user } = useAuth();
   const { settings } = useStore();
   const [items, setItems, itemsLoaded] = useLocalState<Item[]>(
@@ -561,6 +564,7 @@ export function ChecklistReminderScheduler() {
   );
   const [tone] = useAlarmTone(user ? user.id : null);
   const [now, setNow] = useState(() => Date.now());
+  const [dueReminders, setDueReminders] = useState<Item[]>([]);
   const handledReminders = useRef(new Set<string>());
   const hasReminders = items.some((item) => Boolean(item.reminderAt));
 
@@ -606,11 +610,7 @@ export function ChecklistReminderScheduler() {
     }
     haptic("success", settings.haptics);
     playAlarm(tone);
-    toastSuccess(
-      freshDue.length === 1
-        ? `Checklist reminder — ${freshDue[0].text}`
-        : `${freshDue.length} checklist reminders are due`,
-    );
+    setDueReminders(freshDue);
     for (const item of freshDue) {
       emitNotice({
         id: `checklist:${user?.id}:${item.id}`,
@@ -622,5 +622,44 @@ export function ChecklistReminderScheduler() {
     }
   }, [items, itemsLoaded, now, setItems, settings.haptics, tone, user?.id]);
 
-  return null;
+  return (
+    <Modal
+      open={dueReminders.length > 0}
+      onClose={() => setDueReminders([])}
+      title={dueReminders.length === 1 ? "Checklist reminder" : "Checklist reminders"}
+    >
+      <div className="flex flex-col items-center px-2 pb-1 pt-3 text-center">
+        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-lime-pale text-lime-deep">
+          <Check className="h-6 w-6" strokeWidth={2.2} />
+        </span>
+        <p className="mt-4 text-[14px] font-semibold text-ink">
+          {dueReminders.length === 1 ? "A checklist item is due." : "Your checklist reminders are due."}
+        </p>
+        <div className="mt-2 max-h-36 w-full overflow-y-auto rounded-xl bg-cream px-3 py-2 text-left">
+          {dueReminders.map((item) => (
+            <p key={item.id} className="py-1 text-[12px] leading-[1.5] text-ink [overflow-wrap:anywhere]">
+              {item.text}
+            </p>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setDueReminders([]);
+            router.push("/today");
+          }}
+          className="mt-5 min-h-10 w-full cursor-pointer rounded-full bg-lime px-5 text-[12px] font-bold text-dark transition hover:bg-lime-deep"
+        >
+          Open checklist
+        </button>
+        <button
+          type="button"
+          onClick={() => setDueReminders([])}
+          className="mt-2 min-h-10 w-full cursor-pointer rounded-full border border-line bg-paper px-5 text-[12px] font-bold text-ink transition hover:bg-cream"
+        >
+          Close reminder
+        </button>
+      </div>
+    </Modal>
+  );
 }

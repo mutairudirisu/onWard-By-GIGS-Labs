@@ -284,8 +284,8 @@ export default function PostPage() {
   }
 
   return (
-    <PhoneShell tab="feed">
-      <div className="mb-2 flex items-center gap-2">
+    <PhoneShell tab="feed" wide>
+      <div className="mb-3.5 flex items-center gap-2 lg:mb-5">
         <Link
           href="/feed"
           aria-label="Back to the Exchange"
@@ -296,118 +296,138 @@ export default function PostPage() {
         <h1 className="text-[13px] font-bold tracking-tight text-ink">Post</h1>
       </div>
 
-      <PostBlock
-        post={post}
-        liked={liked}
-        likes={likes}
-        reshared={reshared}
-        reshares={reshares}
-        signedIn={Boolean(user)}
-        poll={poll}
-        onVote={votePoll}
-        onLike={toggleLike}
-        onReshare={tapReshare}
-        onShare={() => {
-          if (!user) {
-            router.push("/sign-in");
-            return;
-          }
-          setSharing(true);
-        }}
-        onOpen={() => document.getElementById("comment-box")?.focus()}
-        previewThread={false}
-      />
-
-      <section className="mt-3.5 space-y-3">
-        {comments.map((comment) => (
-          <div key={comment.id} className="flex items-start gap-2.5">
-            <Avatar initials={comment.initials} />
-            <div className="min-w-0 flex-1">
-              <p className="text-[11.5px] leading-[1.55] text-ink [overflow-wrap:anywhere]">
-                <span className="font-bold">{comment.fullName || "Someone"}</span> {comment.body}
-              </p>
-              <div className="mt-0.5 flex items-center gap-3 text-[9.5px] text-faint">
-                <span>{timeAgo(comment.createdAt)}</span>
-                {user ? (
-                  <button
-                    type="button"
-                    aria-pressed={comment.liked}
-                    aria-label={comment.liked ? "Remove your upvote" : "Upvote this comment"}
-                    onClick={() => toggleCommentLike(comment)}
-                    className="-mx-1 flex cursor-pointer items-center gap-1 px-1 font-semibold text-muted transition hover:text-ink"
-                  >
-                    <ThumbsUp
-                      className={`h-3 w-3 ${comment.liked ? "fill-current text-lime-deep" : ""}`}
-                      strokeWidth={comment.liked ? 2.4 : 1.9}
-                    />
-                    {comment.likes > 0 ? (
-                      <span className="tabular-nums">{comment.likes}</span>
-                    ) : null}
-                  </button>
-                ) : null}
-                {comment.mine ? (
-                  <button
-                    type="button"
-                    onClick={() => void removeComment(comment.id)}
-                    className="cursor-pointer font-semibold text-muted transition hover:text-ink"
-                  >
-                    Delete
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        ))}
-        {!comments.length ? (
-          <p className="text-[11px] text-muted">No comments yet.</p>
-        ) : null}
-      </section>
-
-      {user && post.canComment !== false ? (
-        <div className="mt-4 flex items-end gap-2.5">
-          <Avatar
-            initials={me.initials || (me.name.slice(0, 1).toUpperCase() || "?")}
-            src={me.avatarUrl}
-          />
-          <input
-            id="comment-box"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value.slice(0, POST_COMMENT_MAX))}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") void send();
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.85fr)] lg:items-start lg:gap-6 xl:gap-8">
+        <div className="min-w-0">
+          <PostBlock
+            post={post}
+            liked={liked}
+            likes={likes}
+            reshared={reshared}
+            reshares={reshares}
+            signedIn={Boolean(user)}
+            poll={poll}
+            onVote={votePoll}
+            onLike={toggleLike}
+            onReshare={tapReshare}
+            onShare={() => {
+              if (!user) {
+                router.push("/sign-in");
+                return;
+              }
+              setSharing(true);
             }}
-            placeholder="Add a comment…"
-            aria-label="Add a comment"
-            className="field-input flex-1 rounded-full px-4 py-2.5 text-[12px]"
+            onOpen={() => document.getElementById("comment-box")?.focus()}
+            previewThread={false}
           />
-          <button
-            type="button"
-            onClick={() => void send()}
-            disabled={!draft.trim() || sending}
-            aria-label="Post comment"
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition ${
-              draft.trim() && !sending
-                ? "cursor-pointer bg-lime text-dark hover:bg-lime-deep"
-                : "cursor-not-allowed bg-line text-muted"
-            }`}
-          >
-            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          </button>
         </div>
-      ) : user ? (
-        <p className="mt-4 text-[11px] text-muted">
-          {post.commentAudience === "off"
-            ? "Comments are turned off for this post."
-            : "Only the author’s connections can comment on this post."}
-        </p>
-      ) : (
-        <p className="mt-4 text-[11px] text-muted">
-          <Link href="/sign-in" className="cursor-pointer font-bold text-lime-deep hover:underline">
-            Sign in
-          </Link>{" "}
-          to comment.
-        </p>
-      )}
+
+        <aside className="mt-3.5 lg:sticky lg:top-6 lg:mt-0 lg:flex lg:h-[min(78vh,760px)] lg:flex-col lg:overflow-hidden lg:rounded-2xl lg:border lg:border-line lg:bg-paper lg:p-4">
+          <div className="flex items-center justify-between border-b border-line pb-3 lg:shrink-0">
+            <h2 className="text-[12px] font-bold text-ink">Comments</h2>
+            <span className="text-[10px] font-semibold tabular-nums text-muted">
+              {comments.length}
+            </span>
+          </div>
+
+          <section className="mt-3.5 min-h-0 space-y-3 lg:flex-1 lg:overflow-y-auto lg:pr-1">
+            {comments.map((comment) => (
+              <div key={comment.id} className="flex items-start gap-2.5">
+                <Avatar initials={comment.initials} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11.5px] leading-[1.55] text-ink [overflow-wrap:anywhere]">
+                    <span className="font-bold">{comment.fullName || "Someone"}</span> {comment.body}
+                  </p>
+                  <div className="mt-0.5 flex items-center gap-3 text-[9.5px] text-faint">
+                    <span>{timeAgo(comment.createdAt)}</span>
+                    {user ? (
+                      <button
+                        type="button"
+                        aria-pressed={comment.liked}
+                        aria-label={comment.liked ? "Remove your upvote" : "Upvote this comment"}
+                        onClick={() => toggleCommentLike(comment)}
+                        className="-mx-1 flex cursor-pointer items-center gap-1 px-1 font-semibold text-muted transition hover:text-ink"
+                      >
+                        <ThumbsUp
+                          className={`h-3 w-3 ${comment.liked ? "fill-current text-lime-deep" : ""}`}
+                          strokeWidth={comment.liked ? 2.4 : 1.9}
+                        />
+                        {comment.likes > 0 ? (
+                          <span className="tabular-nums">{comment.likes}</span>
+                        ) : null}
+                      </button>
+                    ) : null}
+                    {comment.mine ? (
+                      <button
+                        type="button"
+                        onClick={() => void removeComment(comment.id)}
+                        className="cursor-pointer font-semibold text-muted transition hover:text-ink"
+                      >
+                        Delete
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {!comments.length ? (
+              <p className="text-[11px] text-muted">No comments yet.</p>
+            ) : null}
+          </section>
+
+          {user && post.canComment !== false ? (
+            <div className="mt-4 flex items-end gap-2.5 lg:shrink-0 lg:border-t lg:border-line lg:pt-3">
+              <Avatar
+                initials={me.initials || (me.name.slice(0, 1).toUpperCase() || "?")}
+                src={me.avatarUrl}
+              />
+              <input
+                id="comment-box"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value.slice(0, POST_COMMENT_MAX))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void send();
+                }}
+                placeholder="Add a comment…"
+                aria-label="Add a comment"
+                className="field-input flex-1 rounded-full px-4 py-2.5 text-[12px]"
+              />
+              <button
+                type="button"
+                onClick={() => void send()}
+                disabled={!draft.trim() || sending}
+                aria-label="Post comment"
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition ${
+                  draft.trim() && !sending
+                    ? "cursor-pointer bg-lime text-dark hover:bg-lime-deep"
+                    : "cursor-not-allowed bg-line text-muted"
+                }`}
+              >
+                {sending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+          ) : user ? (
+            <p className="mt-4 text-[11px] text-muted lg:shrink-0 lg:border-t lg:border-line lg:pt-3">
+              {post.commentAudience === "off"
+                ? "Comments are turned off for this post."
+                : "Only the author’s connections can comment on this post."}
+            </p>
+          ) : (
+            <p className="mt-4 text-[11px] text-muted lg:shrink-0 lg:border-t lg:border-line lg:pt-3">
+              <Link
+                href="/sign-in"
+                className="cursor-pointer font-bold text-lime-deep hover:underline"
+              >
+                Sign in
+              </Link>{" "}
+              to comment.
+            </p>
+          )}
+        </aside>
+      </div>
 
       {isMine ? (
         <button

@@ -722,6 +722,26 @@ export function FocusTimerScheduler() {
     setCompletion(null);
   }, [completion]);
 
+  const startBreak = useCallback(() => {
+    if (completion?.mode !== "focus") return;
+    primeAlarm();
+    haptic("tap", settings.haptics);
+    setTimer((current) => {
+      const secs =
+        current.mode === "break" && current.remainingSec > 0
+          ? current.remainingSec
+          : minutesOf("break", current);
+      return {
+        ...current,
+        mode: "break",
+        remainingSec: secs,
+        blockSec: Math.max(current.blockSec, secs),
+        endsAt: Date.now() + secs * 1000,
+      };
+    });
+    dismiss();
+  }, [completion, dismiss, settings.haptics, setTimer]);
+
   return (
     <Modal
       open={completion !== null}
@@ -740,10 +760,19 @@ export function FocusTimerScheduler() {
             ? `You completed a ${timer.focusMin}-minute focus block. Take a ${timer.breakMin}-minute break when you’re ready.`
             : "Take a breath, then start your next focus block whenever you’re ready."}
         </p>
+        {completion?.mode === "focus" ? (
+          <button
+            type="button"
+            onClick={startBreak}
+            className="mt-5 min-h-10 w-full cursor-pointer rounded-full bg-lime px-5 text-[12px] font-bold text-dark transition hover:bg-lime-deep"
+          >
+            Start break
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={dismiss}
-          className="mt-5 min-h-10 w-full cursor-pointer rounded-full bg-lime px-5 text-[12px] font-bold text-dark transition hover:bg-lime-deep"
+          className={`${completion?.mode === "focus" ? "mt-2" : "mt-5"} min-h-10 w-full cursor-pointer rounded-full border border-line bg-paper px-5 text-[12px] font-bold text-ink transition hover:bg-cream`}
         >
           Close reminder
         </button>
