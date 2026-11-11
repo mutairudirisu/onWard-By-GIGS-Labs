@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent, type RefObject } from "react";
-import { Mic, Square } from "lucide-react";
+import { Mic, Square, X } from "lucide-react";
 import { appendDictation, useDictation } from "@/lib/dictation";
 
 /** Each bar's own gain, so the row reads as a voice and not as one pulsing block. */
@@ -53,12 +53,13 @@ export function DictateTextArea({
     valueRef.current = value;
   }, [value]);
 
-  const { supported, listening, interim, error, toggle } = useDictation((text) => {
+  const { supported, listening, transcribing, interim, error, start, stop, cancel, toggle } = useDictation((text) => {
     const next = appendDictation(valueRef.current, text);
     valueRef.current = next;
     onChange(next);
   });
   const displayedValue = interim ? appendDictation(value, interim) : value;
+  const active = listening || transcribing;
 
   function handleChange(event: ChangeEvent<HTMLTextAreaElement>) {
     const next = event.target.value;
@@ -94,37 +95,51 @@ export function DictateTextArea({
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           className={`field-input block min-h-[84px] resize-none leading-[1.5] ${
-            focused && !listening ? "pr-11" : ""
-          } ${listening ? "pb-[54px]" : ""}`}
+            focused && !active ? "pr-11" : ""
+            } ${active ? "pb-[54px]" : ""}`}
         />
 
-        {listening ? (
+        {active ? (
           <div
             ref={strip}
             className="absolute inset-x-px bottom-px flex items-center gap-2.5 rounded-b-[11px] border-t border-line px-2.5 py-1.5"
             style={{ ["--lv" as string]: "0" } as React.CSSProperties}
           >
-            <span className="flex h-5 shrink-0 items-center gap-[3px]" aria-hidden>
-              {WEIGHTS.map((weight, index) => (
-                <span
-                  key={index}
-                  className="h-5 w-[3px] rounded-full bg-lime-deep"
-                  style={{ transform: `scaleY(calc(0.1 + var(--lv, 0) * ${weight}))` }}
-                />
-              ))}
+            {listening ? (
+              <span className="flex h-5 shrink-0 items-center gap-[3px]" aria-hidden>
+                {WEIGHTS.map((weight, index) => (
+                  <span
+                    key={index}
+                    className="h-5 w-[3px] rounded-full bg-lime-deep"
+                    style={{ transform: `scaleY(calc(0.1 + var(--lv, 0) * ${weight}))` }}
+                  />
+                ))}
+              </span>
+            ) : null}
+            <span className="min-w-0 flex-1 truncate text-[11px] leading-[1.4] text-muted" role="status">
+              {transcribing ? "Transcribing…" : interim || "Listening…"}
             </span>
-            <span className="min-w-0 flex-1 truncate text-[11px] leading-[1.4] text-muted">
-              {interim || "Listening…"}
-            </span>
+            {listening ? (
+              <button
+                type="button"
+                aria-label="Stop dictating and transcribe"
+                title="Stop dictating"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={stop}
+                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[#E5484D]/10 text-[#E5484D] transition hover:bg-[#E5484D]/20"
+              >
+                <Square className="h-2.5 w-2.5 fill-current" />
+              </button>
+            ) : null}
             <button
               type="button"
-              aria-label="Stop dictating"
-              title="Stop dictating"
+              aria-label={transcribing ? "Cancel transcription" : "Cancel dictation"}
+              title="Cancel dictation"
               onMouseDown={(event) => event.preventDefault()}
-              onClick={toggle}
-              className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[#E5484D]/10 text-[#E5484D] transition hover:bg-[#E5484D]/20"
+              onClick={cancel}
+              className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted transition hover:bg-cream hover:text-ink"
             >
-              <Square className="h-2.5 w-2.5 fill-current" />
+              <X className="h-3.5 w-3.5" />
             </button>
           </div>
         ) : focused ? (
@@ -134,7 +149,7 @@ export function DictateTextArea({
             title={label}
             // The box keeps the caret the mic is about to speak into.
             onMouseDown={(event) => event.preventDefault()}
-            onClick={toggle}
+            onClick={error ? start : toggle}
             className="absolute bottom-2 right-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-inksoft transition hover:bg-cream"
           >
             <Mic className="h-[16px] w-[16px]" strokeWidth={2.2} />
@@ -142,8 +157,8 @@ export function DictateTextArea({
         ) : null}
       </div>
 
-      {!listening && error ? (
-        <p className="mt-1.5 text-[10px] leading-[1.4] text-[#E5484D]">{error}</p>
+      {!active && error ? (
+        <p role="alert" className="mt-1.5 text-[10px] leading-[1.4] text-[#E5484D]">{error}</p>
       ) : null}
     </div>
   );

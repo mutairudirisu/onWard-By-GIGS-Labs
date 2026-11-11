@@ -1,13 +1,14 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PhoneShell } from "@/components/phone-shell";
 import { ShareSheet, wardShareText } from "@/components/share-sheet";
 import { BackLink, Button, Tag } from "@/components/ui";
 import { useStore } from "@/components/store";
 import type { Evidence } from "@/lib/data";
+import { signedWardEvidenceUrl } from "@/lib/db";
 import { ArrowUpRight, Check, File as FileIcon, Folder, Globe, Image as ImageIcon, Pencil, Share2, Star, TrendingUp, Users } from "lucide-react";
 
 function EvidenceIcon({ kind }: { kind: Evidence["kind"] }) {
@@ -22,6 +23,43 @@ export default function OnWardDetailPage() {
   const { onWards, favourites, togglePortfolio, toggleFavourite } = useStore();
   const [sharing, setSharing] = useState(false);
   const ward = onWards.find((w) => w.id === params.id);
+  const evidence = ward?.evidence ?? [];
+  const [evidenceUrls, setEvidenceUrls] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let active = true;
+    const refresh = () => {
+      void Promise.all(
+        evidence.map(async (item) => {
+          if (item.url) {
+            try {
+              const parsed = new URL(item.url);
+              return parsed.protocol === "http:" || parsed.protocol === "https:"
+                ? ([item.id, parsed.toString()] as const)
+                : null;
+            } catch {
+              return null;
+            }
+          }
+          if (!item.storagePath) return null;
+          try {
+            return [item.id, await signedWardEvidenceUrl(item.storagePath)] as const;
+          } catch (error) {
+            console.error("Could not load an onWard attachment", error);
+            return null;
+          }
+        }),
+      ).then((entries) => {
+        if (active) setEvidenceUrls(Object.fromEntries(entries.filter((entry) => entry !== null)));
+      });
+    };
+    refresh();
+    const refreshTimer = window.setInterval(refresh, 23 * 60 * 60 * 1000);
+    return () => {
+      active = false;
+      window.clearInterval(refreshTimer);
+    };
+  }, [evidence]);
 
   if (!ward) {
     return (
@@ -37,8 +75,6 @@ export default function OnWardDetailPage() {
       </PhoneShell>
     );
   }
-
-  const evidence = ward.evidence ?? [];
 
   return (
     <PhoneShell>
@@ -120,8 +156,10 @@ export default function OnWardDetailPage() {
           </p>
         ) : (
           <div className="space-y-2">
-            {evidence.map((ev) => (
-              <div key={ev.id} className="card flex items-center gap-3 px-3 py-2.5">
+            {evidence.map((ev) => {
+              const href = evidenceUrls[ev.id];
+              const item = (
+                <>
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cream text-inksoft">
                   <EvidenceIcon kind={ev.kind} />
                 </span>
@@ -129,8 +167,25 @@ export default function OnWardDetailPage() {
                   <span className="block truncate text-[12px] font-semibold text-ink">{ev.label}</span>
                   <span className="block truncate text-[10px] text-muted">{ev.meta ?? ev.kind}</span>
                 </span>
-              </div>
-            ))}
+                {href ? <ArrowUpRight className="h-4 w-4 shrink-0 text-muted" /> : null}
+                </>
+              );
+              return href ? (
+                <a
+                  key={ev.id}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="card flex items-center gap-3 px-3 py-2.5 transition hover:border-lime-deep"
+                >
+                  {item}
+                </a>
+              ) : (
+                <div key={ev.id} className="card flex items-center gap-3 px-3 py-2.5">
+                  {item}
+                </div>
+              );
+            })}
           </div>
         )}
         <p className="mt-1.5 text-[9px] leading-[1.5] text-muted">

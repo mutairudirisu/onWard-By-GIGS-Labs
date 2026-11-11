@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { PhoneShell } from "@/components/phone-shell";
 import { NewButton, PageHeader, Tag } from "@/components/ui";
@@ -11,6 +11,7 @@ import { dayHeading, formatDue } from "@/lib/dates";
 import { CalendarDays, FileText, Globe, Image, Share2, Star, Search, Trophy, X } from "lucide-react";
 import { ShareSheet, wardShareText } from "@/components/share-sheet";
 import { haptic } from "@/lib/haptics";
+import { signedWardEvidenceUrl } from "@/lib/db";
 
 const TABS = ["Timeline", "By skill", "Portfolio"] as const;
 type Tab = (typeof TABS)[number];
@@ -59,7 +60,8 @@ function WardCard({
   onFavourite: (id: string) => void;
   onShare: (ward: OnWard) => void;
 }) {
-  const evidence = evidenceCounts(ward.evidence ?? []);
+  const wardEvidence = ward.evidence ?? [];
+  const evidence = evidenceCounts(wardEvidence);
   return (
     <div className="relative flex flex-col rounded-[22px] border border-line bg-paper px-4 py-4 shadow-card transition hover:-translate-y-0.5 hover:shadow-lift lg:px-5 lg:py-5">
       {/* Whole card opens the onWard; the two controls sit above this overlay. */}
@@ -93,6 +95,7 @@ function WardCard({
       <p className="mt-1.5 line-clamp-3 flex-1 text-[11.5px] leading-[1.65] text-inksoft lg:text-[13px]">
         {ward.impact}
       </p>
+      {wardEvidence.length ? <EvidenceStickers evidence={wardEvidence} /> : null}
       <div className="mt-3.5 flex items-end justify-between gap-3">
         <span className="flex items-center gap-2.5 text-[10.5px] font-semibold text-muted">
           {evidence.map(({ kind, n }) => {
@@ -123,6 +126,76 @@ function WardCard({
           </button>
         </span>
       </div>
+    </div>
+  );
+}
+
+function EvidenceStickers({ evidence }: { evidence: Evidence[] }) {
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let active = true;
+    const refresh = () => {
+      void Promise.all(
+        evidence
+          .filter((item) => item.kind === "image" && item.storagePath)
+          .map(async (item) => {
+            try {
+              return [item.id, await signedWardEvidenceUrl(item.storagePath!)] as const;
+            } catch (error) {
+              console.error("Could not load an onWard image preview", error);
+              return null;
+            }
+          }),
+      ).then((entries) => {
+        if (active) setSignedUrls(Object.fromEntries(entries.filter((entry) => entry !== null)));
+      });
+    };
+    refresh();
+    const refreshTimer = window.setInterval(refresh, 23 * 60 * 60 * 1000);
+    return () => {
+      active = false;
+      window.clearInterval(refreshTimer);
+    };
+  }, [evidence]);
+
+  return (
+    <div
+      className="mt-3 flex items-center"
+      aria-label={`${evidence.length} attached item${evidence.length === 1 ? "" : "s"}`}
+    >
+      {evidence.slice(0, 3).map((item, index) => {
+        const stickerStyle = [
+          "-rotate-6",
+          "rotate-3",
+          "-rotate-2",
+        ][index];
+        const imageUrl = signedUrls[item.id];
+        return (
+          <span
+            key={item.id}
+            title={item.label}
+            className={`relative -ml-2 first:ml-0 flex h-9 w-10 items-center justify-center overflow-hidden rounded-lg border-2 border-paper bg-cream text-inksoft shadow-sm ${stickerStyle}`}
+          >
+            {item.kind === "image" && imageUrl ? (
+              // The private image URL is a short-lived signed URL.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+            ) : item.kind === "image" ? (
+              <Image className="h-4 w-4" />
+            ) : item.kind === "url" ? (
+              <Globe className="h-4 w-4" />
+            ) : (
+              <FileText className="h-4 w-4" />
+            )}
+          </span>
+        );
+      })}
+      {evidence.length > 3 ? (
+        <span className="ml-1.5 text-[9px] font-semibold text-muted">
+          +{evidence.length - 3} more
+        </span>
+      ) : null}
     </div>
   );
 }

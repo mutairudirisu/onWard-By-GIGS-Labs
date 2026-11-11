@@ -63,6 +63,8 @@ export type Workspace = {
   skills: string[];
   settings: Settings;
   plan: Plan;
+  evidenceWardsUsed: number;
+  evidenceEntitlementWardIds: string[];
 };
 
 type WardRow = {
@@ -84,6 +86,8 @@ type EvidenceRow = {
   kind: "file" | "url" | "image";
   label: string;
   meta: string | null;
+  url: string | null;
+  storage_path: string | null;
 };
 
 type SettingsRow = {
@@ -173,38 +177,61 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
 }
 
 export async function fetchWorkspace(userId: string): Promise<Workspace> {
-  const [wardsRes, skillsRes, settingsRes, profileRes] = await Promise.all([
+  const [wardsRes, skillsRes, settingsRes, profileRes, entitlementRes] = await Promise.all([
     supabase
       .from("on_wards")
-      .select("*, ward_skills(skill_id, skills(name)), evidence(id, kind, label, meta)")
+      .select("*, ward_skills(skill_id, skills(name)), evidence(id, kind, label, meta, url, storage_path)")
       .eq("user_id", userId)
       .order("day", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false }),
     supabase.from("skills").select("name").eq("user_id", userId).order("created_at"),
     supabase.from("user_settings").select("*").eq("user_id", userId).maybeSingle(),
-    supabase.from("profiles").select("plan, pro_until").eq("id", userId).maybeSingle(),
+    supabase
+      .from("profiles")
+      .select("plan, pro_until, evidence_wards_used")
+      .eq("id", userId)
+      .maybeSingle(),
+    supabase
+      .from("ward_evidence_entitlements")
+      .select("ward_id")
+      .eq("user_id", userId),
   ]);
 
-  fail(wardsRes.error, skillsRes.error, settingsRes.error, profileRes.error);
+  fail(wardsRes.error, skillsRes.error, settingsRes.error, profileRes.error, entitlementRes.error);
 
   const wards: WardRow[] = wardsRes.data ?? [];
   const skillRows: { name: string }[] = skillsRes.data ?? [];
   const settingsRow = (settingsRes.data ?? null) as SettingsRow | null;
+  const entitlementRows: { ward_id: string }[] = entitlementRes.data ?? [];
+  const profileRow = profileRes.data as {
+    plan?: Plan;
+    pro_until?: string | null;
+    evidence_wards_used?: number;
+  } | null;
 
   return {
     onWards: wards.map(wardFromRow),
     skills: skillRows.map((s) => s.name),
     settings: settingsFromRow(settingsRow),
     plan: effectivePlan(
-      ((profileRes.data as { plan?: Plan } | null)?.plan ?? "free") as Plan,
-      (profileRes.data as { pro_until?: string | null } | null)?.pro_until,
+      (profileRow?.plan ?? "free") as Plan,
+      profileRow?.pro_until,
     ),
+    evidenceWardsUsed: profileRow?.evidence_wards_used ?? 0,
+    evidenceEntitlementWardIds: entitlementRows.map((row) => row.ward_id),
   };
 }
 
 function wardFromRow(row: WardRow): OnWard {
   const evidence = (row.evidence ?? []).map(
-    (e): Evidence => ({ id: e.id, kind: e.kind, label: e.label, meta: e.meta ?? undefined }),
+    (e): Evidence => ({
+      id: e.id,
+      kind: e.kind,
+      label: e.label,
+      meta: e.meta ?? undefined,
+      url: e.url ?? (e.kind === "url" ? e.meta ?? undefined : undefined),
+      storagePath: e.storage_path ?? undefined,
+    }),
   );
   const date = row.day ?? undefined;
   return {
@@ -267,6 +294,11 @@ async function writeWardLinks(userId: string, ward: OnWard) {
   }
 
   const evidence = ward.evidence ?? [];
+  const { data: previousEvidence, error: previousEvidenceError } = await supabase
+    .from("evidence")
+    .select("storage_path")
+    .eq("ward_id", ward.id);
+  if (previousEvidenceError) throw new Error(previousEvidenceError.message);
   const { error: clearError } = await supabase
     .from("evidence")
     .delete()
@@ -281,9 +313,27 @@ async function writeWardLinks(userId: string, ward: OnWard) {
         kind: e.kind,
         label: e.label,
         meta: e.meta ?? null,
+        url: e.url ?? null,
+        storage_path: e.storagePath ?? null,
       })),
     );
     if (error) throw new Error(error.message);
+  }
+
+  const retainedPaths = new Set(
+    evidence
+      .map((item) => item.storagePath)
+      .filter((path): path is string => typeof path === "string"),
+  );
+  const removedPaths = (previousEvidence ?? [])
+    .map((item: { storage_path: string | null }) => item.storage_path)
+    .filter((path): path is string => path !== null && !retainedPaths.has(path));
+  if (removedPaths.length) {
+    try {
+      await removeWardEvidenceFiles(removedPaths);
+    } catch (error) {
+      console.error("Saved onWard evidence changes but could not delete removed files", error);
+    }
   }
 }
 
@@ -365,7 +415,69 @@ export async function saveProfile(userId: string, patch: Partial<Omit<Profile, "
 }
 
 export async function deleteRow(table: "on_wards", id: string) {
+  const { data: evidence, error: evidenceError } = await supabase
+    .from("evidence")
+    .select("storage_path")
+    .eq("ward_id", id);
+  if (evidenceError) throw new Error(evidenceError.message);
   const { error } = await supabase.from(table).delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  const paths = (evidence ?? [])
+    .map((row: { storage_path: string | null }) => row.storage_path)
+    .filter((path): path is string => Boolean(path));
+  if (paths.length) {
+    try {
+      await removeWardEvidenceFiles(paths);
+    } catch (cleanupError) {
+      console.error("Deleted an onWard but could not remove its stored evidence", cleanupError);
+    }
+  }
+}
+
+export const WARD_EVIDENCE_BUCKET = "ward-evidence";
+export const WARD_EVIDENCE_MAX_BYTES = 26_214_400;
+
+const WARD_EVIDENCE_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "text/plain",
+]);
+
+export async function uploadWardEvidence(
+  userId: string,
+  evidenceId: string,
+  file: File,
+): Promise<string> {
+  if (file.size > WARD_EVIDENCE_MAX_BYTES) throw new Error("Keep attachments under 25 MB.");
+  if (!WARD_EVIDENCE_MIME_TYPES.has(file.type)) {
+    throw new Error("Choose an image, PDF, Word, PowerPoint or text file.");
+  }
+  const extension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "file";
+  const path = `${userId}/${evidenceId}.${extension}`;
+  const { error } = await supabase.storage
+    .from(WARD_EVIDENCE_BUCKET)
+    .upload(path, file, { contentType: file.type, upsert: false });
+  if (error) throw new Error(error.message);
+  return path;
+}
+
+export async function signedWardEvidenceUrl(path: string): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(WARD_EVIDENCE_BUCKET)
+    .createSignedUrl(path, 86_400);
+  if (error) throw new Error(error.message);
+  return data.signedUrl;
+}
+
+export async function removeWardEvidenceFiles(paths: string[]): Promise<void> {
+  const { error } = await supabase.storage.from(WARD_EVIDENCE_BUCKET).remove(paths);
   if (error) throw new Error(error.message);
 }
 

@@ -32,17 +32,17 @@ export type Plan = "free" | "pro";
 // Only what the app actually enforces lives here.
 export type PlanLimits = {
   wardsPerMonth: number | null;
-  evidencePerWard: number | null;
+  evidenceWards: number | null;
 };
 
 export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
   free: {
     wardsPerMonth: 3,
-    evidencePerWard: 0,
+    evidenceWards: 3,
   },
   pro: {
     wardsPerMonth: null,
-    evidencePerWard: null,
+    evidenceWards: null,
   },
 };
 
@@ -67,7 +67,7 @@ export type PlanFeature = {
 
 export const PLAN_FEATURES: PlanFeature[] = [
   { label: "onWards per month", free: "3", pro: "Unlimited" },
-  { label: "Attachments per onWard", free: "None", pro: "Unlimited" },
+  { label: "onWards with attachments (lifetime)", free: "3", pro: "Unlimited" },
   { label: "Streak, heatmap and insights", free: true, pro: true },
   { label: "Portfolio page and PDF", free: true, pro: true },
   { label: "CV builder, PDF and plain-text export", free: true, pro: true },
@@ -83,6 +83,8 @@ export type Evidence = {
   kind: "file" | "url" | "image";
   label: string;
   meta?: string;
+  url?: string;
+  storagePath?: string;
 };
 
 export type OnWard = {

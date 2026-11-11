@@ -51,6 +51,8 @@ function emptyState(): State {
     favourites: [],
     settings: { ...DEFAULT_SETTINGS },
     plan: "free",
+    evidenceWardsUsed: 0,
+    evidenceEntitlementWardIds: [],
   };
 }
 
@@ -95,6 +97,7 @@ type Store = State & {
   isPro: boolean;
   limits: PlanLimits;
   wardsThisMonth: number;
+  evidenceWardsUsed: number;
 };
 
 const StoreCtx = createContext<Store | null>(null);
@@ -168,6 +171,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         // Yesterday's page should not be what you land on today.
         selectedDate: cached.selectedDate === todayISO() ? cached.selectedDate : todayISO(),
         settings: { ...DEFAULT_SETTINGS, ...cached.settings },
+        evidenceWardsUsed:
+          cached.evidenceWardsUsed ??
+          cached.onWards?.filter((ward) => (ward.evidence?.length ?? 0) > 0).length ??
+          0,
+        evidenceEntitlementWardIds:
+          cached.evidenceEntitlementWardIds ??
+          cached.onWards?.filter((ward) => (ward.evidence?.length ?? 0) > 0).map((ward) => ward.id) ??
+          [],
       };
       setState(stateRef.current);
     }
@@ -208,6 +219,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       commit(
         (s) => ({
           ...s,
+          evidenceWardsUsed:
+            s.evidenceWardsUsed + (data.evidence.length > 0 ? 1 : 0),
+          evidenceEntitlementWardIds:
+            data.evidence.length > 0
+              ? [...new Set([...s.evidenceEntitlementWardIds, id])]
+              : s.evidenceEntitlementWardIds,
           onWards: [
             {
               id,
@@ -258,6 +275,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       commit(
         (s) => ({
           ...s,
+          evidenceWardsUsed:
+            s.evidenceWardsUsed +
+            (data.evidence.length > 0 &&
+            !s.evidenceEntitlementWardIds.includes(id)
+              ? 1
+              : 0),
+          evidenceEntitlementWardIds:
+            data.evidence.length > 0
+              ? [...new Set([...s.evidenceEntitlementWardIds, id])]
+              : s.evidenceEntitlementWardIds,
           onWards: s.onWards.map((w) =>
             w.id === id
               ? {
@@ -358,7 +385,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const wardsThisMonth = state.onWards.filter((w) =>
     (w.date ?? "").slice(0, 7) === monthKey,
   ).length;
-
   const value = useMemo<Store>(
     () => ({
       ...state,
@@ -374,6 +400,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       isPro: state.plan === "pro",
       limits: PLAN_LIMITS[state.plan],
       wardsThisMonth,
+      evidenceWardsUsed: state.evidenceWardsUsed,
     }),
     [
       state,
@@ -387,6 +414,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setSetting,
       setPlan,
       wardsThisMonth,
+      state.evidenceWardsUsed,
     ],
   );
 

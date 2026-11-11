@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/auth";
 import { PhoneShell } from "@/components/phone-shell";
 import { DictateTextArea } from "@/components/dictate-field";
 import { BackLink, Button, Field, TextInput, Toggle } from "@/components/ui";
@@ -10,7 +11,8 @@ import { ProBadge, UpgradeModal } from "@/components/pro";
 import { useStore } from "@/components/store";
 import { type Evidence } from "@/lib/data";
 import { todayISO } from "@/lib/dates";
-import { uuid } from "@/lib/db";
+import { removeWardEvidenceFiles, uploadWardEvidence, uuid } from "@/lib/db";
+import { toastError } from "@/components/toast";
 import {
   Check,
   File as FileIcon,
@@ -32,6 +34,7 @@ function kindIcon(kind: Evidence["kind"], className = "h-4 w-4") {
 
 export default function LogOnWardPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const {
     onWards,
     hydrated,
@@ -41,7 +44,10 @@ export default function LogOnWardPage() {
     addOnWard,
     updateOnWard,
     wardsThisMonth,
+    evidenceWardsUsed,
+    evidenceEntitlementWardIds,
     limits,
+    isPro,
   } = useStore();
   const [wardGate, setWardGate] = useState(false);
   const [evidenceGate, setEvidenceGate] = useState(false);
@@ -59,10 +65,30 @@ export default function LogOnWardPage() {
 
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [urlDraft, setUrlDraft] = useState("");
+  const [pendingUploadCount, setPendingUploadCount] = useState(0);
+  const uploadingEvidence = pendingUploadCount > 0;
   /** Set from ?edit= on the way in, so a reload lands back on the same entry. */
   const [editId, setEditId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLInputElement>(null);
+  const uploadedPaths = useRef(new Set<string>());
+  const keepUploads = useRef(false);
+  const mounted = useRef(true);
+
+  useEffect(
+    () => {
+      mounted.current = true;
+      return () => {
+        mounted.current = false;
+        if (!keepUploads.current && uploadedPaths.current.size) {
+          void removeWardEvidenceFiles([...uploadedPaths.current]).catch((error: unknown) =>
+            console.error("Could not clean up unsaved onWard attachments", error),
+          );
+        }
+      };
+    },
+    [],
+  );
 
   // Student cards arrive as /onwards/new?title=Coursework&project=Coursework.
   useEffect(() => {
@@ -119,38 +145,95 @@ export default function LogOnWardPage() {
   };
 
   const evidenceFull = () => {
-    if (limits.evidencePerWard != null && evidence.length >= limits.evidencePerWard) {
+    if (
+      !isPro &&
+      !ward?.evidence?.length &&
+      !evidenceEntitlementWardIds.includes(ward?.id ?? "") &&
+      !evidence.length &&
+      limits.evidenceWards != null &&
+      evidenceWardsUsed >= limits.evidenceWards
+    ) {
       setEvidenceGate(true);
       return true;
     }
     return false;
   };
 
-  const addFileLike = (file: File, kind: "file" | "image") => {
+  const addFileLike = async (file: File) => {
     if (evidenceFull()) return;
+    if (!user) {
+      toastError("Sign in to attach evidence to an onWard.");
+      return;
+    }
+    const id = uuid();
     const kb = Math.max(1, Math.round(file.size / 1024));
-    setEvidence((e) => [...e, { id: uuid(), kind, label: file.name, meta: `${kb} KB · just now` }]);
+    setPendingUploadCount((count) => count + 1);
+    try {
+      const storagePath = await uploadWardEvidence(user.id, id, file);
+      if (!mounted.current) {
+        void removeWardEvidenceFiles([storagePath]).catch((error: unknown) =>
+          console.error("Could not clean up an upload after leaving the form", error),
+        );
+        return;
+      }
+      uploadedPaths.current.add(storagePath);
+      setEvidence((current) => [
+        ...current,
+        {
+          id,
+          kind: file.type.startsWith("image/") ? "image" : "file",
+          label: file.name,
+          meta: `${kb} KB · just now`,
+          storagePath,
+        },
+      ]);
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : "Could not upload this attachment.");
+    } finally {
+      setPendingUploadCount((count) => Math.max(0, count - 1));
+    }
   };
 
   const addUrl = () => {
     const raw = urlDraft.trim();
     if (!raw) return;
     if (evidenceFull()) return;
-    let label = raw;
     try {
-      label = new URL(raw).hostname.replace(/^www\./, "");
+      const parsed = new URL(raw);
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+        toastError("Use a link that starts with http:// or https://.");
+        return;
+      }
+      const label = parsed.hostname.replace(/^www\./, "");
+      setEvidence((e) => [...e, { id: uuid(), kind: "url", label, meta: raw, url: raw }]);
+      setUrlDraft("");
+      setShowUrlInput(false);
     } catch {
-      /* keep raw as label */
+      toastError("Enter a valid http:// or https:// link.");
     }
-    setEvidence((e) => [...e, { id: uuid(), kind: "url", label, meta: raw }]);
-    setUrlDraft("");
-    setShowUrlInput(false);
   };
 
-  const removeEvidence = (id: string) => setEvidence((e) => e.filter((x) => x.id !== id));
+  const removeEvidence = (id: string) => {
+    const item = evidence.find((entry) => entry.id === id);
+    setEvidence((current) => current.filter((entry) => entry.id !== id));
+    if (
+      item?.storagePath &&
+      !ward?.evidence?.some((entry) => entry.id === item.id)
+    ) {
+      uploadedPaths.current.delete(item.storagePath);
+      void removeWardEvidenceFiles([item.storagePath]).catch((error: unknown) =>
+        toastError(error instanceof Error ? error.message : "Could not remove the uploaded file."),
+      );
+    }
+  };
 
   const canSave = title.trim().length > 0 && impact.trim().length > 0;
-  const canAttach = limits.evidencePerWard == null || limits.evidencePerWard > 0;
+  const canAttach =
+    isPro ||
+    Boolean(ward?.evidence?.length || evidence.length) ||
+    evidenceEntitlementWardIds.includes(ward?.id ?? "") ||
+    limits.evidenceWards == null ||
+    evidenceWardsUsed < limits.evidenceWards;
 
   const save = () => {
     if (!canSave) return;
@@ -166,6 +249,7 @@ export default function LogOnWardPage() {
     };
     // Rewriting an entry you already have costs no new slot from the monthly cap.
     if (ward) {
+      keepUploads.current = true;
       updateOnWard(ward.id, data);
       router.push(`/onwards/${ward.id}`);
       return;
@@ -174,6 +258,7 @@ export default function LogOnWardPage() {
       setWardGate(true);
       return;
     }
+    keepUploads.current = true;
     const id = addOnWard(data);
     router.push(`/onwards/${id}`);
   };
@@ -338,13 +423,13 @@ export default function LogOnWardPage() {
             <h2 className="text-[13px] font-bold tracking-tight text-ink">Evidence</h2>
             {canAttach ? (
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => fileRef.current?.click()} className="flex items-center gap-1 text-[10px] font-semibold text-muted underline">
+                <button type="button" disabled={uploadingEvidence} onClick={() => fileRef.current?.click()} className="flex items-center gap-1 text-[10px] font-semibold text-muted underline disabled:opacity-50">
                   File
                 </button>
-                <button type="button" onClick={() => imageRef.current?.click()} className="flex items-center gap-1 text-[10px] font-semibold text-muted underline">
+                <button type="button" disabled={uploadingEvidence} onClick={() => imageRef.current?.click()} className="flex items-center gap-1 text-[10px] font-semibold text-muted underline disabled:opacity-50">
                   Image
                 </button>
-                <button type="button" onClick={() => setShowUrlInput((v) => !v)} className="flex items-center gap-1 text-[10px] font-semibold text-muted underline">
+                <button type="button" disabled={uploadingEvidence} onClick={() => setShowUrlInput((v) => !v)} className="flex items-center gap-1 text-[10px] font-semibold text-muted underline disabled:opacity-50">
                   <Link2 className="h-3 w-3" /> URL
                 </button>
               </div>
@@ -361,8 +446,28 @@ export default function LogOnWardPage() {
 
           {canAttach ? (
             <>
-              <input ref={fileRef} type="file" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) addFileLike(f, "file"); e.target.value = ""; }} />
-              <input ref={imageRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) addFileLike(f, "image"); e.target.value = ""; }} />
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,image/jpeg,image/png,image/webp,image/gif"
+                hidden
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void addFileLike(f);
+                  e.target.value = "";
+                }}
+              />
+              <input
+                ref={imageRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                hidden
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void addFileLike(f);
+                  e.target.value = "";
+                }}
+              />
             </>
           ) : null}
 
@@ -386,12 +491,13 @@ export default function LogOnWardPage() {
           {evidence.length === 0 ? (
             <button
               type="button"
+              disabled={uploadingEvidence}
               onClick={() => { if (!canAttach) setEvidenceGate(true); }}
               className={`w-full rounded-xl border border-dashed border-dash px-3.5 py-3 text-center text-[10px] text-muted ${canAttach ? "cursor-default" : "hover:border-lime-deep"}`}
             >
               {canAttach
-                ? "Attach a file, image or link to back up this win."
-                : "Attachments are Pro. The onWard still saves without one."}
+                ? "Attach files, images or links as evidence for this win."
+                : "Your 3 free onWards with attachments are used. Upgrade to Pro to attach evidence to more."}
             </button>
           ) : (
             <div className="space-y-2">
@@ -412,6 +518,18 @@ export default function LogOnWardPage() {
             </div>
           )}
 
+          {!isPro && limits.evidenceWards != null ? (
+            <p className="mt-2 text-[9px] leading-[1.5] text-muted">
+              {Math.min(evidenceWardsUsed, limits.evidenceWards)} of {limits.evidenceWards} free onWards with attachments used.
+              {" "}Multiple attachments are allowed on each.
+            </p>
+          ) : null}
+          {uploadingEvidence ? (
+            <p role="status" className="mt-2 text-[10px] font-semibold text-muted">
+              Uploading attachment…
+            </p>
+          ) : null}
+
           {canAttach ? (
             <p className="mt-1.5 text-[9px] leading-[1.5] text-muted">
               Only attach work you have permission to share. Remove confidential details before adding it to your portfolio.
@@ -431,7 +549,7 @@ export default function LogOnWardPage() {
       </div>
 
       <div className="mt-6">
-        <Button onClick={save} iconLeft={ward ? <Check className="h-4 w-4" /> : <Trophy className="h-4 w-4" />}>
+        <Button disabled={uploadingEvidence} onClick={save} iconLeft={ward ? <Check className="h-4 w-4" /> : <Trophy className="h-4 w-4" />}>
           {ward ? "Save changes" : "Save this onWard"}
         </Button>
       </div>
@@ -448,8 +566,8 @@ export default function LogOnWardPage() {
       <UpgradeModal
         open={evidenceGate}
         onClose={() => setEvidenceGate(false)}
-        feature="Attachments and evidence"
-        blurb="Files, screenshots and links are a Pro feature. Free onWards still capture the title, the result, your skills and the portfolio toggle - nothing is lost by saving now."
+        feature="Attachments on more onWards"
+        blurb="Free lets you add multiple files, images and links to 3 onWards. Upgrade to Pro to attach evidence to every onWard."
       />
     </PhoneShell>
   );
