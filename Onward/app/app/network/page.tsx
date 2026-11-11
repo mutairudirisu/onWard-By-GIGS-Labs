@@ -657,7 +657,7 @@ export default function NetworkPage() {
                 </p>
                 <p className="mx-auto mt-1 max-w-[38ch] text-[10px] leading-[1.5] text-muted">
                   {tab === "discover"
-                    ? "Try another name, or explore a channel to find people sharing your interests."
+                    ? "Try another name to find people sharing your interests."
                     : tab === "following"
                       ? "Discover people in the Exchange and follow the voices you want to hear from."
                       : "Keep sharing your work and ideas in the Exchange to help others find you."}
@@ -670,14 +670,7 @@ export default function NetworkPage() {
                   >
                     Discover people
                   </button>
-                ) : (
-                  <Link
-                    href="/channels"
-                    className="mt-3 inline-flex cursor-pointer items-center gap-1 text-[10px] font-bold text-lime-deep hover:underline"
-                  >
-                    Explore channels <ArrowRight className="h-3 w-3" />
-                  </Link>
-                )}
+                ) : null}
               </div>
             )}
           </section>
@@ -697,18 +690,6 @@ export default function NetworkPage() {
               Follow people whose experience, skills or ideas you want to keep up with. Their
               public posts are still open to everyone.
             </p>
-          </section>
-          <section className="rounded-2xl border border-line bg-paper p-4">
-            <h2 className="text-[11px] font-bold text-ink">Looking for a shared interest?</h2>
-            <p className="mt-1.5 text-[10px] leading-[1.55] text-muted">
-              Channels bring people together around a place, craft or topic.
-            </p>
-            <Link
-              href="/channels"
-              className="mt-3 inline-flex cursor-pointer items-center gap-1 text-[10px] font-bold text-lime-deep hover:underline"
-            >
-              Explore channels <ArrowRight className="h-3 w-3" />
-            </Link>
           </section>
         </aside>
       </div>

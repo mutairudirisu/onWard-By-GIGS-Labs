@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, ChevronRight, Hash, Plus, Search, Trash2, UsersRound, X } from "lucide-react";
+import { Bell, Plus, Search, Trash2, UsersRound, X } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { CreateMenu, EXCHANGE_CREATES } from "@/components/create-menu";
 import { FeedSkeleton } from "@/components/skeleton";
@@ -434,15 +434,6 @@ export default function FeedPage() {
 
       <div className="mb-3 flex flex-wrap items-center gap-2 border-t border-line pt-2">
         <Link
-          href="/channels"
-          className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-paper py-1.5 pl-3 pr-2.5 text-[10.5px] font-semibold text-inksoft transition hover:border-dash hover:text-ink"
-        >
-          <Hash className="h-3.5 w-3.5" strokeWidth={2.2} />
-          Channels
-          <span className="hidden font-normal text-muted sm:inline">· browse or open one</span>
-          <ChevronRight className="h-3.5 w-3.5 text-faint" strokeWidth={2} />
-        </Link>
-        <Link
           href="/network"
           className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-paper py-1.5 pl-3 pr-3 text-[10.5px] font-semibold text-inksoft transition hover:border-dash hover:text-ink"
         >
@@ -666,9 +657,6 @@ export default function FeedPage() {
             Share what you know, find your community and keep the conversation going.
           </p>
           <div className="mt-3 space-y-2 border-t border-line pt-3">
-            <Link href="/channels" className="block cursor-pointer text-[10.5px] font-semibold text-lime-deep hover:underline">
-              Explore channels
-            </Link>
             <Link href={user ? "/feed/new" : "/sign-in"} className="block cursor-pointer text-[10.5px] font-semibold text-lime-deep hover:underline">
               Write a post
             </Link>

@@ -1,14 +1,13 @@
 "use client";
 
-import { BarChart3, Hash, MessagesSquare, type LucideIcon } from "lucide-react";
+import { BarChart3, MessagesSquare, type LucideIcon } from "lucide-react";
 
 export type CreateChoice = { label: string; href: string; Icon: LucideIcon };
 
-/** What the Exchange lets you make: a writing, a question with choices, or a room. */
+/** What the Exchange lets you make: a writing or a question with choices. */
 export const EXCHANGE_CREATES: CreateChoice[] = [
   { label: "New post", href: "/feed/new", Icon: MessagesSquare },
   { label: "New poll", href: "/feed/new?mode=poll", Icon: BarChart3 },
-  { label: "New channel", href: "/channels?new=1", Icon: Hash },
 ];
 
 /**

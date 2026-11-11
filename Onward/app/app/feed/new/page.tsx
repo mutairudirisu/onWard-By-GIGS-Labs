@@ -46,13 +46,10 @@ import {
   POST_MEDIA_MAX_PER_POST,
   POST_TITLE_MAX,
   createPost,
-  fetchChannels,
-  fetchChannel,
   mediaProblem,
   removePostDocument,
   searchPeople,
   uploadPostDocument,
-  type ChannelCard,
   type ExchangePerson,
 } from "@/lib/db";
 import { useKeyboardInset } from "@/lib/keyboard";
@@ -77,8 +74,8 @@ const POST_CATEGORIES = [
   { id: "document", label: "Document", Icon: FileText },
 ] as const;
 type ProofreadResult = { original: string; corrected: string };
-type AudiencePanel = "overview" | "visibility" | "comments" | "channels" | "collaborators";
-type PostAudience = "anyone" | "connections" | "channel";
+type AudiencePanel = "overview" | "visibility" | "comments" | "collaborators";
+type PostAudience = "anyone" | "connections";
 type CommentAudience = "anyone" | "connections" | "off";
 
 function Composer() {
@@ -99,15 +96,11 @@ function Composer() {
   const [pollDraft, setPollDraft] = useState<PollComposerDraft>(newPollDraft);
   const [busy, setBusy] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
-  const [channel, setChannel] = useState<ChannelCard | null>(null);
   const [composerPage, setComposerPage] = useState<ComposerPage>(null);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [audiencePanel, setAudiencePanel] = useState<AudiencePanel>("overview");
   const [postAudience, setPostAudience] = useState<PostAudience>("anyone");
   const [commentAudience, setCommentAudience] = useState<CommentAudience>("anyone");
-  const [audienceChannelId, setAudienceChannelId] = useState<string | null>(null);
-  const [audienceChannels, setAudienceChannels] = useState<ChannelCard[]>([]);
-  const [channelsLoading, setChannelsLoading] = useState(false);
   const [collaborators, setCollaborators] = useState<ExchangePerson[]>([]);
   const [peopleResults, setPeopleResults] = useState<ExchangePerson[]>([]);
   const [peopleQuery, setPeopleQuery] = useState("");
@@ -140,21 +133,6 @@ function Composer() {
   const mediaRef = useRef<HTMLInputElement>(null);
   const documentRef = useRef<HTMLInputElement>(null);
   const keyboard = useKeyboardInset(Boolean(user));
-
-  // Which room this is going into, so the page can say its name rather than an id.
-  const channelParam = params.get("channel");
-  useEffect(() => {
-    if (!channelParam) return;
-    let cancelled = false;
-    void fetchChannel(channelParam)
-      .then((found) => {
-        if (!cancelled) setChannel(found);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [channelParam]);
 
   // Opening this from an onWard carries its words over; the entry itself stays private.
   useEffect(() => {
@@ -191,35 +169,8 @@ function Composer() {
     () => onWards.find((w) => w.id === params.get("ward")),
     [onWards, params],
   );
-  // A channel post is an ordinary Exchange post with a room named on it.
-  const channelId = channelParam;
   const initials = me.initials || (me.name.slice(0, 1).toUpperCase() || "?");
-  const selectedAudienceChannel = audienceChannels.find((item) => item.id === audienceChannelId);
-  const audienceLabel =
-    postAudience === "connections"
-      ? "Connections"
-      : postAudience === "channel"
-        ? selectedAudienceChannel?.name ?? "Group"
-        : "Anyone";
-
-  useEffect(() => {
-    if (!audienceSettingsOpen || audiencePanel !== "channels") return;
-    let active = true;
-    setChannelsLoading(true);
-    void fetchChannels()
-      .then((items) => {
-        if (active) setAudienceChannels(items.filter((item) => item.joined));
-      })
-      .catch((error) => {
-        if (active) toastError(error instanceof Error ? error.message : "Couldn't load channels.");
-      })
-      .finally(() => {
-        if (active) setChannelsLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [audiencePanel, audienceSettingsOpen]);
+  const audienceLabel = postAudience === "connections" ? "Connections" : "Anyone";
 
   useEffect(() => {
     if (!audienceSettingsOpen || audiencePanel !== "collaborators") return;
@@ -422,12 +373,8 @@ function Composer() {
       router.push("/sign-in");
       return;
     }
-    if (postAudience === "channel" && !audienceChannelId) {
-      toastError("Choose an Exchange channel for this audience.");
-      return;
-    }
     if (postAudience !== "anyone" && (picks.length || documentFile)) {
-      toastError("Connections-only and channel posts can’t include media or documents yet.");
+      toastError("Connections-only posts can’t include media or documents yet.");
       return;
     }
     if (brandPartnership && !brandPartnerName.trim()) {
@@ -458,7 +405,6 @@ function Composer() {
         body: postBody,
         files: isPoll ? [] : picks.map((p) => p.file),
         wardId: ward?.id ?? null,
-        channelId: postAudience === "channel" ? audienceChannelId : channelId,
         audience: postAudience,
         commentAudience,
         collaboratorIds: collaborators.map((person) => person.id),
@@ -525,11 +471,7 @@ function Composer() {
           <p className="mt-1 truncate text-[11px] leading-tight text-muted">
             {postAudience === "connections"
               ? "Visible to mutual followers"
-              : postAudience === "channel"
-                ? `Only members of #${selectedAudienceChannel?.name ?? "your channel"}`
-                : channel
-                  ? `Public on Exchange · #${channel.name}`
-                  : "Public on the Exchange"}
+              : "Public on the Exchange"}
           </p>
         </div>
         <button
@@ -1064,8 +1006,6 @@ function Composer() {
               ? "Who can see your post?"
               : audiencePanel === "comments"
                 ? "Comment settings"
-                : audiencePanel === "channels"
-                  ? "Choose a channel"
                   : "Add collaborators"
         }
       >
@@ -1088,7 +1028,7 @@ function Composer() {
               <span className="min-w-0 flex-1">
                 <span className="block text-[12px] font-semibold text-ink">Who can see your post?</span>
                 <span className="block truncate text-[11px] text-muted">
-                  {postAudience === "channel" ? `#${selectedAudienceChannel?.name ?? "Channel"}` : audienceLabel}
+                  {audienceLabel}
                 </span>
               </span>
               <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
@@ -1178,7 +1118,7 @@ function Composer() {
             <button
               type="button"
               onClick={() =>
-                setAudiencePanel(audiencePanel === "channels" ? "visibility" : "overview")
+                setAudiencePanel("overview")
               }
               className="mb-1 flex cursor-pointer items-center gap-2 rounded-full px-2 py-1.5 text-[11px] font-semibold text-inksoft hover:bg-cream"
             >
@@ -1194,7 +1134,6 @@ function Composer() {
               type="button"
               onClick={() => {
                 setPostAudience("anyone");
-                setAudienceChannelId(null);
                 setAudiencePanel("overview");
               }}
               className="flex w-full cursor-pointer items-center gap-3 rounded-2xl px-2 py-3 text-left hover:bg-cream"
@@ -1211,7 +1150,6 @@ function Composer() {
               disabled={Boolean(picks.length || documentFile)}
               onClick={() => {
                 setPostAudience("connections");
-                setAudienceChannelId(null);
                 setAudiencePanel("overview");
               }}
               className="flex w-full cursor-pointer items-center gap-3 rounded-2xl px-2 py-3 text-left hover:bg-cream disabled:cursor-not-allowed disabled:opacity-40"
@@ -1223,57 +1161,11 @@ function Composer() {
               </span>
               {postAudience === "connections" ? <Check className="h-5 w-5 text-lime-deep" /> : null}
             </button>
-            <button
-              type="button"
-              disabled={Boolean(picks.length || documentFile)}
-              onClick={() => setAudiencePanel("channels")}
-              className="flex w-full cursor-pointer items-center gap-3 rounded-2xl px-2 py-3 text-left hover:bg-cream disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Users className="ml-1 h-5 w-5 shrink-0 text-ink" />
-              <span className="flex-1">
-                <span className="block text-[13px] font-semibold text-ink">Group</span>
-                <span className="block text-[10px] text-muted">
-                  Share with members of an Exchange channel
-                </span>
-              </span>
-              <ChevronRight className="h-4 w-4 text-muted" />
-            </button>
             {picks.length || documentFile ? (
               <p className="px-2 pt-2 text-[10px] leading-relaxed text-muted">
                 Private audiences are not available with media or document attachments yet.
               </p>
             ) : null}
-          </div>
-        ) : null}
-
-        {audiencePanel === "channels" ? (
-          <div className="space-y-1">
-            {channelsLoading ? (
-              <p className="py-5 text-center text-[11px] text-muted">Loading your channels…</p>
-            ) : audienceChannels.length ? (
-              audienceChannels.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    setPostAudience("channel");
-                    setAudienceChannelId(item.id);
-                    setAudiencePanel("overview");
-                  }}
-                  className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2 py-3 text-left hover:bg-cream"
-                >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-lime-pale text-ink">
-                    #
-                  </span>
-                  <span className="flex-1 text-[12px] font-semibold text-ink">{item.name}</span>
-                  {audienceChannelId === item.id ? <Check className="h-5 w-5 text-lime-deep" /> : null}
-                </button>
-              ))
-            ) : (
-              <p className="py-5 text-center text-[11px] leading-relaxed text-muted">
-                Join an Exchange channel first to share a post with its members.
-              </p>
-            )}
           </div>
         ) : null}
 

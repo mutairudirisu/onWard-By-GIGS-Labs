@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Hash, Loader2, Search, X } from "lucide-react";
+import { Loader2, Search, X } from "lucide-react";
 import { Avatar } from "@/components/feed-post";
 import { useSheetDrag } from "@/components/sheet-drag";
 import { PeopleSkeleton } from "@/components/skeleton";
@@ -12,8 +12,8 @@ import { timeAgo } from "@/lib/dates";
 
 /**
  * One box over the whole Exchange. Nothing is filtered on the way in: an empty sheet
- * opens on whatever is already here, and typing narrows the people, the rooms and the
- * entries at once, so a half-remembered name and a half-remembered phrase both land.
+ * opens on whatever is already here, and typing narrows the people and entries at once,
+ * so a half-remembered name and a half-remembered phrase both land.
  */
 export function ExchangeSearchSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [query, setQuery] = useState("");
@@ -71,7 +71,7 @@ export function ExchangeSearchSheet({ open, onClose }: { open: boolean; onClose:
 
   const found = hits;
   const empty = Boolean(
-    found && !found.people.length && !found.channels.length && !found.posts.length,
+    found && !found.people.length && !found.posts.length,
   );
 
   return (
@@ -120,8 +120,8 @@ export function ExchangeSearchSheet({ open, onClose }: { open: boolean; onClose:
               autoFocus
               value={query}
               onChange={(event) => setQuery(event.target.value.slice(0, 60))}
-              placeholder="People, channels, anything shared here"
-              aria-label="Search people, channels and posts"
+              placeholder="People, posts, anything shared here"
+              aria-label="Search people and posts"
               className="wheel min-w-0 flex-1 bg-transparent text-[12px] text-ink outline-none placeholder:text-faint"
             />
             {searching ? <Loader2 className="h-[15px] w-[15px] animate-spin text-faint" /> : null}
@@ -157,30 +157,6 @@ export function ExchangeSearchSheet({ open, onClose }: { open: boolean; onClose:
                           <Words
                             top={person.name || "Someone"}
                             under={person.role ?? undefined}
-                          />
-                        </Row>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              ) : null}
-
-              {found?.channels.length ? (
-                <section>
-                  <SectionLabel>Channels</SectionLabel>
-                  <ul>
-                    {found.channels.map((channel) => (
-                      <li key={channel.id} className="border-b border-line last:border-0">
-                        <Row href={`/channels/${channel.id}`} onClose={onClose}>
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cream text-ink">
-                            <Hash className="h-4 w-4" />
-                          </span>
-                          <Words
-                            top={channel.name}
-                            under={
-                              channel.about ||
-                              `${channel.members} ${channel.members === 1 ? "member" : "members"}`
-                            }
                           />
                         </Row>
                       </li>

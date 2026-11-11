@@ -594,10 +594,7 @@ export type FeedPost = {
   /** Set on a repost: whose entry this is passing on. */
   reshareOf: string | null;
   reshare: ResharedEntry | null;
-  /** The channel this entry belongs to, when it was written into one. */
-  channelId: string | null;
-  channelName: string | null;
-  audience?: "anyone" | "connections" | "channel";
+  audience?: "anyone" | "connections";
   commentAudience?: "anyone" | "connections" | "off";
   canComment?: boolean;
   brandPartnership?: boolean;
@@ -657,8 +654,6 @@ type FeedRow = {
   reshared: boolean | null;
   reshare_of: string | null;
   reshare: ReshareJson | null;
-  channel_id?: string | null;
-  channel_name?: string | null;
   post_audience?: "anyone" | "connections" | "channel" | null;
   comment_audience?: "anyone" | "connections" | "off" | null;
   can_comment?: boolean | null;
@@ -736,9 +731,9 @@ function postFromRow(row: FeedRow): FeedPost {
     reshared: row.reshared ?? false,
     reshareOf: row.reshare_of,
     reshare: reshareFromJson(row.reshare),
-    channelId: row.channel_id ?? null,
-    channelName: row.channel_name ?? null,
-    audience: row.post_audience ?? "anyone",
+    audience: row.post_audience === "connections" || row.post_audience === "channel"
+      ? "connections"
+      : "anyone",
     commentAudience: row.comment_audience ?? "anyone",
     canComment: row.can_comment ?? true,
     brandPartnership: row.brand_partnership ?? false,
@@ -754,7 +749,7 @@ function postFromRow(row: FeedRow): FeedPost {
 }
 
 const FEED_COLUMNS =
-  "id, body, ward_id, full_name, initials, avatar_url, role, created_at, mine, media, likes, comments, recent_comments, title, reshare_of, reshares, reshared, reshare, author_id, channel_id, channel_name, post_audience, comment_audience, can_comment, brand_partnership, brand_partner_name, collaborators";
+  "id, body, ward_id, full_name, initials, avatar_url, role, created_at, mine, media, likes, comments, recent_comments, title, reshare_of, reshares, reshared, reshare, author_id, post_audience, comment_audience, can_comment, brand_partnership, brand_partner_name, collaborators";
 
 /** A public object in a public bucket needs no token, which is what lets an <img>
  *  tag work for someone who has never signed in. */
@@ -1297,8 +1292,7 @@ export async function createPost(input: {
   body: string;
   files: File[];
   wardId?: string | null;
-  channelId?: string | null;
-  audience?: "anyone" | "connections" | "channel";
+  audience?: "anyone" | "connections";
   commentAudience?: "anyone" | "connections" | "off";
   collaboratorIds?: string[];
   brandPartnerName?: string | null;
@@ -1311,7 +1305,6 @@ export async function createPost(input: {
     body,
     files,
     wardId = null,
-    channelId = null,
     audience = "anyone",
     commentAudience = "anyone",
     collaboratorIds = [],
@@ -1326,9 +1319,6 @@ export async function createPost(input: {
     const why = pollProblem(poll);
     if (why) throw new Error(why);
   }
-  if (audience === "channel" && !channelId) {
-    throw new Error("Choose an Exchange channel for this post.");
-  }
   if (audience !== "anyone" && (files.length || documentPath)) {
     throw new Error("Private post audiences are not available with media or document attachments yet.");
   }
@@ -1341,8 +1331,6 @@ export async function createPost(input: {
   const userId = await signedInUserId();
   const { data: created, error: createError } = await supabase
     .from("posts")
-    // The channel goes in only when there is one: naming the column before the pass
-    // that adds it would refuse every post in the Exchange.
     .insert({
       title: title.trim(),
       body,
@@ -1351,7 +1339,6 @@ export async function createPost(input: {
       comment_audience: commentAudience,
       brand_partnership: Boolean(partnershipName),
       brand_partner_name: partnershipName,
-      ...(channelId ? { channel_id: channelId } : {}),
     })
     .select("id")
     .single();
@@ -1542,25 +1529,8 @@ export type ProfileComment = {
   postAuthor: string;
 };
 
-/** A channel: a named room in the Exchange, who opened it, and who is in it. */
-export type ChannelCard = {
-  id: string;
-  name: string;
-  about: string;
-  ownerId: string;
-  ownerName: string;
-  ownerInitials: string;
-  ownerAvatarUrl: string | null;
-  createdAt: string;
-  mine: boolean;
-  members: number;
-  posts: number;
-  joined: boolean;
-};
-
 export type SearchHits = {
   people: ExchangePerson[];
-  channels: { id: string; name: string; about: string; ownerName: string; members: number }[];
   posts: {
     id: string;
     title: string;
@@ -1587,21 +1557,6 @@ type ProfileCardRow = {
   posts: number | null;
   comments: number | null;
   followed: boolean | null;
-};
-
-type ChannelCardRow = {
-  id: string;
-  name: string;
-  about: string | null;
-  owner_id: string;
-  owner_name: string | null;
-  owner_initials: string | null;
-  owner_avatar_url: string | null;
-  created_at: string;
-  mine: boolean | null;
-  members: number | null;
-  posts: number | null;
-  joined: boolean | null;
 };
 
 type ProfileCommentRow = {
@@ -1716,91 +1671,7 @@ export async function fetchPersonComments(id: string, limit = 40): Promise<Profi
   }));
 }
 
-function channelFromRow(row: ChannelCardRow): ChannelCard {
-  return {
-    id: row.id,
-    name: row.name,
-    about: row.about ?? "",
-    ownerId: row.owner_id,
-    ownerName: row.owner_name ?? "",
-    ownerInitials: row.owner_initials ?? "",
-    ownerAvatarUrl: row.owner_avatar_url ?? null,
-    createdAt: row.created_at,
-    mine: row.mine ?? false,
-    members: row.members ?? 0,
-    posts: row.posts ?? 0,
-    joined: row.joined ?? false,
-  };
-}
-
-export async function fetchChannels(limit = 40): Promise<ChannelCard[]> {
-  const { data, error } = await supabase
-    .from("channel_cards")
-    .select("*")
-    .order("members", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(limit);
-  fail(error);
-  return (data as ChannelCardRow[] | null ?? []).map(channelFromRow);
-}
-
-export async function fetchChannel(id: string): Promise<ChannelCard | null> {
-  const { data, error } = await supabase
-    .from("channel_cards")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-  fail(error);
-  return data ? channelFromRow(data as ChannelCardRow) : null;
-}
-
-/** The name is the key, so two rooms cannot answer to the same word. */
-export async function createChannel(name: string, about: string): Promise<ChannelCard> {
-  const trimmed = name.trim();
-  if (trimmed.length < 2 || trimmed.length > 40)
-    throw new Error("A channel name is two to forty letters");
-  if (about.trim().length > 280) throw new Error("Keep the channel note under 280 letters");
-  const me = await signedInUserId();
-  const { data, error } = await supabase
-    .from("channels")
-    .insert({ name: trimmed, about: about.trim(), owner_id: me })
-    .select("id")
-    .single();
-  fail(error);
-  const id = data?.id as string | undefined;
-  const channel = id ? await fetchChannel(id) : null;
-  if (!channel) throw new Error("The channel did not come back");
-  return channel;
-}
-
-export async function joinChannel(id: string): Promise<void> {
-  const me = await signedInUserId();
-  const { error } = await supabase.from("channel_members").insert({ channel_id: id, user_id: me });
-  fail(error);
-}
-
-export async function leaveChannel(id: string): Promise<void> {
-  const me = await signedInUserId();
-  const { error } = await supabase
-    .from("channel_members")
-    .delete()
-    .eq("channel_id", id)
-    .eq("user_id", me);
-  fail(error);
-}
-
-export async function fetchChannelPosts(id: string, limit = 40): Promise<FeedPost[]> {
-  const { data, error } = await supabase
-    .from("feed_posts")
-    .select(FEED_COLUMNS)
-    .eq("channel_id", id)
-    .order("created_at", { ascending: false })
-    .limit(limit);
-  fail(error);
-  return (data as FeedRow[] | null ?? []).map(postFromRow);
-}
-
-/** People, rooms and entries in one answer, so the search sheet makes one round trip. */
+/** People and entries in one answer, so the search sheet makes one round trip. */
 export async function searchExchange(query = ""): Promise<SearchHits> {
   const { data, error } = await supabase.rpc("search_exchange", { p_query: query });
   fail(error);
@@ -1811,13 +1682,6 @@ export async function searchExchange(query = ""): Promise<SearchHits> {
       initials: string | null;
       avatar_url: string | null;
       role: string | null;
-    }[] | null;
-    channels?: {
-      id: string;
-      name: string;
-      about: string | null;
-      owner_name: string | null;
-      members: number | null;
     }[] | null;
     posts?: {
       id: string;
@@ -1836,13 +1700,6 @@ export async function searchExchange(query = ""): Promise<SearchHits> {
       initials: row.initials ?? "",
       avatarUrl: row.avatar_url ?? null,
       role: row.role ?? null,
-    })),
-    channels: (payload.channels ?? []).map((row) => ({
-      id: row.id,
-      name: row.name,
-      about: row.about ?? "",
-      ownerName: row.owner_name ?? "",
-      members: row.members ?? 0,
     })),
     posts: (payload.posts ?? []).map((row) => ({
       id: row.id,

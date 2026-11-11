@@ -5,6 +5,9 @@
 -- before applying 20261111120000_post_audience_settings.sql. In particular, the
 -- latter depends on 20261111090000_exchange_people_channels.sql and the document
 -- upload schema.
+-- After that migration, apply 20261111150000_remove_exchange_channels.sql to disable
+-- channel access. It preserves existing channel rows; legacy channel-only posts become
+-- visible only to their authors.
 --
 -- Why this file exists: the app deployed on Vercel already reads and writes columns,
 -- tables and values that the Supabase project has never been given, which is exactly
