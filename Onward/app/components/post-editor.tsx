@@ -178,12 +178,16 @@ export function PostEditor({
   placeholder = "What did you get done, and what did it change?",
   max = 0,
   disabled = false,
+  showToolbar = true,
+  editorClassName = "min-h-[132px]",
 }: {
   initial?: string;
   onChange: (markdown: string) => void;
   placeholder?: string;
   max: number;
   disabled?: boolean;
+  showToolbar?: boolean;
+  editorClassName?: string;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const length = useRef(initial.trim().length);
@@ -285,12 +289,17 @@ export function PostEditor({
             read();
           }}
           onBeforeInput={(event) => {
-            const input = event as unknown as { inputType: string; data?: string | null };
-            if (!max || !input.inputType.startsWith("insert")) return;
+            const input = event.nativeEvent as Event & {
+              inputType?: string;
+              data?: string | null;
+            };
+            if (!max || typeof input.inputType !== "string" || !input.inputType.startsWith("insert")) {
+              return;
+            }
             const added = input.data?.length ?? (input.inputType === "insertParagraph" ? 1 : 0);
             if (length.current + added > max) event.preventDefault();
           }}
-          className={`${FIELD} wheel min-h-[132px] whitespace-pre-wrap`}
+          className={`${FIELD} wheel ${editorClassName} whitespace-pre-wrap`}
         />
         {blank ? (
           <span className="pointer-events-none absolute left-4 top-3 text-[13.5px] leading-[1.6] text-faint">
@@ -299,26 +308,28 @@ export function PostEditor({
         ) : null}
       </div>
 
-      <div className="flex items-center gap-0.5 border-t border-line px-2 py-1.5">
-        {BUTTONS.map(({ command, label, Icon }) => (
-          <button
-            key={command}
-            type="button"
-            aria-label={label}
-            aria-pressed={on[command]}
-            title={label}
-            disabled={disabled}
-            // The box keeps the selection the button is about to format.
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => run(command)}
-            className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition hover:bg-cream disabled:cursor-not-allowed disabled:text-faint ${
-              on[command] ? "bg-lime-pale text-ink" : "text-inksoft hover:text-ink"
-            }`}
-          >
-            <Icon className="h-[15px] w-[15px]" strokeWidth={2.1} />
-          </button>
-        ))}
-      </div>
+      {showToolbar ? (
+        <div className="flex items-center gap-0.5 border-t border-line px-2 py-1.5">
+          {BUTTONS.map(({ command, label, Icon }) => (
+            <button
+              key={command}
+              type="button"
+              aria-label={label}
+              aria-pressed={on[command]}
+              title={label}
+              disabled={disabled}
+              // The box keeps the selection the button is about to format.
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => run(command)}
+              className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition hover:bg-cream disabled:cursor-not-allowed disabled:text-faint ${
+                on[command] ? "bg-lime-pale text-ink" : "text-inksoft hover:text-ink"
+              }`}
+            >
+              <Icon className="h-[15px] w-[15px]" strokeWidth={2.1} />
+            </button>
+          ))}
+        </div>
+      ) : null}
     </>
   );
 }

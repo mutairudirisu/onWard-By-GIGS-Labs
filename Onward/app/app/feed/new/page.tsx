@@ -3,7 +3,16 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BarChart3, Eye, Film, ImagePlus, Loader2, Plus, X } from "lucide-react";
+import {
+  BarChart3,
+  ChevronDown,
+  Clock3,
+  Film,
+  ImagePlus,
+  Loader2,
+  Plus,
+  X,
+} from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { Avatar } from "@/components/feed-post";
 import { Modal } from "@/components/modal";
@@ -31,72 +40,6 @@ import { useKeyboardInset } from "@/lib/keyboard";
 /** The picked file and the URL its tile shows. Videos preview their first frame. */
 type Pick = { file: File; url: string };
 
-/** Compact submit action pinned above the virtual keyboard while it is open. */
-function SubmitRow({
-  chars,
-  used,
-  empty,
-  busy,
-  isPoll,
-  onSubmit,
-}: {
-  chars: number;
-  used: number;
-  empty: boolean;
-  busy: string | null;
-  isPoll: boolean;
-  onSubmit: () => void;
-}) {
-  return (
-    <div className="flex items-center gap-3">
-      <svg viewBox="0 0 24 24" className="h-6 w-6 shrink-0 -rotate-90" aria-hidden>
-        <circle
-          cx="12"
-          cy="12"
-          r="10"
-          fill="none"
-          strokeWidth="2.5"
-          stroke="currentColor"
-          className="text-line"
-        />
-        <circle
-          cx="12"
-          cy="12"
-          r="10"
-          fill="none"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          stroke="currentColor"
-          strokeDasharray={2 * Math.PI * 10}
-          strokeDashoffset={2 * Math.PI * 10 * (1 - Math.min(1, used))}
-          className={used > 0.9 ? "text-[#E5484D]" : "text-lime-deep"}
-        />
-      </svg>
-      <span className="min-w-0 flex-1 text-[10px] tabular-nums text-muted">
-        {chars}/{POST_BODY_MAX}
-      </span>
-      <button
-        type="button"
-        onClick={onSubmit}
-        disabled={empty || Boolean(busy)}
-        className={`flex shrink-0 items-center justify-center gap-2 rounded-full px-6 py-2.5 text-[13px] font-semibold transition active:scale-[0.99] ${
-          empty || busy
-            ? "cursor-not-allowed bg-line text-muted"
-            : "cursor-pointer bg-lime text-dark hover:bg-lime-deep"
-        }`}
-      >
-        {busy ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" /> {busy}
-          </>
-        ) : (
-          isPoll ? "Publish poll" : "Post"
-        )}
-      </button>
-    </div>
-  );
-}
-
 function Composer() {
   const router = useRouter();
   const params = useSearchParams();
@@ -117,6 +60,10 @@ function Composer() {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [channel, setChannel] = useState<ChannelCard | null>(null);
   const [addMenu, setAddMenu] = useState(false);
+  const [audienceInfo, setAudienceInfo] = useState(false);
+  const [showBanner, setShowBanner] = useState(true);
+  const [showFormatting, setShowFormatting] = useState(false);
+  const [showHeadline, setShowHeadline] = useState(false);
   const imageRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
   const keyboard = useKeyboardInset(Boolean(user));
@@ -165,8 +112,6 @@ function Composer() {
   const empty = isPoll ? !pollWanted : !title.trim() && !body.trim() && !picks.length;
   // The ring counts the words that are actually going into the post, so a poll does not
   // inherit the count of the text left behind when the poll form came up.
-  const counted = isPoll ? 0 : body.length;
-  const used = counted / POST_BODY_MAX;
   const ward = useMemo(
     () => onWards.find((w) => w.id === params.get("ward")),
     [onWards, params],
@@ -231,92 +176,107 @@ function Composer() {
 
   return (
     <PhoneShell tab="feed">
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-5 flex items-center gap-2.5">
         <Link
           href="/feed"
           aria-label="Discard and return to the Exchange"
-          className="-ml-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-inksoft transition hover:bg-cream"
+          className="-ml-1 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-inksoft transition hover:bg-lime-pale"
         >
-          <X className="h-[18px] w-[18px]" strokeWidth={2} />
+          <X className="h-6 w-6" strokeWidth={1.8} />
         </Link>
-        <Avatar initials={initials} src={me.avatarUrl} size="sm" />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[12px] font-bold tracking-tight text-ink">
-            {me.name ? `${me.name.split(" ")[0]} (you)` : "You"}
-          </span>
-          <span className="flex items-center gap-1 text-[9.5px] font-medium text-muted">
-            <Eye className="h-3 w-3" strokeWidth={2} />
-            Public on the Exchange{channel ? ` · #${channel.name}` : ""}
-          </span>
-        </span>
+        <Avatar initials={initials} src={me.avatarUrl} size="md" />
+        <div className="min-w-0 flex-1">
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            onClick={() => setAudienceInfo(true)}
+            className="flex cursor-pointer items-center gap-1 text-[15px] font-semibold leading-tight text-ink"
+          >
+            Anyone
+            <ChevronDown className="h-4 w-4" strokeWidth={2} />
+          </button>
+          <p className="mt-1 truncate text-[12px] leading-tight text-muted">
+            {channel ? `Public on Exchange · #${channel.name}` : "Public on the Exchange"}
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled
+          aria-label="Scheduled posting is not available yet"
+          title="Scheduled posting is not available yet"
+          className="flex h-12 w-12 shrink-0 cursor-not-allowed items-center justify-center rounded-full bg-cream text-faint"
+        >
+          <Clock3 className="h-6 w-6" strokeWidth={1.8} />
+        </button>
         <button
           type="button"
           onClick={() => void post()}
           disabled={empty || Boolean(busy)}
-          className={`flex shrink-0 items-center justify-center gap-1.5 rounded-full px-4 py-2 text-[12px] font-bold transition active:scale-[0.99] ${
+          className={`flex h-12 shrink-0 items-center justify-center gap-1.5 rounded-full px-5 text-[14px] font-semibold transition active:scale-[0.99] ${
             empty || busy
-              ? "cursor-not-allowed bg-line text-muted"
+              ? "cursor-not-allowed bg-cream text-faint"
               : "cursor-pointer bg-lime text-dark hover:bg-lime-deep"
           }`}
         >
-          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {busy ? "Posting…" : isPoll ? "Publish poll" : "Post"}
         </button>
       </div>
 
-      <div className="mb-3 flex items-start gap-2.5 rounded-2xl border border-lime-deep/25 bg-lime-pale px-3.5 py-3">
-        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-lime-soft text-lime-deep">
-          <Eye className="h-3.5 w-3.5" strokeWidth={2.2} />
-        </span>
-        <p className="text-[10.5px] leading-[1.5] text-inksoft">
-          {channel
-            ? `This post will be public on the Exchange and in #${channel.name}.`
-            : "Your post will be visible to people across the Exchange."}
-        </p>
-      </div>
+      {showBanner ? (
+        <div className="mb-7 flex items-start gap-3 rounded-xl bg-lime-pale px-4 py-4 text-ink">
+          <p className="flex-1 text-[14px] leading-[1.5]">
+            {ward
+              ? `Share a thought inspired by “${ward.title}”. Your onWard stays private.`
+              : "Share a win, a question or an idea with people across the Exchange."}
+          </p>
+          <button
+            type="button"
+            aria-label="Dismiss message"
+            onClick={() => setShowBanner(false)}
+            className="-mr-1 flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full text-inksoft transition hover:bg-lime-soft"
+          >
+            <X className="h-5 w-5" strokeWidth={2} />
+          </button>
+        </div>
+      ) : null}
 
-      <div className="card overflow-hidden">
-
+      <div className="min-h-[35vh]">
         {isPoll ? (
           <PollComposer draft={pollDraft} onChange={setPollDraft} disabled={Boolean(busy)} />
         ) : (
           <>
-            <input
-              autoFocus
-              value={title}
-              onChange={(e) => setTitle(e.target.value.slice(0, POST_TITLE_MAX))}
-              placeholder="Say it in one line"
-              aria-label="Exchange title"
-              className="wheel w-full border-b border-line bg-transparent px-4 py-4 text-[15px] font-bold leading-[1.4] tracking-tight text-ink outline-none placeholder:font-normal placeholder:text-faint"
-            />
-
+            {showHeadline || title ? (
+              <input
+                autoFocus={showHeadline}
+                value={title}
+                onChange={(e) => setTitle(e.target.value.slice(0, POST_TITLE_MAX))}
+                placeholder="Add a headline"
+                aria-label="Post headline"
+                className="mb-2 w-full bg-transparent px-0 py-2 text-[18px] font-semibold leading-[1.4] text-ink outline-none placeholder:font-normal placeholder:text-muted"
+              />
+            ) : null}
             <PostEditor
               initial={body}
               onChange={setBody}
+              placeholder="Share your thoughts ..."
               max={POST_BODY_MAX}
               disabled={Boolean(busy)}
+              showToolbar={showFormatting}
+              editorClassName="!min-h-[calc(100dvh-380px)] !px-0 !pt-4 md:!min-h-[360px]"
             />
-
             {picks.length ? (
-              <div className="grid grid-cols-3 gap-1.5 px-3 pb-3">
+              <div className="mt-3 grid grid-cols-3 gap-2">
                 {picks.map((pick, index) => (
                   <div
                     key={pick.url}
                     className="relative aspect-square overflow-hidden rounded-xl bg-lime-pale"
                   >
                     {pick.file.type.startsWith("video/") ? (
-                      <video
-                        src={pick.url}
-                        muted
-                        playsInline
-                        preload="metadata"
-                        className="h-full w-full object-cover"
-                      />
+                      <video src={pick.url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
                     ) : (
                       <img src={pick.url} alt="" className="h-full w-full object-cover" />
                     )}
-                    {/* The number is the order the files go up in, which is the order the
-                        feed slides through them. */}
                     <span className="pointer-events-none absolute left-1.5 top-1.5 rounded-full bg-ink/55 px-1.5 text-[9.5px] font-bold tabular-nums text-paper">
                       {index + 1}
                     </span>
@@ -324,72 +284,100 @@ function Composer() {
                       type="button"
                       aria-label={`Remove ${pick.file.name}`}
                       onClick={() => removeAt(index)}
-                      className="absolute right-1 top-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-ink/60 text-paper transition hover:bg-ink"
+                      className="absolute right-1 top-1 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-ink/60 text-paper transition hover:bg-ink"
                     >
-                      <X className="h-3.5 w-3.5" />
+                      <X className="h-4 w-4" />
                     </button>
                   </div>
                 ))}
-                {room > 0 ? (
-                  <button
-                    type="button"
-                    aria-label="Add another"
-                    onClick={() => imageRef.current?.click()}
-                    className="flex aspect-square cursor-pointer items-center justify-center rounded-xl border border-dash text-inksoft transition hover:border-lime-deep hover:text-lime-deep"
-                  >
-                    <ImagePlus className="h-5 w-5" />
-                  </button>
-                ) : null}
               </div>
             ) : null}
           </>
         )}
+      </div>
 
-        <div className="flex items-center gap-2 border-t border-line px-3 py-2">
+      <input
+        ref={imageRef}
+        type="file"
+        hidden
+        multiple
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        onChange={(e) => {
+          addFiles(e.target.files);
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={videoRef}
+        type="file"
+        hidden
+        multiple
+        accept="video/mp4,video/webm,video/quicktime"
+        onChange={(e) => {
+          addFiles(e.target.files);
+          e.target.value = "";
+        }}
+      />
+
+      <div
+        className="fixed inset-x-0 z-[45] mx-auto flex w-full max-w-[400px] items-center gap-3 bg-cream/95 px-5 py-3 backdrop-blur md:static md:mx-auto md:max-w-[820px] md:bg-transparent md:px-0 md:backdrop-blur-none"
+        style={{ bottom: keyboard > 0 ? keyboard + 8 : 104 }}
+      >
+        {isPoll ? (
           <button
             type="button"
-            aria-label="Add to your post"
-            aria-haspopup="dialog"
-            onClick={() => setAddMenu(true)}
             disabled={Boolean(busy)}
-            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-lime-soft text-inksoft transition hover:bg-lime-pale disabled:cursor-not-allowed disabled:text-faint"
+            onClick={() => setMode("post")}
+            className="flex min-h-11 cursor-pointer items-center rounded-full border border-dash px-4 text-[13px] font-medium text-inksoft transition hover:border-lime-deep hover:bg-lime-pale disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Plus className="h-[18px] w-[18px]" strokeWidth={2.2} />
+            Text post
           </button>
-          <span className="text-[10.5px] font-semibold text-inksoft">
-            {isPoll ? "Poll" : picks.length ? `${picks.length} attachment${picks.length === 1 ? "" : "s"}` : "Add media or make a poll"}
-          </span>
-          <span className="min-w-0 flex-1" />
-          {!isPoll ? (
-            <span className="text-[9.5px] text-faint">
-              {room > 0 ? `${room} of ${POST_MEDIA_MAX_PER_POST} left` : "No room left"}
-            </span>
-          ) : null}
-        </div>
-
-        <input
-          ref={imageRef}
-          type="file"
-          hidden
-          multiple
-          accept="image/jpeg,image/png,image/webp,image/gif"
-          onChange={(e) => {
-            addFiles(e.target.files);
-            e.target.value = "";
-          }}
-        />
-        <input
-          ref={videoRef}
-          type="file"
-          hidden
-          multiple
-          accept="video/mp4,video/webm,video/quicktime"
-          onChange={(e) => {
-            addFiles(e.target.files);
-            e.target.value = "";
-          }}
-        />
+        ) : (
+          <button
+            type="button"
+            aria-pressed={showFormatting}
+            onClick={() => setShowFormatting((visible) => !visible)}
+            className={`flex min-h-11 cursor-pointer items-center rounded-full border px-4 text-[13px] font-medium transition ${
+              showFormatting
+                ? "border-lime-deep bg-lime-pale text-ink"
+                : "border-dash text-inksoft hover:border-lime-deep hover:bg-lime-pale"
+            }`}
+          >
+            Format
+          </button>
+        )}
+        {!isPoll ? (
+          <button
+            type="button"
+            aria-label="Add photos"
+            title={room > 0 ? `${room} attachment${room === 1 ? "" : "s"} available` : "Attachment limit reached"}
+            disabled={room <= 0 || Boolean(busy)}
+            onClick={() => imageRef.current?.click()}
+            className="ml-auto flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-cream text-inksoft transition hover:bg-lime-pale disabled:cursor-not-allowed disabled:text-faint"
+          >
+            <ImagePlus className="h-6 w-6" strokeWidth={1.8} />
+          </button>
+        ) : null}
+        <button
+          type="button"
+          aria-label="Add to your post"
+          aria-haspopup="dialog"
+          onClick={() => setAddMenu(true)}
+          disabled={Boolean(busy)}
+          className={`flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-lime-soft text-inksoft transition hover:bg-lime-pale disabled:cursor-not-allowed disabled:text-faint ${
+            isPoll ? "ml-auto" : ""
+          }`}
+        >
+          <Plus className="h-6 w-6" strokeWidth={2} />
+        </button>
       </div>
+
+      <Modal open={audienceInfo} onClose={() => setAudienceInfo(false)} title="Post audience">
+        <p className="text-[12px] leading-[1.6] text-inksoft">
+          Exchange posts are public and can be seen by anyone. Audience selection and collaborator
+          controls aren’t available yet.
+        </p>
+      </Modal>
 
       <Modal open={addMenu} onClose={() => setAddMenu(false)} title="Add to your post">
         <div className="grid grid-cols-2 gap-2">
@@ -421,30 +409,47 @@ function Composer() {
               </button>
             </>
           ) : null}
-          <button
-            type="button"
-            disabled={Boolean(busy)}
-            onClick={() => {
-              setMode("poll");
-              setAddMenu(false);
-            }}
-            className="flex min-h-[76px] cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-line bg-cream px-3 py-3 text-[11px] font-semibold text-inksoft transition hover:border-lime-deep hover:bg-lime-pale disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <BarChart3 className="h-5 w-5 text-lime-deep" strokeWidth={2} />
-            Poll
-          </button>
-          <button
-            type="button"
-            disabled={Boolean(busy)}
-            onClick={() => {
-              setMode("post");
-              setAddMenu(false);
-            }}
-            className="flex min-h-[76px] cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-line bg-cream px-3 py-3 text-[11px] font-semibold text-inksoft transition hover:border-lime-deep hover:bg-lime-pale disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <span className="text-[17px] font-bold leading-none text-lime-deep">Aa</span>
-            Text post
-          </button>
+          {isPoll ? (
+            <button
+              type="button"
+              disabled={Boolean(busy)}
+              onClick={() => {
+                setMode("post");
+                setAddMenu(false);
+              }}
+              className="flex min-h-[76px] cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-line bg-cream px-3 py-3 text-[11px] font-semibold text-inksoft transition hover:border-lime-deep hover:bg-lime-pale disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <span className="text-[17px] font-bold leading-none text-lime-deep">Aa</span>
+              Text post
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                disabled={Boolean(busy)}
+                onClick={() => {
+                  setMode("poll");
+                  setAddMenu(false);
+                }}
+                className="flex min-h-[76px] cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-line bg-cream px-3 py-3 text-[11px] font-semibold text-inksoft transition hover:border-lime-deep hover:bg-lime-pale disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <BarChart3 className="h-5 w-5 text-lime-deep" strokeWidth={2} />
+                Poll
+              </button>
+              <button
+                type="button"
+                disabled={Boolean(busy)}
+                onClick={() => {
+                  setShowHeadline(true);
+                  setAddMenu(false);
+                }}
+                className="flex min-h-[76px] cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-line bg-cream px-3 py-3 text-[11px] font-semibold text-inksoft transition hover:border-lime-deep hover:bg-lime-pale disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span className="text-[17px] font-bold leading-none text-lime-deep">T</span>
+                Headline
+              </button>
+            </>
+          )}
         </div>
         <p className="mt-3 text-center text-[10px] leading-[1.5] text-muted">
           {isPoll
@@ -453,47 +458,11 @@ function Composer() {
         </p>
       </Modal>
 
-      {ward ? (
-        <p className="mt-3 text-[10.5px] leading-[1.5] text-muted">
-          Written from <span className="font-semibold text-inksoft">{ward.title}</span>. The post
-          goes to the Exchange; the onWard itself stays private.
-        </p>
-      ) : null}
-
       {progress ? (
         <p className="mt-3 text-[10px] leading-[1.5] text-muted">
           Uploading {progress.done} of {progress.total}…
         </p>
       ) : null}
-
-      <div className={`mt-3${keyboard > 0 ? " hidden" : ""}`}>
-        <p className="text-center text-[10px] tabular-nums text-muted">
-          {counted}/{POST_BODY_MAX} characters
-        </p>
-      </div>
-
-      {keyboard > 0 ? (
-        <div
-          className="fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-[400px] bg-cream/95 px-5 pt-2.5 backdrop-blur"
-          style={{ paddingBottom: keyboard + 10 }}
-        >
-          <SubmitRow
-            chars={counted}
-            used={used}
-            empty={empty}
-            busy={busy}
-            isPoll={isPoll}
-            onSubmit={() => void post()}
-          />
-        </div>
-      ) : null}
-
-      <p className="mt-4 text-center text-[10px] text-muted">
-        Changed your mind?{" "}
-        <Link href="/feed" className="cursor-pointer font-bold text-lime-deep hover:underline">
-          Back to the Exchange
-        </Link>
-      </p>
     </PhoneShell>
   );
 }
