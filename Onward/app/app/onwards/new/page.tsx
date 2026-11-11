@@ -12,7 +12,6 @@ import { type Evidence } from "@/lib/data";
 import { todayISO } from "@/lib/dates";
 import { uuid } from "@/lib/db";
 import {
-  CalendarDays,
   Check,
   File as FileIcon,
   Globe,
@@ -245,16 +244,13 @@ export default function LogOnWardPage() {
 
         <div className="grid grid-cols-2 gap-3">
           <Field label="Date completed">
-            <div className="relative">
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value || todayISO())}
-                aria-label="Date completed"
-                className="field-input pr-9"
-              />
-              <CalendarDays className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-            </div>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value || todayISO())}
+              aria-label="Date completed"
+              className="field-input pr-10"
+            />
           </Field>
           <Field label="Project">
             <TextInput value={project} onChange={(e) => setProject(e.target.value)} placeholder="e.g. Atlas" />

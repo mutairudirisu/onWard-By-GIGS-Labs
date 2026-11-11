@@ -120,9 +120,24 @@ export function DictateTextArea({
 }) {
   const [focused, setFocused] = useState(false);
   const strip = useRef<HTMLDivElement>(null);
-  const { supported, listening, interim, error, toggle } = useDictation((text) =>
-    onChange(appendDictation(value, text)),
-  );
+  const valueRef = useRef(value);
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
+
+  const { supported, listening, interim, error, toggle } = useDictation((text) => {
+    const next = appendDictation(valueRef.current, text);
+    valueRef.current = next;
+    onChange(next);
+  });
+  const displayedValue = listening && interim ? appendDictation(value, interim) : value;
+
+  function handleChange(event: ChangeEvent<HTMLTextAreaElement>) {
+    const next = event.target.value;
+    valueRef.current = next;
+    onChange(next);
+    if (listening) toggle();
+  }
 
   useVoiceMeter(listening, strip);
 
@@ -130,7 +145,7 @@ export function DictateTextArea({
     return (
       <textarea
         value={value}
-        onChange={(event: ChangeEvent<HTMLTextAreaElement>) => onChange(event.target.value)}
+        onChange={handleChange}
         placeholder={placeholder}
         disabled={disabled}
         className="field-input block min-h-[84px] resize-none leading-[1.5]"
@@ -144,8 +159,8 @@ export function DictateTextArea({
           bottom edge rather than in a second strip underneath it. */}
       <div className="relative">
         <textarea
-          value={value}
-          onChange={(event: ChangeEvent<HTMLTextAreaElement>) => onChange(event.target.value)}
+          value={displayedValue}
+          onChange={handleChange}
           placeholder={placeholder}
           disabled={disabled}
           onFocus={() => setFocused(true)}

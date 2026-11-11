@@ -27,6 +27,43 @@ import { timeAgo } from "@/lib/dates";
 
 type Tab = "posts" | "comments" | "about";
 
+function ProfilePostWords({ post }: { post: FeedPost }) {
+  const [expanded, setExpanded] = useState(false);
+  const long = post.body.length > 180;
+  const words = (
+    <>
+      {post.title ? (
+        <p className="text-[12.5px] font-bold leading-[1.35] tracking-tight text-ink [overflow-wrap:anywhere]">
+          {post.title}
+        </p>
+      ) : null}
+      {post.body ? (
+        <PostText
+          text={post.body}
+          className={`text-[11.5px] leading-[1.5] text-ink ${
+            post.title ? "mt-0.5" : ""
+          } ${long && !expanded ? "line-clamp-3" : ""}`}
+        />
+      ) : null}
+    </>
+  );
+
+  return long ? (
+    <button
+      type="button"
+      aria-expanded={expanded}
+      onClick={() => setExpanded((open) => !open)}
+      className="block w-full cursor-pointer text-left"
+    >
+      {words}
+    </button>
+  ) : (
+    <Link href={`/feed/${post.id}`} className="block cursor-pointer">
+      {words}
+    </Link>
+  );
+}
+
 /**
  * The brand mark, repeated as a quiet field behind the header. It is the same sprout
  * the wordmark grows from, drawn thin enough to read as paper grain, and it stops
@@ -407,21 +444,7 @@ export default function PersonPage() {
           ) : posts.length ? (
             posts.map((post) => (
               <article key={post.id} className="border-b border-line py-3">
-                <Link href={`/feed/${post.id}`} className="block cursor-pointer">
-                  {post.title ? (
-                    <p className="text-[12.5px] font-bold leading-[1.35] tracking-tight text-ink [overflow-wrap:anywhere]">
-                      {post.title}
-                    </p>
-                  ) : null}
-                  {post.body ? (
-                    <PostText
-                      text={post.body}
-                      className={`text-[11.5px] leading-[1.5] text-ink ${
-                        post.title ? "mt-0.5" : ""
-                      }`}
-                    />
-                  ) : null}
-                </Link>
+                {post.title || post.body ? <ProfilePostWords post={post} /> : null}
                 {post.media.length ? (
                   <div className="mt-2 grid gap-1.5">
                     {post.media.map((file) =>
