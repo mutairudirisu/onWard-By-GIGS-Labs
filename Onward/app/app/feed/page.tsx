@@ -15,7 +15,7 @@ import { Avatar, PostBlock } from "@/components/feed-post";
 import { withVote } from "@/components/post-poll";
 import { ReshareSheet, type ReshareTarget } from "@/components/reshare-sheet";
 import { PostOptionsSheet } from "@/components/post-options-sheet";
-import { useAuth } from "@/components/auth";
+import { useAuth, useCurrentUser } from "@/components/auth";
 import { UnreadDot, useNotifications } from "@/components/notifications";
 import { Wordmark } from "@/components/wordmark";
 import { toastError, toastSuccess, toastUndoable } from "@/components/toast";
@@ -62,6 +62,7 @@ function interactionLine(item: FeedInteraction, post: FeedPost) {
 export default function FeedPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const me = useCurrentUser();
   const { unread } = useNotifications();
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
@@ -377,7 +378,9 @@ export default function FeedPage() {
   }
 
   return (
-    <PhoneShell tab="feed">
+    <PhoneShell tab="feed" wide>
+      <div className="mx-auto w-full max-w-[904px] xl:grid xl:grid-cols-[minmax(0,620px)_minmax(220px,260px)] xl:items-start xl:gap-6">
+      <div className="min-w-0">
       <div className="relative mb-3.5 flex items-center">
         <button
           type="button"
@@ -441,10 +444,30 @@ export default function FeedPage() {
         </Link>
       </div>
 
+      <div className="card mb-3.5 hidden items-center gap-3 p-3 xl:flex">
+        <Avatar
+          initials={me.initials || (me.name.slice(0, 1).toUpperCase() || "?")}
+          src={me.avatarUrl}
+          size="md"
+        />
+        <Link
+          href={user ? "/feed/new" : "/sign-in"}
+          className="flex h-10 min-w-0 flex-1 items-center rounded-full border border-line bg-cream px-4 text-[11px] text-muted transition hover:border-dash hover:text-ink"
+        >
+          Share a win, idea or resource…
+        </Link>
+        <Link
+          href={user ? "/feed/new" : "/sign-in"}
+          className="shrink-0 cursor-pointer rounded-full bg-lime px-4 py-2.5 text-[10.5px] font-bold text-dark transition hover:bg-lime-deep"
+        >
+          Write a post
+        </Link>
+      </div>
+
       {recent.length ? (
         <div
           aria-label="What you have been part of"
-          className="wheel -mx-5 mb-3 flex gap-2 overflow-x-auto px-5 md:mx-0 md:px-0"
+          className="wheel -mx-5 mb-3 flex gap-2 overflow-x-auto px-5 md:mx-0 md:px-0 xl:hidden"
         >
           {recent.map(({ item, post }) => (
             <button
@@ -534,7 +557,7 @@ export default function FeedPage() {
           ) : null}
 
           {handed.length ? (
-            <section aria-label="Shared with you" className="mb-3.5">
+            <section aria-label="Shared with you" className="mb-3.5 xl:hidden">
               <p className="mb-1 text-[9.5px] uppercase tracking-[0.08em] text-faint">
                 Shared with you
               </p>
@@ -583,7 +606,7 @@ export default function FeedPage() {
             ))}
           </div>
 
-          <div className="mt-5 rounded-xl border border-dash px-3.5 py-3">
+          <div className="mt-5 rounded-xl border border-dash px-3.5 py-3 xl:hidden">
             <p
               className={`text-[9.5px] leading-[1.55] text-muted ${
                 noteOpen ? "" : "line-clamp-2"
@@ -606,6 +629,91 @@ export default function FeedPage() {
           </div>
         </>
       )}
+      </div>
+
+      <aside className="hidden space-y-3 xl:sticky xl:top-6 xl:block xl:self-start">
+        {user ? (
+          <section className="overflow-hidden rounded-2xl border border-line bg-paper">
+            <div className="h-16 bg-lime-pale" />
+            <div className="px-4 pb-4">
+              <Link href="/profile" className="-mt-6 flex w-fit cursor-pointer">
+                <Avatar initials={me.initials} src={me.avatarUrl} size="lg" />
+              </Link>
+              <Link href="/profile" className="mt-2 block cursor-pointer text-[13px] font-bold text-ink hover:underline">
+                {me.name || "Your profile"}
+              </Link>
+              {me.role ? <p className="mt-0.5 text-[10.5px] text-muted">{me.role}</p> : null}
+              <Link
+                href="/profile"
+                className="mt-3 block border-t border-line pt-3 text-[10px] font-semibold text-lime-deep hover:underline"
+              >
+                View your profile
+              </Link>
+            </div>
+          </section>
+        ) : null}
+
+        <section className="rounded-2xl border border-line bg-paper p-4">
+          <h2 className="text-[11px] font-bold text-ink">Make the Exchange yours</h2>
+          <p className="mt-1.5 text-[10px] leading-[1.55] text-muted">
+            Share what you know, find your community and keep the conversation going.
+          </p>
+          <div className="mt-3 space-y-2 border-t border-line pt-3">
+            <Link href="/channels" className="block cursor-pointer text-[10.5px] font-semibold text-lime-deep hover:underline">
+              Explore channels
+            </Link>
+            <Link href={user ? "/feed/new" : "/sign-in"} className="block cursor-pointer text-[10.5px] font-semibold text-lime-deep hover:underline">
+              Write a post
+            </Link>
+          </div>
+        </section>
+
+        {recent.length ? (
+          <section aria-label="Your recent Exchange activity" className="rounded-2xl border border-line bg-paper p-4">
+            <h2 className="text-[11px] font-bold text-ink">Your recent activity</h2>
+            <ul className="mt-2 divide-y divide-line">
+              {recent.map(({ item, post }) => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => setThread(post.id)}
+                    className="w-full cursor-pointer py-2 text-left"
+                  >
+                    <span className="block text-[10px] leading-[1.5] text-inksoft">{interactionLine(item, post)}</span>
+                    <span className="mt-0.5 block text-[9px] text-faint">{timeAgo(item.createdAt)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {handed.length ? (
+          <section aria-label="Shared with you" className="rounded-2xl border border-line bg-paper p-4">
+            <h2 className="mb-1 text-[11px] font-bold text-ink">Shared with you</h2>
+            <ul className="divide-y divide-line">
+              {handed.slice(0, 3).map((row) => (
+                <li key={row.id}>
+                  <Link href={`/feed/${row.postId}`} className="flex cursor-pointer items-start gap-2 py-2.5">
+                    <Avatar initials={row.fromInitials} src={row.fromAvatarUrl} />
+                    <span className="min-w-0">
+                      <span className="block text-[10px] font-semibold text-ink">{row.fromName || "Someone"} handed you a post</span>
+                      <span className="mt-0.5 block line-clamp-2 text-[9px] leading-[1.45] text-muted">
+                        {row.post.title || row.post.body || row.post.fullName || "From the Exchange"}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        <p className="px-1 text-[9px] leading-[1.55] text-muted">
+          Posts are public on the Exchange. Your email, settings and onWards stay private.
+        </p>
+      </aside>
+      </div>
 
       <CommentsSheet
         postId={thread ?? ""}

@@ -162,7 +162,7 @@ export function CommentsSheet({
 
   return (
     <div
-      className="fixed inset-0 z-[75] flex justify-center"
+      className="fixed inset-0 z-[75] flex items-end justify-center md:items-center md:px-6 md:py-8"
       style={{ paddingBottom: keyboard }}
       role="dialog"
       aria-modal="true"
@@ -174,12 +174,12 @@ export function CommentsSheet({
         onClick={onClose}
       />
       <div
-        className="relative mt-auto flex w-full max-w-[420px] flex-col overflow-hidden rounded-t-3xl bg-paper shadow-lift"
+        className="relative mt-auto flex w-full max-w-[420px] flex-col overflow-hidden rounded-t-3xl bg-paper shadow-lift md:mt-0 md:!h-[min(80dvh,760px)] md:!max-h-[calc(100dvh-4rem)] md:max-w-[600px] md:rounded-3xl"
         style={shellStyle}
       >
         <div
           {...gripProps()}
-          className="shrink-0 cursor-grab touch-none px-4 pb-1 pt-2.5 active:cursor-grabbing"
+          className="shrink-0 cursor-grab touch-none px-4 pb-1 pt-2.5 active:cursor-grabbing md:hidden"
           aria-label="Drag to make this bigger"
         >
           <span className="mx-auto block h-1 w-10 rounded-full bg-line" />

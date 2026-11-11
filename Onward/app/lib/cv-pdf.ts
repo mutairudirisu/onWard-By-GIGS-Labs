@@ -10,10 +10,10 @@ import {
 } from "./pdf";
 import { cvSlug, monthYear, type CvExperience, type CvModel } from "./cv";
 
-const roleLine = (e: CvExperience) => (e.role ? `${e.role} - ${e.project}` : e.project);
+const roleLine = (e: CvExperience) => [e.role, e.project].filter(Boolean).join(" - ");
 
 /**
- * One A4 page of plain text: no columns, no sidebars - applicant tracking systems read
+ * A4 pages of plain text: no columns, no sidebars - applicant tracking systems read
  * linear documents best, and nothing here is invented beyond what cv.ts already derived.
  */
 function drawName(doc: PdfBuilder, cv: CvModel) {
@@ -31,6 +31,7 @@ function drawName(doc: PdfBuilder, cv: CvModel) {
 
   const contact = [
     cv.email,
+    cv.phone,
     cv.location,
     ...cv.links.map((l) => (l.label.trim() ? `${l.label.trim()}: ${l.url.trim()}` : l.url.trim())),
   ]
@@ -55,7 +56,7 @@ function drawExperience(doc: PdfBuilder, cv: CvModel) {
   sectionHead(doc, "Experience");
   if (!cv.experience.length) {
     doc.paragraph(
-      "Pin onWards to your portfolio and they assemble themselves into roles here.",
+      "Add work experience or pin onWards to your portfolio to include it here.",
       10,
       { color: C.muted },
     );
@@ -71,14 +72,20 @@ function drawExperience(doc: PdfBuilder, cv: CvModel) {
   for (const entry of cv.experience) {
     doc.space(40);
     const size = 11.5;
-    const periodW = measure(entry.period, 9) + 12;
+    const periodW = entry.period ? measure(entry.period, 9) + 12 : 0;
     doc.space(size * 1.42);
     const baseline = doc.y + size * 0.82;
     doc.line(fit(roleLine(entry), CONTENT_W - periodW, size, true), MARGIN, baseline, size, {
       bold: true,
     });
-    doc.line(entry.period, 0, baseline, 9, { color: C.muted, alignRight: PAGE_W - MARGIN });
+    if (entry.period) {
+      doc.line(entry.period, 0, baseline, 9, { color: C.muted, alignRight: PAGE_W - MARGIN });
+    }
     doc.y += size * 1.42;
+    if (entry.location) {
+      doc.paragraph(entry.location, 8.8, { color: C.muted });
+      doc.y += 1;
+    }
 
     doc.bullets(entry.bullets, { size: 10, gap: 1 });
     if (entry.skills.length) {
@@ -93,12 +100,26 @@ function drawExperience(doc: PdfBuilder, cv: CvModel) {
 
 function drawSkills(doc: PdfBuilder, cv: CvModel) {
   if (!cv.skills.length) return;
-  sectionHead(doc, "Skills");
+  sectionHead(doc, "Digital Skills and Skills");
   doc.paragraph(
-    cv.skills.map((s) => (s.count > 1 ? `${s.name} (${s.count})` : s.name)).join(", "),
+    cv.skills.map((s) => s.name).join(", "),
     10,
     { color: C.inksoft },
   );
+}
+
+function drawCertifications(doc: PdfBuilder, cv: CvModel) {
+  if (!cv.certifications.length) return;
+  sectionHead(doc, "Training and Certifications");
+  for (const item of cv.certifications) {
+    doc.space(36);
+    const meta = [item.issuer, item.date].filter(Boolean).join(" - ");
+    const titleSize = 10.5;
+    doc.paragraph(item.title, titleSize, { bold: true, color: C.dark });
+    if (meta) doc.paragraph(meta, 9, { color: C.muted });
+    if (item.note) doc.paragraph(item.note, 9.5, { color: C.inksoft });
+    doc.y += 5;
+  }
 }
 
 function drawEducation(doc: PdfBuilder, cv: CvModel) {
@@ -106,7 +127,11 @@ function drawEducation(doc: PdfBuilder, cv: CvModel) {
   sectionHead(doc, "Education");
   for (const edu of cv.education) {
     doc.space(34);
-    const period = [edu.start, edu.end].filter(Boolean).map(monthYear).join(" - ");
+    const period = edu.start
+      ? `${monthYear(edu.start)} - ${edu.end ? monthYear(edu.end) : "Present"}`
+      : edu.end
+        ? monthYear(edu.end)
+        : "";
     const size = 11;
     const periodW = period ? measure(period, 9) + 12 : 0;
     doc.space(size * 1.42);
@@ -131,6 +156,7 @@ export function buildCvPdf(cv: CvModel): Blob {
   drawSummary(doc, cv);
   drawExperience(doc, cv);
   drawSkills(doc, cv);
+  drawCertifications(doc, cv);
   drawEducation(doc, cv);
 
   doc.space(40);

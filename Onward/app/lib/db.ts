@@ -8,7 +8,7 @@ import {
   type Theme,
 } from "./data";
 import { toISO, wardDateLabel } from "./dates";
-import { EMPTY_CV_DOC, type CvDoc } from "./cv";
+import { EMPTY_CV_DOC, normalizeCvDoc, type CvDoc } from "./cv";
 
 export type Profile = {
   id: string;
@@ -381,11 +381,15 @@ export async function writeSettings(userId: string, settings: Settings) {
   if (error) throw new Error(error.message);
 }
 
-/** The CV's hand-typed extras. Returns an empty doc until the cv column exists. */
+/** The CV's saved manual details. */
 export async function fetchCvDoc(userId: string): Promise<CvDoc> {
-  const { data, error } = await supabase.from("user_settings").select("cv").eq("user_id", userId).maybeSingle();
-  if (error || !data?.cv) return EMPTY_CV_DOC;
-  return { ...EMPTY_CV_DOC, ...(data.cv as Partial<CvDoc>) };
+  const { data, error } = await supabase
+    .from("user_settings")
+    .select("cv")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return normalizeCvDoc(data?.cv ?? EMPTY_CV_DOC);
 }
 
 /**

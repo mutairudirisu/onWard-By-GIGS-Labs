@@ -39,38 +39,9 @@ export function BottomNav({ active }: { active: TabId }) {
   const pathname = usePathname();
   const { settings } = useStore();
   const [choosing, setChoosing] = useState(false);
-  const [navVisible, setNavVisible] = useState(true);
   const newPosts = useExchangeBadge(active === "feed");
 
   const buzz = (kind: "tap" | "success") => haptic(kind, settings.haptics);
-
-  useEffect(() => {
-    let lastY = window.scrollY;
-    let stopTimer: number | undefined;
-
-    const onScroll = () => {
-      const currentY = Math.max(0, window.scrollY);
-      const delta = currentY - lastY;
-
-      if (currentY <= 8) {
-        setNavVisible(true);
-      } else if (Math.abs(delta) >= 4) {
-        setNavVisible(delta < 0);
-      }
-
-      lastY = currentY;
-      if (stopTimer !== undefined) window.clearTimeout(stopTimer);
-      stopTimer = window.setTimeout(() => setNavVisible(true), 180);
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (stopTimer !== undefined) window.clearTimeout(stopTimer);
-    };
-  }, []);
-
-  useEffect(() => setNavVisible(true), [pathname]);
 
   // On the page that is about one thing, the button goes straight there. On the
   // Exchange the + offers the three things you can make in it.
@@ -95,11 +66,7 @@ export function BottomNav({ active }: { active: TabId }) {
   };
 
   return (
-    <nav
-      className={`relative z-40 bg-cream px-5 pb-3 pt-3 transition-[transform,opacity] duration-200 ease-out ${
-        navVisible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-full opacity-0"
-      }`}
-    >
+    <nav className="relative z-40 bg-cream px-5 pb-3 pt-3">
       {choosing ? (
         <CreateMenu
           choices={creates}

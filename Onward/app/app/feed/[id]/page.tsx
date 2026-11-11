@@ -284,7 +284,8 @@ export default function PostPage() {
   }
 
   return (
-    <PhoneShell tab="feed" wide>
+    <PhoneShell tab="feed">
+      <div className="mx-auto w-full max-w-[680px]">
       <div className="mb-3.5 flex items-center gap-2 lg:mb-5">
         <Link
           href="/feed"
@@ -296,7 +297,7 @@ export default function PostPage() {
         <h1 className="text-[13px] font-bold tracking-tight text-ink">Post</h1>
       </div>
 
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.85fr)] lg:items-start lg:gap-6 xl:gap-8">
+      <div>
         <div className="min-w-0">
           <PostBlock
             post={post}
@@ -321,15 +322,15 @@ export default function PostPage() {
           />
         </div>
 
-        <aside className="mt-3.5 lg:sticky lg:top-6 lg:mt-0 lg:flex lg:h-[min(78vh,760px)] lg:flex-col lg:overflow-hidden lg:rounded-2xl lg:border lg:border-line lg:bg-paper lg:p-4">
-          <div className="flex items-center justify-between border-b border-line pb-3 lg:shrink-0">
+        <aside className="mt-3.5 rounded-2xl border border-line bg-paper p-4">
+          <div className="flex items-center justify-between border-b border-line pb-3">
             <h2 className="text-[12px] font-bold text-ink">Comments</h2>
             <span className="text-[10px] font-semibold tabular-nums text-muted">
               {comments.length}
             </span>
           </div>
 
-          <section className="mt-3.5 min-h-0 space-y-3 lg:flex-1 lg:overflow-y-auto lg:pr-1">
+          <section className="mt-3.5 space-y-3">
             {comments.map((comment) => (
               <div key={comment.id} className="flex items-start gap-2.5">
                 <Avatar initials={comment.initials} />
@@ -375,7 +376,7 @@ export default function PostPage() {
           </section>
 
           {user && post.canComment !== false ? (
-            <div className="mt-4 flex items-end gap-2.5 lg:shrink-0 lg:border-t lg:border-line lg:pt-3">
+            <div className="mt-4 flex items-end gap-2.5 border-t border-line pt-3">
               <Avatar
                 initials={me.initials || (me.name.slice(0, 1).toUpperCase() || "?")}
                 src={me.avatarUrl}
@@ -410,13 +411,13 @@ export default function PostPage() {
               </button>
             </div>
           ) : user ? (
-            <p className="mt-4 text-[11px] text-muted lg:shrink-0 lg:border-t lg:border-line lg:pt-3">
+            <p className="mt-4 border-t border-line pt-3 text-[11px] text-muted">
               {post.commentAudience === "off"
                 ? "Comments are turned off for this post."
                 : "Only the author’s connections can comment on this post."}
             </p>
           ) : (
-            <p className="mt-4 text-[11px] text-muted lg:shrink-0 lg:border-t lg:border-line lg:pt-3">
+            <p className="mt-4 border-t border-line pt-3 text-[11px] text-muted">
               <Link
                 href="/sign-in"
                 className="cursor-pointer font-bold text-lime-deep hover:underline"
@@ -445,6 +446,7 @@ export default function PostPage() {
           anyone with the link until the author deletes the post, which takes the files with it.
         </p>
       ) : null}
+      </div>
 
       <ExchangeShareSheet
         target={{ id: post.id, title: post.title, body: post.body, fullName: post.fullName }}
