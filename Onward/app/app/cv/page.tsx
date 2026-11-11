@@ -7,13 +7,16 @@ import { Wordmark } from "@/components/wordmark";
 import { CvPreview } from "@/components/cv-preview";
 import { useAuth, useCurrentUser } from "@/components/auth";
 import { useStore } from "@/components/store";
+import { ProBadge, UpgradeModal } from "@/components/pro";
 import { toastError, toastSuccess } from "@/components/toast";
 import { useActivity } from "@/lib/activity";
 import { downloadBlob } from "@/lib/download";
 import { fetchCvDoc, saveCvDoc, uuid } from "@/lib/db";
 import {
   buildCv,
+  CV_TEMPLATE_OPTIONS,
   EMPTY_CV_DOC,
+  type CvTemplateId,
   type CvCertification,
   type CvDoc,
   type CvEducation,
@@ -22,8 +25,20 @@ import {
   type CvSpan,
 } from "@/lib/cv";
 import { buildCvPdf, cvFileName } from "@/lib/cv-pdf";
+import { buildCvDocx, cvDocxFileName } from "@/lib/cv-docx";
 import { buildCvText, cvTextFileName } from "@/lib/cv-text";
-import { Award, Download, FileText, Plus, Sprout, X } from "lucide-react";
+import {
+  Award,
+  Check,
+  Crown,
+  Download,
+  FileText,
+  Monitor,
+  Plus,
+  Printer,
+  Sprout,
+  X,
+} from "lucide-react";
 
 function SectionHeading({ title, hint }: { title: string; hint?: string }) {
   return (
@@ -80,7 +95,7 @@ export default function CvPage() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const profile = useCurrentUser();
-  const { onWards } = useStore();
+  const { onWards, isPro } = useStore();
   const { days } = useActivity();
 
   const [doc, setDoc] = useState<CvDoc>(EMPTY_CV_DOC);
@@ -89,6 +104,7 @@ export default function CvPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [skillDraft, setSkillDraft] = useState("");
+  const [upgradeTemplate, setUpgradeTemplate] = useState<CvTemplateId | null>(null);
 
   useEffect(() => {
     if (!userId) {
@@ -125,6 +141,13 @@ export default function CvPage() {
     doc,
   });
   const dirty = JSON.stringify(doc) !== JSON.stringify(saved);
+  const savedTemplate =
+    CV_TEMPLATE_OPTIONS.find((template) => template.id === doc.templateId) ?? CV_TEMPLATE_OPTIONS[0];
+  const activeTemplateId =
+    savedTemplate.level === "pro" && !isPro ? "classic" : savedTemplate.id;
+  const selectedTemplate =
+    CV_TEMPLATE_OPTIONS.find((template) => template.id === activeTemplateId) ?? CV_TEMPLATE_OPTIONS[0];
+  const requestedTemplate = CV_TEMPLATE_OPTIONS.find((template) => template.id === upgradeTemplate);
 
   const setSpan = (project: string, patch: Partial<CvSpan>) =>
     setDoc((current) => {
@@ -263,6 +286,112 @@ export default function CvPage() {
           {loading ? "Loading…" : busy ? "Saving…" : dirty ? "Save CV" : "All changes saved"}
         </Button>
       </div>
+
+      <div className="cv-no-print mb-4 flex items-start gap-2.5 rounded-xl border border-lime/50 bg-lime-pale px-3.5 py-3 lg:hidden">
+        <Monitor className="mt-0.5 h-4 w-4 shrink-0 text-lime-deep" />
+        <p className="text-[10px] leading-[1.55] text-inksoft">
+          <span className="font-bold text-ink">For the best experience, use a larger screen.</span>{" "}
+          The CV builder is easier to edit and preview on a desktop or tablet.
+        </p>
+      </div>
+
+      <section className="cv-no-print mb-6" aria-labelledby="cv-templates-heading">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 id="cv-templates-heading" className="text-[13px] font-bold tracking-tight text-ink">
+              Choose a CV template
+            </h2>
+            <p className="mt-1 text-[10px] text-muted">
+              Select a style to update your preview and exports.
+            </p>
+          </div>
+          <span className="text-[9px] text-muted">
+            Using <span className="font-bold text-ink">{selectedTemplate.name}</span>
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+          {CV_TEMPLATE_OPTIONS.map((template) => {
+            const selected = activeTemplateId === template.id;
+            const locked = template.level === "pro" && !isPro;
+            const colors: Record<CvTemplateId, { band: string; line: string }> = {
+              classic: { band: "bg-[#789b2c]", line: "bg-[#dce7c7]" },
+              modern: { band: "bg-[#21718b]", line: "bg-[#cde2e8]" },
+              executive: { band: "bg-[#172b46]", line: "bg-[#d8e0eb]" },
+              elegant: { band: "bg-[#8a5878]", line: "bg-[#eadde6]" },
+            };
+            const style = colors[template.id];
+            return (
+              <article
+                key={template.id}
+                className={`overflow-hidden rounded-xl border bg-paper transition ${
+                  selected ? "border-lime-deep ring-2 ring-lime/30" : "border-line"
+                }`}
+              >
+                <div className="bg-cream p-2.5">
+                  <div className="mx-auto h-[74px] max-w-[116px] overflow-hidden rounded-sm bg-white p-2 shadow-sm">
+                    <div className={`h-3 rounded-sm ${style.band}`} />
+                    <div className={`mt-1.5 h-1 w-2/3 rounded-full ${style.band}`} />
+                    <div className="mt-1 h-1 w-1/2 rounded-full bg-line" />
+                    <div className={`mt-2 h-[2px] w-full ${style.line}`} />
+                    <div className="mt-1.5 space-y-1">
+                      <div className={`h-1 w-1/3 rounded-full ${style.band}`} />
+                      <div className="h-1 w-full rounded-full bg-line" />
+                      <div className="h-1 w-4/5 rounded-full bg-line" />
+                      <div className={`h-[2px] w-full ${style.line}`} />
+                      <div className="h-1 w-3/4 rounded-full bg-line" />
+                    </div>
+                  </div>
+                </div>
+                <div className="p-2.5">
+                  <div className="flex items-center justify-between gap-1">
+                    <h3 className="truncate text-[10px] font-bold text-ink">{template.name}</h3>
+                    {template.level === "pro" ? (
+                      <ProBadge className="!px-1.5 !py-0.5 !text-[7px]" />
+                    ) : (
+                      <span className="rounded-full bg-cream px-1.5 py-0.5 text-[7px] font-bold uppercase tracking-wide text-muted">
+                        Free
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 min-h-7 text-[8.5px] leading-[1.4] text-muted">
+                    {template.description}
+                  </p>
+                  <button
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => {
+                      if (locked) {
+                        setUpgradeTemplate(template.id);
+                        return;
+                      }
+                      setDoc((current) => ({ ...current, templateId: template.id }));
+                    }}
+                    className={`mt-2 flex h-8 w-full cursor-pointer items-center justify-center gap-1 rounded-lg px-2 text-[9px] font-bold transition ${
+                      selected
+                        ? "bg-lime-pale text-lime-deep"
+                        : locked
+                          ? "border border-line bg-paper text-inksoft hover:bg-cream"
+                          : "bg-lime text-dark hover:bg-lime-deep"
+                    }`}
+                  >
+                    {selected ? (
+                      <>
+                        <Check className="h-3 w-3" /> In use
+                      </>
+                    ) : locked ? (
+                      <>
+                        <Crown className="h-3 w-3" /> Unlock with Pro
+                      </>
+                    ) : (
+                      "Use template"
+                    )}
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
 
       <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,0.95fr)_minmax(420px,1.05fr)] xl:gap-10">
         <div className="min-w-0 space-y-5">
@@ -908,26 +1037,53 @@ export default function CvPage() {
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <p className="text-[12px] font-bold text-ink">Live preview</p>
-              <p className="text-[9px] text-muted">Free · clean, ATS-friendly layout</p>
+              <p className="text-[9px] text-muted">
+                {selectedTemplate.name} · {selectedTemplate.level === "pro" ? "Pro" : "Free"} template
+              </p>
             </div>
             <span className="flex items-center gap-1 rounded-full bg-lime-pale px-2.5 py-1 text-[9px] font-semibold text-ink">
               <Sprout className="h-3 w-3 text-lime-deep" /> onWard
             </span>
           </div>
           <div className="max-h-[calc(100dvh-11rem)] overflow-y-auto rounded-2xl bg-cream p-3 sm:p-5 xl:min-h-0 xl:max-h-none xl:flex-1">
-            <CvPreview cv={cv} />
+            <CvPreview cv={cv} template={activeTemplateId} />
           </div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <div className="cv-no-print mt-3 grid grid-cols-2 gap-2">
             <Button
               iconLeft={<Download className="h-4 w-4" />}
               className="!py-2.5 text-[11px]"
               disabled={loading || loadError}
-              onClick={() => downloadBlob(buildCvPdf(cv), cvFileName(cv.name || "my-cv"))}
+              onClick={() =>
+                downloadBlob(buildCvPdf(cv, activeTemplateId), cvFileName(cv.name || "my-cv"))
+              }
             >
               Download PDF
             </Button>
             <Button
               variant="secondary"
+              iconLeft={<FileText className="h-4 w-4" />}
+              className="!py-2.5 text-[11px]"
+              disabled={loading || loadError}
+              onClick={() =>
+                downloadBlob(
+                  buildCvDocx(cv, activeTemplateId),
+                  cvDocxFileName(cv.name || "my-cv"),
+                )
+              }
+            >
+              Download Word
+            </Button>
+            <Button
+              variant="secondary"
+              iconLeft={<Printer className="h-4 w-4" />}
+              className="!py-2.5 text-[11px]"
+              disabled={loading || loadError}
+              onClick={() => window.print()}
+            >
+              Print CV
+            </Button>
+            <Button
+              variant="quiet"
               iconLeft={<FileText className="h-4 w-4" />}
               className="!py-2.5 text-[11px]"
               disabled={loading || loadError}
@@ -946,6 +1102,13 @@ export default function CvPage() {
           </p>
         </aside>
       </div>
+      <UpgradeModal
+        open={Boolean(requestedTemplate)}
+        onClose={() => setUpgradeTemplate(null)}
+        feature={`${requestedTemplate?.name ?? "This"} CV template`}
+        blurb="Unlock premium CV designs and use this template for your live preview and exports."
+        title="Make your CV stand out"
+      />
     </PhoneShell>
   );
 }

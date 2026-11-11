@@ -19,12 +19,14 @@ import {
   Sprout,
   Trophy,
   User,
+  UsersRound,
 } from "lucide-react";
 
 const MENU = [
   { href: "/today", label: "Home", Icon: Home },
   { href: "/onwards", label: "onWards", Icon: Sprout },
   { href: "/feed", label: "Exchange", Icon: MessagesSquare },
+  { href: "/network", label: "My Network", Icon: UsersRound },
   { href: "/notifications", label: "Notifications", Icon: Bell, badge: true },
   { href: "/profile", label: "You", Icon: User },
 ];

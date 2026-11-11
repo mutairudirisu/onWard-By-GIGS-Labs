@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, ChevronRight, Hash, Plus, Search, Trash2, X } from "lucide-react";
+import { Bell, ChevronRight, Hash, Plus, Search, Trash2, UsersRound, X } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { CreateMenu, EXCHANGE_CREATES } from "@/components/create-menu";
 import { FeedSkeleton } from "@/components/skeleton";
@@ -432,15 +432,22 @@ export default function FeedPage() {
         </div>
       </div>
 
-      <div className="mb-3 flex items-center border-t border-line pt-2">
+      <div className="mb-3 flex flex-wrap items-center gap-2 border-t border-line pt-2">
         <Link
           href="/channels"
           className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-paper py-1.5 pl-3 pr-2.5 text-[10.5px] font-semibold text-inksoft transition hover:border-dash hover:text-ink"
         >
           <Hash className="h-3.5 w-3.5" strokeWidth={2.2} />
           Channels
-          <span className="font-normal text-muted">· browse or open one</span>
+          <span className="hidden font-normal text-muted sm:inline">· browse or open one</span>
           <ChevronRight className="h-3.5 w-3.5 text-faint" strokeWidth={2} />
+        </Link>
+        <Link
+          href="/network"
+          className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-paper py-1.5 pl-3 pr-3 text-[10.5px] font-semibold text-inksoft transition hover:border-dash hover:text-ink"
+        >
+          <UsersRound className="h-3.5 w-3.5 text-lime-deep" strokeWidth={2.2} />
+          My Network
         </Link>
       </div>
 

@@ -310,7 +310,14 @@ export class PdfBuilder {
   /** Dot and a hanging line per item - the list primitive a CV needs. */
   bullets(
     items: string[],
-    opts: { size?: number; color?: Rgb; x?: number; gap?: number; maxWidth?: number } = {},
+    opts: {
+      size?: number;
+      color?: Rgb;
+      markerColor?: Rgb;
+      x?: number;
+      gap?: number;
+      maxWidth?: number;
+    } = {},
   ) {
     const size = opts.size ?? 10;
     const textX = (opts.x ?? MARGIN) + 12;
@@ -319,7 +326,14 @@ export class PdfBuilder {
       const lines = wrap(item, opts.maxWidth ?? CONTENT_W - (textX - MARGIN), size);
       lines.forEach((ln, i) => {
         this.space(leading);
-        if (i === 0) this.circle((opts.x ?? MARGIN) + 2, this.y + size * 0.45, 1.5, C.limeDeep);
+        if (i === 0) {
+          this.circle(
+            (opts.x ?? MARGIN) + 2,
+            this.y + size * 0.45,
+            1.5,
+            opts.markerColor ?? C.limeDeep,
+          );
+        }
         this.line(ln, textX, this.y + size * 0.82, size, { color: opts.color, bold: false });
         this.y += leading;
       });

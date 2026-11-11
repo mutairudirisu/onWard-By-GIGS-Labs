@@ -4,6 +4,19 @@ import type { OnWard } from "./data";
 /** A URL the user adds by hand - label is what prints, url is where it goes. */
 export type CvLink = { label: string; url: string };
 
+export const CV_TEMPLATE_OPTIONS = [
+  { id: "classic", name: "Classic", level: "free", description: "Timeless and easy to scan." },
+  { id: "modern", name: "Modern", level: "free", description: "Clean lines with a fresh accent." },
+  { id: "executive", name: "Executive", level: "pro", description: "Confident styling for your next step." },
+  { id: "elegant", name: "Elegant", level: "pro", description: "Refined typography and a softer finish." },
+] as const;
+
+export type CvTemplateId = (typeof CV_TEMPLATE_OPTIONS)[number]["id"];
+
+export function isCvTemplateId(value: unknown): value is CvTemplateId {
+  return CV_TEMPLATE_OPTIONS.some((template) => template.id === value);
+}
+
 export type CvEducation = {
   award: string;
   school: string;
@@ -35,6 +48,7 @@ export type CvSpan = { role: string; start: string; end: string };
 
 /** The whole of what persistence holds: nothing here is derived. */
 export type CvDoc = {
+  templateId: CvTemplateId;
   headline: string;
   email: string;
   phone: string;
@@ -51,6 +65,7 @@ export type CvDoc = {
 };
 
 export const EMPTY_CV_DOC: CvDoc = {
+  templateId: "classic",
   headline: "",
   email: "",
   phone: "",
@@ -92,6 +107,7 @@ export function normalizeCvDoc(value: unknown): CvDoc {
     }
   }
   return {
+    templateId: isCvTemplateId(value.templateId) ? value.templateId : "classic",
     headline: stringField(value, "headline"),
     email: stringField(value, "email"),
     phone: stringField(value, "phone"),
