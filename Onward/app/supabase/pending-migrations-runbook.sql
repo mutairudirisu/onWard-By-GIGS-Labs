@@ -1,5 +1,11 @@
 -- onWard: the six migration passes the live project is still missing.
 --
+-- Exchange audience settings are a separate migration. Apply all earlier Exchange
+-- migrations in timestamp order through 20261111100000_post_document_uploads.sql
+-- before applying 20261111120000_post_audience_settings.sql. In particular, the
+-- latter depends on 20261111090000_exchange_people_channels.sql and the document
+-- upload schema.
+--
 -- Why this file exists: the app deployed on Vercel already reads and writes columns,
 -- tables and values that the Supabase project has never been given, which is exactly
 -- what "Could not find the 'title' column of 'posts' in the schema cache" and

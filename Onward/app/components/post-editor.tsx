@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Bold, Heading2, Italic, List, ListOrdered, Quote } from "lucide-react";
 
 /**
@@ -179,6 +179,8 @@ export function PostEditor({
   max = 0,
   disabled = false,
   showToolbar = true,
+  toolbarClassName = "",
+  toolbarStyle,
   editorClassName = "min-h-[132px]",
 }: {
   initial?: string;
@@ -187,6 +189,8 @@ export function PostEditor({
   max: number;
   disabled?: boolean;
   showToolbar?: boolean;
+  toolbarClassName?: string;
+  toolbarStyle?: CSSProperties;
   editorClassName?: string;
 }) {
   const box = useRef<HTMLDivElement>(null);
@@ -265,6 +269,32 @@ export function PostEditor({
 
   return (
     <>
+      {showToolbar ? (
+        <div
+          className={`flex items-center gap-0.5 border-b border-line px-2 py-1.5 ${toolbarClassName}`}
+          style={toolbarStyle}
+        >
+          {BUTTONS.map(({ command, label, Icon }) => (
+            <button
+              key={command}
+              type="button"
+              aria-label={label}
+              aria-pressed={on[command]}
+              title={label}
+              disabled={disabled}
+              // The box keeps the selection the button is about to format.
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => run(command)}
+              className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition hover:bg-cream disabled:cursor-not-allowed disabled:text-faint ${
+                on[command] ? "bg-lime-pale text-ink" : "text-inksoft hover:text-ink"
+              }`}
+            >
+              <Icon className="h-[15px] w-[15px]" strokeWidth={2.1} />
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       <div className="relative">
         <div
           ref={box}
@@ -302,34 +332,11 @@ export function PostEditor({
           className={`${FIELD} wheel ${editorClassName} whitespace-pre-wrap`}
         />
         {blank ? (
-          <span className="pointer-events-none absolute left-4 top-3 text-[13.5px] leading-[1.6] text-faint">
+          <span className="pointer-events-none absolute left-0 top-0 text-[13.5px] leading-[1.6] text-faint">
             {placeholder}
           </span>
         ) : null}
       </div>
-
-      {showToolbar ? (
-        <div className="flex items-center gap-0.5 border-t border-line px-2 py-1.5">
-          {BUTTONS.map(({ command, label, Icon }) => (
-            <button
-              key={command}
-              type="button"
-              aria-label={label}
-              aria-pressed={on[command]}
-              title={label}
-              disabled={disabled}
-              // The box keeps the selection the button is about to format.
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => run(command)}
-              className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition hover:bg-cream disabled:cursor-not-allowed disabled:text-faint ${
-                on[command] ? "bg-lime-pale text-ink" : "text-inksoft hover:text-ink"
-              }`}
-            >
-              <Icon className="h-[15px] w-[15px]" strokeWidth={2.1} />
-            </button>
-          ))}
-        </div>
-      ) : null}
     </>
   );
 }

@@ -169,7 +169,7 @@ export default function PostPage() {
 
   async function send() {
     const body = draft.trim();
-    if (!body || sending) return;
+    if (!body || sending || post?.canComment === false) return;
     setSending(true);
     try {
       const created = await addComment(id, body);
@@ -363,7 +363,7 @@ export default function PostPage() {
         ) : null}
       </section>
 
-      {user ? (
+      {user && post.canComment !== false ? (
         <div className="mt-4 flex items-end gap-2.5">
           <Avatar
             initials={me.initials || (me.name.slice(0, 1).toUpperCase() || "?")}
@@ -394,6 +394,12 @@ export default function PostPage() {
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </button>
         </div>
+      ) : user ? (
+        <p className="mt-4 text-[11px] text-muted">
+          {post.commentAudience === "off"
+            ? "Comments are turned off for this post."
+            : "Only the author’s connections can comment on this post."}
+        </p>
       ) : (
         <p className="mt-4 text-[11px] text-muted">
           <Link href="/sign-in" className="cursor-pointer font-bold text-lime-deep hover:underline">

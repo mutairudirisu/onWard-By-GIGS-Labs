@@ -374,6 +374,20 @@ export async function deleteRow(table: "on_wards", id: string) {
 export const POST_MEDIA_BUCKET = "post-media";
 export const POST_MEDIA_MAX_BYTES = 26_214_400;
 export const POST_MEDIA_MAX_PER_POST = 5;
+const POST_DOCUMENT_EXTENSIONS: Record<string, { extension: string; mime: string }> = {
+  "application/pdf": { extension: "pdf", mime: "application/pdf" },
+  "application/msword": { extension: "doc", mime: "application/msword" },
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+    extension: "docx",
+    mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  },
+  "application/vnd.ms-powerpoint": { extension: "ppt", mime: "application/vnd.ms-powerpoint" },
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": {
+    extension: "pptx",
+    mime: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  },
+  "text/plain": { extension: "txt", mime: "text/plain" },
+};
 export const POST_BODY_MAX = 2000;
 export const POST_TITLE_MAX = 140;
 export const POST_COMMENT_MAX = 500;
@@ -467,6 +481,12 @@ export type FeedPost = {
   /** The channel this entry belongs to, when it was written into one. */
   channelId: string | null;
   channelName: string | null;
+  audience?: "anyone" | "connections" | "channel";
+  commentAudience?: "anyone" | "connections" | "off";
+  canComment?: boolean;
+  brandPartnership?: boolean;
+  brandPartnerName?: string;
+  collaborators?: ExchangePerson[];
 };
 
 type CommentJson = {
@@ -523,6 +543,17 @@ type FeedRow = {
   reshare: ReshareJson | null;
   channel_id?: string | null;
   channel_name?: string | null;
+  post_audience?: "anyone" | "connections" | "channel" | null;
+  comment_audience?: "anyone" | "connections" | "off" | null;
+  can_comment?: boolean | null;
+  brand_partnership?: boolean | null;
+  brand_partner_name?: string | null;
+  collaborators?: {
+    id: string;
+    name: string | null;
+    initials: string | null;
+    avatar_url: string | null;
+  }[] | null;
 };
 
 function commentFromJson(row: CommentJson): PostComment {
@@ -591,16 +622,51 @@ function postFromRow(row: FeedRow): FeedPost {
     reshare: reshareFromJson(row.reshare),
     channelId: row.channel_id ?? null,
     channelName: row.channel_name ?? null,
+    audience: row.post_audience ?? "anyone",
+    commentAudience: row.comment_audience ?? "anyone",
+    canComment: row.can_comment ?? true,
+    brandPartnership: row.brand_partnership ?? false,
+    brandPartnerName: row.brand_partner_name ?? "",
+    collaborators: (row.collaborators ?? []).map((person) => ({
+      id: person.id,
+      name: person.name ?? "",
+      initials: person.initials ?? "",
+      avatarUrl: person.avatar_url,
+      role: null,
+    })),
   };
 }
 
 const FEED_COLUMNS =
-  "id, body, ward_id, full_name, initials, avatar_url, role, created_at, mine, media, likes, comments, recent_comments, title, reshare_of, reshares, reshared, reshare, author_id, channel_id, channel_name";
+  "id, body, ward_id, full_name, initials, avatar_url, role, created_at, mine, media, likes, comments, recent_comments, title, reshare_of, reshares, reshared, reshare, author_id, channel_id, channel_name, post_audience, comment_audience, can_comment, brand_partnership, brand_partner_name, collaborators";
 
 /** A public object in a public bucket needs no token, which is what lets an <img>
  *  tag work for someone who has never signed in. */
 export function mediaUrl(path: string): string {
   return supabase.storage.from(POST_MEDIA_BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
+export async function uploadPostDocument(
+  userId: string,
+  file: File,
+): Promise<{ path: string; url: string }> {
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  const type =
+    POST_DOCUMENT_EXTENSIONS[file.type] ??
+    Object.values(POST_DOCUMENT_EXTENSIONS).find((candidate) => candidate.extension === extension);
+  if (!type) throw new Error("Choose a PDF, Word document, PowerPoint or text file.");
+  if (file.size > POST_MEDIA_MAX_BYTES) throw new Error("Keep documents under 25MB.");
+  const path = `${userId}/documents/${uuid()}.${type.extension}`;
+  const { error } = await supabase.storage
+    .from(POST_MEDIA_BUCKET)
+    .upload(path, file, { contentType: type.mime, upsert: false });
+  if (error) throw new Error(error.message);
+  return { path, url: mediaUrl(path) };
+}
+
+export async function removePostDocument(path: string): Promise<void> {
+  const { error } = await supabase.storage.from(POST_MEDIA_BUCKET).remove([path]);
+  if (error) throw new Error(error.message);
 }
 
 /** The one photo a profile shows. It lives in the owner's own folder of the
@@ -952,8 +1018,17 @@ export async function deletePost(id: string) {
     .select("storage_path")
     .eq("post_id", id);
   const paths = (picked as { storage_path: string }[] | null ?? []).map((row) => row.storage_path);
-  if (paths.length) {
-    const { error: removeError } = await supabase.storage.from(POST_MEDIA_BUCKET).remove(paths);
+  const { data: documents, error: documentError } = await supabase
+    .from("post_documents")
+    .select("storage_path")
+    .eq("post_id", id);
+  if (documentError) throw new Error(documentError.message);
+  const documentPaths = (documents as { storage_path: string }[] | null ?? []).map(
+    (row) => row.storage_path,
+  );
+  const allPaths = [...paths, ...documentPaths];
+  if (allPaths.length) {
+    const { error: removeError } = await supabase.storage.from(POST_MEDIA_BUCKET).remove(allPaths);
     if (removeError) throw new Error(removeError.message);
   }
   const { error } = await supabase.from("posts").delete().eq("id", id);
@@ -1107,16 +1182,43 @@ export async function createPost(input: {
   files: File[];
   wardId?: string | null;
   channelId?: string | null;
+  audience?: "anyone" | "connections" | "channel";
+  commentAudience?: "anyone" | "connections" | "off";
+  collaboratorIds?: string[];
+  brandPartnerName?: string | null;
   poll?: PollDraft | null;
+  documentPath?: string | null;
   onProgress?: (done: number, total: number) => void;
 }): Promise<FeedPost> {
-  const { title = "", body, files, wardId = null, channelId = null, poll = null, onProgress } = input;
+  const {
+    title = "",
+    body,
+    files,
+    wardId = null,
+    channelId = null,
+    audience = "anyone",
+    commentAudience = "anyone",
+    collaboratorIds = [],
+    brandPartnerName = null,
+    poll = null,
+    documentPath = null,
+    onProgress,
+  } = input;
   const problem = mediaProblem(files);
   if (problem) throw new Error(problem);
   if (poll) {
     const why = pollProblem(poll);
     if (why) throw new Error(why);
   }
+  if (audience === "channel" && !channelId) {
+    throw new Error("Choose an Exchange channel for this post.");
+  }
+  if (audience !== "anyone" && (files.length || documentPath)) {
+    throw new Error("Private post audiences are not available with media or document attachments yet.");
+  }
+  if (collaboratorIds.length > 5) throw new Error("Tag up to five collaborators.");
+  const partnershipName = brandPartnerName?.trim() ?? "";
+  if (partnershipName.length > 120) throw new Error("Keep the brand partner name under 120 characters.");
   if (!title.trim() && !body.trim() && !files.length && !poll?.question.trim())
     throw new Error("An Exchange entry needs a headline, words, a photo or a poll");
 
@@ -1129,6 +1231,10 @@ export async function createPost(input: {
       title: title.trim(),
       body,
       ward_id: wardId,
+      audience,
+      comment_audience: commentAudience,
+      brand_partnership: Boolean(partnershipName),
+      brand_partner_name: partnershipName,
       ...(channelId ? { channel_id: channelId } : {}),
     })
     .select("id")
@@ -1138,6 +1244,12 @@ export async function createPost(input: {
 
   const paths: string[] = [];
   try {
+    if (collaboratorIds.length) {
+      const { error } = await supabase.from("post_collaborators").insert(
+        collaboratorIds.map((userId) => ({ post_id: postId, user_id: userId })),
+      );
+      if (error) throw new Error(error.message);
+    }
     for (let index = 0; index < files.length; index++) {
       const file = files[index];
       // Only ids and a whitelisted extension go into the path, never file names.
@@ -1159,6 +1271,13 @@ export async function createPost(input: {
           sort: index,
         })),
       );
+      if (error) throw new Error(error.message);
+    }
+    if (documentPath) {
+      const { error } = await supabase.from("post_documents").insert({
+        post_id: postId,
+        storage_path: documentPath,
+      });
       if (error) throw new Error(error.message);
     }
     // The poll goes last: it is the part most likely to be refused, and the delete

@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, X } from "lucide-react";
+import { BarChart3, ChevronDown, X } from "lucide-react";
 import {
   POST_POLL_MAX_OPTIONS,
   POST_POLL_MIN_OPTIONS,
@@ -119,30 +119,22 @@ export function PollComposer({
         </button>
       ) : null}
 
-      <p className="mt-3 text-[9px] font-semibold uppercase tracking-[0.08em] text-muted">
-        Closes after
-      </p>
-      <div className="mt-1.5 flex flex-wrap gap-1.5">
-        {POLL_RUNS.map((run) => {
-          const on = run.hours === draft.hours;
-          return (
-            <button
-              key={run.hours}
-              type="button"
-              aria-pressed={on}
-              onClick={() => onChange({ ...draft, hours: run.hours })}
-              disabled={disabled}
-              className={`cursor-pointer rounded-full border px-3 py-1 text-[11px] font-semibold transition disabled:cursor-not-allowed ${
-                on
-                  ? "border-lime-deep bg-lime-pale text-ink"
-                  : "border-line text-inksoft hover:border-dash hover:bg-cream"
-              }`}
-            >
+      <label className="mt-1.5 flex max-w-[220px] cursor-pointer items-center justify-between rounded-full border border-line bg-transparent px-3 py-2 text-[12px] font-semibold text-ink transition hover:border-lime-deep focus-within:border-lime-deep">
+        <select
+          value={draft.hours}
+          onChange={(e) => onChange({ ...draft, hours: Number(e.target.value) })}
+          disabled={disabled}
+          aria-label="Poll duration"
+          className="min-w-0 flex-1 cursor-pointer appearance-none bg-transparent outline-none disabled:cursor-not-allowed"
+        >
+          {POLL_RUNS.map((run) => (
+            <option key={run.hours} value={run.hours}>
               {run.label}
-            </button>
-          );
-        })}
-      </div>
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="ml-2 h-3.5 w-3.5 shrink-0 text-muted" aria-hidden="true" />
+      </label>
     </div>
   );
 }

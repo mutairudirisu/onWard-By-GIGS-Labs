@@ -2,7 +2,17 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { MessageCircle, MoreHorizontal, Repeat2, Share2, ThumbsUp } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  FileText,
+  MessageCircle,
+  MoreHorizontal,
+  Repeat2,
+  Share2,
+  ThumbsUp,
+} from "lucide-react";
 import { mediaUrl, type FeedPost, type PostMedia, type PostPoll } from "@/lib/db";
 import { CarriedPollBlock, PollBlock } from "@/components/post-poll";
 import { PostText } from "@/components/post-text";
@@ -123,6 +133,110 @@ function PostWords({
   );
 }
 
+type PostDocument = { title: string; url: string; pdf: boolean };
+
+function extractPostDocument(body: string): { body: string; document: PostDocument | null } {
+  const marker = /^Document: \[([^\]\r\n]+)\]\((https:\/\/[^\s)]+)\)$/m;
+  const match = marker.exec(body);
+  if (!match) return { body, document: null };
+  try {
+    const url = new URL(match[2]!);
+    const storageBase = new URL(mediaUrl(""));
+    const storagePath = "/storage/v1/object/public/post-media/";
+    const filePath = url.pathname.startsWith(storagePath)
+      ? decodeURIComponent(url.pathname.slice(storagePath.length))
+      : "";
+    if (
+      url.origin !== storageBase.origin ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash ||
+      !/^[0-9a-f-]{36}\/documents\/[0-9a-f-]{36}\.[a-z0-9]+$/i.test(filePath)
+    ) {
+      return { body, document: null };
+    }
+    return {
+      body: body.replace(match[0], "").trim(),
+      document: {
+        title: match[1]!,
+        url: url.href,
+        pdf: filePath.toLowerCase().endsWith(".pdf"),
+      },
+    };
+  } catch {
+    return { body, document: null };
+  }
+}
+
+function DocumentStage({ document }: { document: PostDocument }) {
+  const [page, setPage] = useState(1);
+  const source = document.pdf ? `${document.url}#page=${page}` : null;
+
+  return (
+    <section className="mt-2.5 overflow-hidden rounded-2xl border border-line bg-cream">
+      <header className="flex items-center gap-2 px-3 py-2.5">
+        <FileText className="h-4 w-4 shrink-0 text-lime-deep" aria-hidden="true" />
+        <p className="min-w-0 flex-1 truncate text-[11px] font-semibold text-ink">
+          {document.title}
+        </p>
+        <a
+          href={document.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Open ${document.title}`}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-inksoft transition hover:bg-lime-pale"
+        >
+          <ExternalLink className="h-4 w-4" />
+        </a>
+      </header>
+      {document.pdf ? (
+        <>
+          <iframe
+            key={source}
+            src={source!}
+            title={`Preview of ${document.title}`}
+            loading="lazy"
+            className="h-[min(60vh,460px)] min-h-[300px] w-full border-y border-line bg-white"
+          />
+          <footer className="flex items-center justify-between px-3 py-2">
+            <button
+              type="button"
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+              disabled={page === 1}
+              className="flex h-8 cursor-pointer items-center gap-1 rounded-full px-2 text-[10px] font-semibold text-inksoft transition hover:bg-lime-pale disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </button>
+            <span className="text-[10px] font-medium tabular-nums text-muted">
+              Page {page} · scroll or use arrows
+            </span>
+            <button
+              type="button"
+              onClick={() => setPage((current) => current + 1)}
+              className="flex h-8 cursor-pointer items-center gap-1 rounded-full px-2 text-[10px] font-semibold text-inksoft transition hover:bg-lime-pale"
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </footer>
+        </>
+      ) : (
+        <a
+          href={document.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 border-t border-line px-3 py-5 text-[11px] font-semibold text-lime-deep hover:bg-lime-pale"
+        >
+          Open or download document
+          <ExternalLink className="h-3.5 w-3.5" />
+        </a>
+      )}
+    </section>
+  );
+}
+
 /** The words and files a card shows — an entry of your own, or one a reshare carries. */
 function PostBody({
   entry,
@@ -131,10 +245,13 @@ function PostBody({
   entry: { title: string; body: string; media: PostMedia[] };
   clamp?: boolean;
 }) {
+  const { body, document } = extractPostDocument(entry.body);
+  const words = { title: entry.title, body };
   return (
     <>
-      <PostWords entry={entry} clamp={clamp} />
+      <PostWords entry={words} clamp={clamp} />
       <MediaStage media={entry.media} className={entry.title || entry.body ? "mt-2.5" : ""} />
+      {document ? <DocumentStage document={document} /> : null}
     </>
   );
 }
@@ -182,7 +299,9 @@ export function PostBlock({
   previewThread?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const long = post.body.length > 180;
+  const parsedPost = extractPostDocument(post.body);
+  const cleanPost = { ...post, body: parsedPost.body };
+  const long = parsedPost.body.length > 180;
   // An entry always carries the name its author shows, including to themselves.
   const name = post.fullName || "Someone";
   // What is being passed on, when this card is a reshare rather than a writing.
@@ -223,6 +342,16 @@ export function PostBlock({
           <span className="block truncate text-[9px] text-muted">
             {post.role || timeAgo(post.createdAt)}
           </span>
+          {post.brandPartnership ? (
+            <span className="block truncate text-[9px] font-medium text-inksoft">
+              Paid partnership{post.brandPartnerName ? ` with ${post.brandPartnerName}` : ""}
+            </span>
+          ) : null}
+          {post.collaborators?.length ? (
+            <span className="block truncate text-[9px] text-muted">
+              With {post.collaborators.map((person) => person.name).join(", ")}
+            </span>
+          ) : null}
         </span>
         {onManage ? (
           <button
@@ -263,23 +392,28 @@ export function PostBlock({
               </span>
               <Repeat2 className="h-3.5 w-3.5 shrink-0 text-muted" strokeWidth={2} />
             </header>
-            <Link href={`/feed/${carried.id}`} className="block cursor-pointer">
-              <PostBody entry={carried} />
-              {carried.poll ? <CarriedPollBlock poll={carried.poll} /> : null}
+            <PostBody entry={carried} />
+            {carried.poll ? <CarriedPollBlock poll={carried.poll} /> : null}
+            <Link
+              href={`/feed/${carried.id}`}
+              className="mt-2 inline-flex cursor-pointer text-[10px] font-semibold text-lime-deep hover:underline"
+            >
+              View original post
             </Link>
           </div>
         </>
       ) : (
         <>
-          {post.title || post.body ? words(post, long) : null}
+          {post.title || parsedPost.body ? words(cleanPost, long) : null}
           {post.media.length ? (
             <Link href={`/feed/${post.id}`} className="block cursor-pointer">
               <MediaStage
                 media={post.media}
-                className={post.title || post.body ? "mt-2.5" : ""}
+                className={post.title || parsedPost.body ? "mt-2.5" : ""}
               />
             </Link>
           ) : null}
+          {parsedPost.document ? <DocumentStage document={parsedPost.document} /> : null}
         </>
       )}
 
@@ -305,20 +439,22 @@ export function PostBlock({
           />
           {likes > 0 ? <span className="text-[11px] font-bold tabular-nums">{likes}</span> : null}
         </button>
-        <button
-          type="button"
-          aria-label="Comment"
-          onClick={() => onOpen(post.id)}
-          className="flex cursor-pointer items-center gap-1.5 text-ink transition hover:text-lime-deep"
-        >
-          <MessageCircle className="h-[19px] w-[19px]" strokeWidth={1.9} />
-          {post.comments > 0 ? (
-            <span className="text-[11px] font-bold tabular-nums">{post.comments}</span>
-          ) : null}
-        </button>
+        {post.canComment !== false ? (
+          <button
+            type="button"
+            aria-label="Comment"
+            onClick={() => onOpen(post.id)}
+            className="flex cursor-pointer items-center gap-1.5 text-ink transition hover:text-lime-deep"
+          >
+            <MessageCircle className="h-[19px] w-[19px]" strokeWidth={1.9} />
+            {post.comments > 0 ? (
+              <span className="text-[11px] font-bold tabular-nums">{post.comments}</span>
+            ) : null}
+          </button>
+        ) : null}
         {/* A reshare of a reshare would carry an entry with nothing inside it, so the
             action is only offered on something somebody actually wrote. */}
-        {!carried ? (
+        {!carried && (post.audience ?? "anyone") === "anyone" ? (
           <button
             type="button"
             aria-pressed={reshared}
@@ -334,14 +470,16 @@ export function PostBlock({
             ) : null}
           </button>
         ) : null}
-        <button
-          type="button"
-          aria-label="Share this post"
-          onClick={() => onShare(post.id)}
-          className="flex cursor-pointer items-center text-ink transition hover:text-lime-deep"
-        >
-          <Share2 className="h-[18px] w-[18px]" strokeWidth={1.9} />
-        </button>
+        {(post.audience ?? "anyone") === "anyone" ? (
+          <button
+            type="button"
+            aria-label="Share this post"
+            onClick={() => onShare(post.id)}
+            className="flex cursor-pointer items-center text-ink transition hover:text-lime-deep"
+          >
+            <Share2 className="h-[18px] w-[18px]" strokeWidth={1.9} />
+          </button>
+        ) : null}
         <span className="ml-auto text-[9.5px] tracking-[0.06em] text-faint">
           {timeAgo(post.createdAt)}
         </span>

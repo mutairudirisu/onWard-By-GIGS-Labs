@@ -73,7 +73,7 @@ function fallbackProfile(user: User): Profile {
     role: meta.role ?? "",
     location: "",
     bio: "",
-    avatarUrl: meta.avatar_url ?? null,
+    avatarUrl: null,
     plan: "free",
     referralCode: "",
     referralCredits: 0,

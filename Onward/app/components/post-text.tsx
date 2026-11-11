@@ -16,11 +16,34 @@ const BOLD = /\*\*(?=\S)([\s\S]*?\S)\*\*/g;
 const ITALIC = /(?:\*|_)(?=\S)([\s\S]*?\S)(?:\*|_)/g;
 const CODE = /`([^`\n]+)`/g;
 
-type Mark = { from: number; to: number; kind: "bold" | "italic" | "code"; text: string };
+type Mark = {
+  from: number;
+  to: number;
+  kind: "bold" | "italic" | "code" | "link";
+  text: string;
+  href?: string;
+};
 
 /** One line of words, with bold, italics and code taken out of it. */
 function inline(text: string, key: string): ReactNode[] {
   const marks: Mark[] = [];
+  const links = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+  let link: RegExpExecArray | null;
+  while ((link = links.exec(text))) {
+    try {
+      const url = new URL(link[2]!);
+      if (url.protocol !== "http:" && url.protocol !== "https:") continue;
+      marks.push({
+        from: link.index,
+        to: link.index + link[0].length,
+        kind: "link",
+        text: link[1]!,
+        href: url.href,
+      });
+    } catch {
+      continue;
+    }
+  }
   for (const [pattern, kind] of [
     [BOLD, "bold"],
     [ITALIC, "italic"],
@@ -32,7 +55,11 @@ function inline(text: string, key: string): ReactNode[] {
       const inner = match[1];
       if (!inner) continue;
       // A mark inside another mark would need re-parsing, so the first one wins.
-      if (marks.some((m) => match!.index >= m.from && match!.index < m.to)) continue;
+      if (
+        marks.some(
+          (m) => match!.index < m.to && match!.index + match![0].length > m.from,
+        )
+      ) continue;
       marks.push({ from: match.index, to: match.index + match[0].length, kind, text: inner });
     }
   }
@@ -47,6 +74,18 @@ function inline(text: string, key: string): ReactNode[] {
         <code key={`${key}m${i}`} className="rounded bg-cream px-1 py-0.5 font-mono text-[0.92em]">
           {mark.text}
         </code>,
+      );
+    } else if (mark.kind === "link") {
+      out.push(
+        <a
+          key={`${key}m${i}`}
+          href={mark.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-lime-deep underline underline-offset-2"
+        >
+          {mark.text}
+        </a>,
       );
     } else {
       out.push(
