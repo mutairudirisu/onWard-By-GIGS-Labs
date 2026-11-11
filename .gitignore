@@ -30,6 +30,23 @@ next-env.d.ts
 _qa/
 .screenshots/
 
+# Local QA profiles and generated captures (profiles can contain signed-in sessions)
+/qa/edge-*/
+/qa/prof*/
+/qa/u5/
+/qa/v8/
+/qa/w2/
+/qa/cv-out/
+/qa/**/*.log
+/qa/**/*.png
+/qa/**/*.jpg
+/qa/**/*.jpeg
+/qa/**/*.webp
+/qa/**/*.txt
+/qa/**/*.pdf
+/qa/note-toolbar*.html
+/qa/timeline-cards*.html
+
 # misc
 .DS_Store
 Thumbs.db
