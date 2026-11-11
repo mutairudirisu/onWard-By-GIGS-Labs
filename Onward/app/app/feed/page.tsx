@@ -23,14 +23,17 @@ import { askAfterUpvote } from "@/lib/feedback";
 import {
   deletePost,
   fetchFeed,
+  fetchFollowList,
   fetchMyInteractions,
   fetchMyLikes,
   fetchPolls,
   fetchSharedWithMe,
+  followPerson,
   likePost,
   reshare,
   unlikePost,
   unreshare,
+  unfollowPerson,
   voteInPoll,
   type FeedInteraction,
   type FeedPost,
@@ -70,6 +73,9 @@ export default function FeedPage() {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [reshared, setReshared] = useState<Set<string>>(new Set());
   const [reshareCounts, setReshareCounts] = useState<Record<string, number>>({});
+  const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
+  const [followStatusReady, setFollowStatusReady] = useState(false);
+  const [followBusyIds, setFollowBusyIds] = useState<Set<string>>(new Set());
   const [author, setAuthor] = useState<string | null>(null);
   const [options, setOptions] = useState<FeedPost | null>(null);
   const [pending, setPending] = useState<FeedPost | null>(null);
@@ -99,6 +105,7 @@ export default function FeedPage() {
   const load = useCallback(() => {
     const token = ++inflight.current;
     setState("loading");
+    setFollowStatusReady(!user);
     Promise.all([
       fetchFeed(),
       // A visitor has nothing of their own to read, and those tables would refuse
@@ -106,8 +113,11 @@ export default function FeedPage() {
       user ? fetchMyLikes().catch(() => new Set<string>()) : Promise.resolve(new Set<string>()),
       user ? fetchMyInteractions().catch(() => [] as FeedInteraction[]) : Promise.resolve([]),
       user ? fetchSharedWithMe().catch(() => [] as SharedPost[]) : Promise.resolve([]),
+      user
+        ? fetchFollowList(user.id, "following").catch(() => null)
+        : Promise.resolve([]),
     ])
-      .then(([next, likedSet, interactions, shared]) => {
+      .then(([next, likedSet, interactions, shared, following]) => {
         if (token !== inflight.current) return;
         setPosts(next);
         setLiked(likedSet);
@@ -116,6 +126,13 @@ export default function FeedPage() {
         setReshareCounts(Object.fromEntries(next.map((post) => [post.id, post.reshares])));
         setEngaged(interactions);
         setHanded(shared);
+        if (following === null) {
+          setFollowStatusReady(false);
+          toastError("Couldn't load follow status");
+        } else {
+          setFollowedIds(new Set(following.map((person) => person.id)));
+          setFollowStatusReady(true);
+        }
         setState("ready");
         // Polls are a second read: a post page is worth seeing even when the poll
         // table has not been created yet, so a failure here only means no polls.
@@ -129,6 +146,41 @@ export default function FeedPage() {
         if (token === inflight.current) setState("error");
       });
   }, [user]);
+
+  const toggleFollowAuthor = useCallback(
+    (authorId: string, currentlyFollowing: boolean) => {
+      if (!user) {
+        router.push("/sign-in");
+        return;
+      }
+      if (followBusyIds.has(authorId)) return;
+      setFollowBusyIds((current) => new Set(current).add(authorId));
+      setFollowedIds((current) => {
+        const next = new Set(current);
+        if (currentlyFollowing) next.delete(authorId);
+        else next.add(authorId);
+        return next;
+      });
+      void (currentlyFollowing ? unfollowPerson(authorId) : followPerson(authorId))
+        .catch(() => {
+          setFollowedIds((current) => {
+            const next = new Set(current);
+            if (currentlyFollowing) next.add(authorId);
+            else next.delete(authorId);
+            return next;
+          });
+          toastError("Couldn't save that");
+        })
+        .finally(() => {
+          setFollowBusyIds((current) => {
+            const next = new Set(current);
+            next.delete(authorId);
+            return next;
+          });
+        });
+    },
+    [followBusyIds, router, user],
+  );
 
   /**
    * The quiet read behind the first one: the timeline and its polls, nothing else. A
@@ -583,7 +635,7 @@ export default function FeedPage() {
             </section>
           ) : null}
 
-          <div className="space-y-3.5">
+          <div className="divide-y divide-line">
             {shown.map((post) => (
               <PostBlock
                 key={post.id}
@@ -593,6 +645,11 @@ export default function FeedPage() {
                 reshared={reshared.has(post.id)}
                 reshares={reshareCounts[post.id] ?? post.reshares}
                 signedIn={Boolean(user)}
+                followed={post.authorId ? followedIds.has(post.authorId) : false}
+                followBusy={post.authorId ? followBusyIds.has(post.authorId) : false}
+                onToggleFollow={
+                  followStatusReady || !user ? toggleFollowAuthor : undefined
+                }
                 poll={polls[post.id] ?? null}
                 onVote={votePoll}
                 onLike={toggleLike}

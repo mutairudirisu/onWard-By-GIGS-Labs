@@ -3,66 +3,35 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, MessageCircle, ThumbsUp, X } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
-import { Avatar } from "@/components/feed-post";
-import { PostText } from "@/components/post-text";
+import { Avatar, PostBlock } from "@/components/feed-post";
+import { Modal } from "@/components/modal";
+import { PostOptionsSheet } from "@/components/post-options-sheet";
 import { useSheetDrag } from "@/components/sheet-drag";
 import { useAuth } from "@/components/auth";
-import { toastError } from "@/components/toast";
+import { toastError, toastSuccess } from "@/components/toast";
 import {
+  deletePost,
+  fetchMyLikes,
+  fetchPolls,
   fetchFollowList,
   fetchPersonComments,
   fetchPersonPosts,
   fetchProfileCard,
   followPerson,
-  mediaUrl,
+  likePost,
+  unlikePost,
   unfollowPerson,
   type ExchangePerson,
   type FeedPost,
+  type PostPoll,
   type ProfileCard,
   type ProfileComment,
 } from "@/lib/db";
 import { timeAgo } from "@/lib/dates";
 
 type Tab = "posts" | "comments" | "about";
-
-function ProfilePostWords({ post }: { post: FeedPost }) {
-  const [expanded, setExpanded] = useState(false);
-  const long = post.body.length > 180;
-  const words = (
-    <>
-      {post.title ? (
-        <p className="text-[12.5px] font-bold leading-[1.35] tracking-tight text-ink [overflow-wrap:anywhere]">
-          {post.title}
-        </p>
-      ) : null}
-      {post.body ? (
-        <PostText
-          text={post.body}
-          className={`text-[11.5px] leading-[1.5] text-ink ${
-            post.title ? "mt-0.5" : ""
-          } ${long && !expanded ? "line-clamp-3" : ""}`}
-        />
-      ) : null}
-    </>
-  );
-
-  return long ? (
-    <button
-      type="button"
-      aria-expanded={expanded}
-      onClick={() => setExpanded((open) => !open)}
-      className="block w-full cursor-pointer text-left"
-    >
-      {words}
-    </button>
-  ) : (
-    <Link href={`/feed/${post.id}`} className="block cursor-pointer">
-      {words}
-    </Link>
-  );
-}
 
 /**
  * The brand mark, repeated as a quiet field behind the header. It is the same sprout
@@ -213,8 +182,16 @@ export default function PersonPage() {
   const [tab, setTab] = useState<Tab>("posts");
   const [posts, setPosts] = useState<FeedPost[] | null>(null);
   const [comments, setComments] = useState<ProfileComment[] | null>(null);
+  const [polls, setPolls] = useState<Record<string, PostPoll>>({});
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [likesLoaded, setLikesLoaded] = useState(false);
+  const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
+  const [likeBusyIds, setLikeBusyIds] = useState<Set<string>>(new Set());
   const [sheet, setSheet] = useState<"followers" | "following" | null>(null);
   const [people, setPeople] = useState<ExchangePerson[] | null>(null);
+  const [options, setOptions] = useState<FeedPost | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<FeedPost | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -222,16 +199,29 @@ export default function PersonPage() {
     setCard(undefined);
     setPosts(null);
     setComments(null);
+    setPolls({});
     setTab("posts");
     void (async () => {
       try {
         const [found, written] = await Promise.all([
           fetchProfileCard(id),
-          fetchPersonPosts(id).catch(() => [] as FeedPost[]),
+          fetchPersonPosts(id).catch((error) => {
+            if (!cancelled) toastError(error instanceof Error ? error.message : "Couldn't load posts.");
+            return [] as FeedPost[];
+          }),
         ]);
         if (cancelled) return;
         setCard(found);
         setPosts(written);
+        void fetchPolls(written.map((post) => post.id))
+          .then((foundPolls) => {
+            if (!cancelled) setPolls(foundPolls);
+          })
+          .catch((error) => {
+            if (!cancelled) {
+              toastError(error instanceof Error ? error.message : "Couldn't load poll details.");
+            }
+          });
       } catch {
         if (!cancelled) setCard(null);
       }
@@ -240,6 +230,32 @@ export default function PersonPage() {
       cancelled = true;
     };
   }, [id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) {
+      setLikedPosts(new Set());
+      setLikesLoaded(true);
+      return;
+    }
+    setLikesLoaded(false);
+    void fetchMyLikes()
+      .then((liked) => {
+        if (!cancelled) {
+          setLikedPosts(liked);
+          setLikesLoaded(true);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLikesLoaded(true);
+          toastError("Couldn't load your post reactions.");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   // The Comments tab is read when it is first opened, not on arrival: a profile with a
   // thousand replies should not cost a stranger a thousand rows.
@@ -295,6 +311,66 @@ export default function PersonPage() {
       })
       .finally(() => setBusy(false));
   }, [busy, card, id, router, user]);
+
+  const toggleLike = useCallback(
+    (postId: string) => {
+      if (!user) {
+        router.push("/sign-in");
+        return;
+      }
+      if (!likesLoaded || likeBusyIds.has(postId)) return;
+      const wasLiked = likedPosts.has(postId);
+      const previousCount = likeCounts[postId] ?? posts?.find((post) => post.id === postId)?.likes ?? 0;
+      const nextLiked = new Set(likedPosts);
+      if (wasLiked) nextLiked.delete(postId);
+      else nextLiked.add(postId);
+      setLikedPosts(nextLiked);
+      setLikeCounts((current) => ({
+        ...current,
+        [postId]: Math.max(0, previousCount + (wasLiked ? -1 : 1)),
+      }));
+      setLikeBusyIds((current) => new Set(current).add(postId));
+      void (wasLiked ? unlikePost(postId) : likePost(postId))
+        .catch(() => {
+          setLikedPosts((current) => {
+            const reverted = new Set(current);
+            if (wasLiked) reverted.add(postId);
+            else reverted.delete(postId);
+            return reverted;
+          });
+          setLikeCounts((current) => ({ ...current, [postId]: previousCount }));
+          toastError("Couldn't save that reaction.");
+        })
+        .finally(() => {
+          setLikeBusyIds((current) => {
+            const next = new Set(current);
+            next.delete(postId);
+            return next;
+          });
+        });
+    },
+    [likeBusyIds, likeCounts, likesLoaded, likedPosts, posts, router, user],
+  );
+
+  async function confirmDeletePost() {
+    if (!pendingDelete || deleting) return;
+    const target = pendingDelete;
+    setDeleting(true);
+    try {
+      await deletePost(target.id);
+      setPosts((current) => current?.filter((post) => post.id !== target.id) ?? []);
+      setCard((current) => current
+        ? { ...current, posts: Math.max(0, current.posts - 1) }
+        : current,
+      );
+      setPendingDelete(null);
+      toastSuccess("Post deleted");
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : "Couldn't delete that post.");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   if (card === undefined) {
     return (
@@ -443,49 +519,26 @@ export default function PersonPage() {
             <p className="py-6 text-[11.5px] text-muted">Loading…</p>
           ) : posts.length ? (
             posts.map((post) => (
-              <article key={post.id} className="border-b border-line py-3">
-                {post.title || post.body ? <ProfilePostWords post={post} /> : null}
-                {post.media.length ? (
-                  <div className="mt-2 grid gap-1.5">
-                    {post.media.map((file) =>
-                      file.kind === "image" ? (
-                        <img
-                          key={file.id}
-                          src={mediaUrl(file.path)}
-                          alt=""
-                          loading="lazy"
-                          className="max-h-[280px] w-full rounded-xl object-cover"
-                        />
-                      ) : (
-                        <video
-                          key={file.id}
-                          src={mediaUrl(file.path)}
-                          controls
-                          playsInline
-                          preload="metadata"
-                          className="max-h-[280px] w-full rounded-xl bg-ink"
-                        />
-                      ),
-                    )}
-                  </div>
-                ) : null}
-                {!post.title && !post.body && !post.media.length ? (
-                  <p className="text-[11.5px] italic text-muted">A poll</p>
-                ) : null}
-                <Link
-                  href={`/feed/${post.id}`}
-                  className="mt-1.5 flex cursor-pointer items-center gap-3 text-[9.5px] text-faint tabular-nums transition hover:text-muted"
-                >
-                  <span className="flex items-center gap-1">
-                    <ThumbsUp className="h-3 w-3" strokeWidth={2} /> {post.likes}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <MessageCircle className="h-3 w-3" strokeWidth={2} /> {post.comments}
-                  </span>
-                  {post.reshares ? <span>{post.reshares} reposts</span> : null}
-                  <span>{timeAgo(post.createdAt)}</span>
-                </Link>
-              </article>
+              <div key={post.id} className="border-b border-line">
+                <PostBlock
+                  post={post}
+                  liked={likedPosts.has(post.id)}
+                  likes={likeCounts[post.id] ?? post.likes}
+                  reshares={post.reshares}
+                  reshared={post.reshared}
+                  signedIn={Boolean(user)}
+                  poll={polls[post.id] ?? null}
+                  onVote={(postId) => router.push(`/feed/${postId}`)}
+                  onLike={toggleLike}
+                  onReshare={(postId) => router.push(`/feed/${postId}`)}
+                  onShare={(postId) => router.push(`/feed/${postId}`)}
+                  onOpen={(postId) => router.push(`/feed/${postId}`)}
+                  onManage={setOptions}
+                  followed={post.authorId === id && card.followed}
+                  followBusy={busy}
+                  onToggleFollow={() => toggleFollow()}
+                />
+              </div>
             ))
           ) : (
             <p className="py-6 text-[11.5px] text-muted">Nothing written here yet.</p>
@@ -535,6 +588,46 @@ export default function PersonPage() {
           </p>
         </section>
       ) : null}
+
+      <PostOptionsSheet
+        post={options}
+        reshared={options?.reshared ?? false}
+        open={Boolean(options)}
+        onClose={() => setOptions(null)}
+        onShare={(postId) => router.push(`/feed/${postId}`)}
+        onReshare={(postId) => router.push(`/feed/${postId}`)}
+        onDelete={setPendingDelete}
+      />
+
+      <Modal
+        open={Boolean(pendingDelete)}
+        onClose={() => {
+          if (!deleting) setPendingDelete(null);
+        }}
+        title="Delete this post?"
+      >
+        <p className="text-[11px] leading-relaxed text-inksoft">
+          This removes your post and its attachments from the Exchange.
+        </p>
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            disabled={deleting}
+            onClick={() => setPendingDelete(null)}
+            className="flex-1 rounded-full border border-line px-4 py-2.5 text-[11px] font-semibold text-inksoft disabled:opacity-50"
+          >
+            Keep post
+          </button>
+          <button
+            type="button"
+            disabled={deleting}
+            onClick={() => void confirmDeletePost()}
+            className="flex-1 rounded-full bg-danger px-4 py-2.5 text-[11px] font-bold text-white disabled:opacity-50"
+          >
+            {deleting ? "Deleting…" : "Delete"}
+          </button>
+        </div>
+      </Modal>
 
       <PeopleSheet
         people={people}

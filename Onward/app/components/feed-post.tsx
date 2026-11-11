@@ -5,10 +5,13 @@ import Link from "next/link";
 import {
   ChevronLeft,
   ChevronRight,
+  Check,
   ExternalLink,
   FileText,
+  Globe2,
   MessageCircle,
   MoreHorizontal,
+  Plus,
   Repeat2,
   Share2,
   ThumbsUp,
@@ -40,7 +43,7 @@ export function Avatar({
             : size === "lg"
               ? "h-[46px] w-[46px] text-[12px]"
               : "h-8 w-8 text-[10px]"
-      } shrink-0 items-center justify-center overflow-hidden rounded-full bg-lime-soft font-bold text-ink`}
+      } shrink-0 items-center justify-center overflow-hidden rounded-full border border-lime-deep bg-lime-soft font-bold text-ink`}
     >
       {src ? <img src={src} alt="" className="h-full w-full object-cover" /> : initials || "?"}
     </span>
@@ -275,6 +278,9 @@ export function PostBlock({
   onShare,
   onOpen,
   onManage,
+  followed = false,
+  followBusy = false,
+  onToggleFollow,
   previewThread = true,
 }: {
   post: FeedPost;
@@ -295,6 +301,9 @@ export function PostBlock({
   onShare: (id: string) => void;
   onOpen: (id: string) => void;
   onManage?: (post: FeedPost) => void;
+  followed?: boolean;
+  followBusy?: boolean;
+  onToggleFollow?: (authorId: string, followed: boolean) => void;
   /** Off where the whole thread is already on the page underneath. */
   previewThread?: boolean;
 }) {
@@ -329,36 +338,62 @@ export function PostBlock({
     );
 
   return (
-    <article className="border-b border-line pb-3.5">
+    <article className="pb-3.5">
       <header className="flex items-center gap-2.5 py-2.5">
-        <Avatar initials={post.initials} src={post.avatarUrl} />
-        <span className="min-w-0 flex-1">
-          <Link
-            href={post.authorId ? `/people/${post.authorId}` : `/feed/${post.id}`}
-            className="block cursor-pointer truncate text-[12px] font-bold tracking-tight text-ink hover:underline"
-          >
-            {name}
-          </Link>
-          <span className="block truncate text-[9px] text-muted">
-            {post.role || timeAgo(post.createdAt)}
+        <Link
+          href={post.authorId ? `/people/${post.authorId}` : `/feed/${post.id}`}
+          className="group flex min-w-0 flex-1 cursor-pointer items-center gap-2.5"
+        >
+          <Avatar initials={post.initials} src={post.avatarUrl} />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[12px] font-bold tracking-tight text-ink group-hover:underline">
+              {name}
+            </span>
+            {post.role ? (
+              <span className="block truncate text-[9px] text-muted">{post.role}</span>
+            ) : null}
+          <span className="flex items-center gap-1 text-[9px] text-muted">
+            {timeAgo(post.createdAt)}
+            <span aria-hidden="true">·</span>
+            <Globe2 className="h-2.5 w-2.5" aria-label="Public post" />
           </span>
-          {post.brandPartnership ? (
-            <span className="block truncate text-[9px] font-medium text-inksoft">
-              Paid partnership{post.brandPartnerName ? ` with ${post.brandPartnerName}` : ""}
-            </span>
-          ) : null}
-          {post.collaborators?.length ? (
-            <span className="block truncate text-[9px] text-muted">
-              With {post.collaborators.map((person) => person.name).join(", ")}
-            </span>
-          ) : null}
-        </span>
+            {post.brandPartnership ? (
+              <span className="block truncate text-[9px] font-medium text-inksoft">
+                Paid partnership{post.brandPartnerName ? ` with ${post.brandPartnerName}` : ""}
+              </span>
+            ) : null}
+            {post.collaborators?.length ? (
+              <span className="block truncate text-[9px] text-muted">
+                With {post.collaborators.map((person) => person.name).join(", ")}
+              </span>
+            ) : null}
+          </span>
+        </Link>
+        {post.authorId && !post.mine && onToggleFollow ? (
+          <button
+            type="button"
+            aria-pressed={followed}
+            aria-label={followed ? `Following ${name}` : `Follow ${name}`}
+            onClick={() => {
+              if (post.authorId) onToggleFollow(post.authorId, followed);
+            }}
+            disabled={followBusy}
+            className={`flex h-7 shrink-0 cursor-pointer items-center gap-0.5 rounded-full px-1.5 text-[10px] font-semibold transition disabled:cursor-wait disabled:opacity-60 ${
+              followed
+                ? "text-inksoft hover:bg-cream"
+                : "text-lime-deep hover:bg-lime-pale"
+            }`}
+          >
+            {followed ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+            {followed ? "Following" : "Follow"}
+          </button>
+        ) : null}
         {onManage ? (
           <button
             type="button"
-            aria-label="Post options"
+            aria-label="More post options"
             onClick={() => onManage(post)}
-            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-inksoft transition hover:bg-cream"
+            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-inksoft transition hover:bg-cream"
           >
             <MoreHorizontal className="h-[18px] w-[18px]" />
           </button>

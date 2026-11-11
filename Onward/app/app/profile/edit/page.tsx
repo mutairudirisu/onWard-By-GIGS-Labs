@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, Pencil } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { Avatar } from "@/components/feed-post";
+import { Modal } from "@/components/modal";
 import { BackLink, Button, Field, TextArea, TextInput } from "@/components/ui";
 import { useAuth, useCurrentUser } from "@/components/auth";
 import { useStore } from "@/components/store";
@@ -14,7 +15,7 @@ import { uploadAvatar } from "@/lib/db";
 
 export default function EditProfilePage() {
   const router = useRouter();
-  const { user: authUser, updateProfile, changeEmail } = useAuth();
+  const { user: authUser, profile: authProfile, updateProfile, changeEmail } = useAuth();
   const profile = useCurrentUser();
   const { skills, addSkill } = useStore();
 
@@ -29,12 +30,49 @@ export default function EditProfilePage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [cropUrl, setCropUrl] = useState<string | null>(null);
+  const [cropScale, setCropScale] = useState(1);
+  const [cropOffset, setCropOffset] = useState({ x: 0, y: 0 });
+  const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const cropStageRef = useRef<HTMLDivElement>(null);
+  const dragOrigin = useRef<{
+    pointerId: number;
+    clientX: number;
+    clientY: number;
+    offsetX: number;
+    offsetY: number;
+  } | null>(null);
+  const initializedFor = useRef<string | null>(null);
+  const editedFields = useRef(new Set<string>());
+
+  useEffect(() => {
+    if (
+      !authUser ||
+      !authProfile ||
+      authProfile.id !== authUser.id ||
+      initializedFor.current === authUser.id
+    ) {
+      return;
+    }
+    initializedFor.current = authUser.id;
+    if (!editedFields.current.has("name")) setName(authProfile.displayName);
+    if (!editedFields.current.has("email")) setEmail(authUser.email ?? "");
+    if (!editedFields.current.has("location")) setLocation(authProfile.location);
+    if (!editedFields.current.has("bio")) setBio(authProfile.bio);
+  }, [authProfile, authUser]);
 
   // The preview is a local blob: let it go once the saved photo takes over.
   useEffect(() => {
     if (!photoPreview) return;
     return () => URL.revokeObjectURL(photoPreview);
   }, [photoPreview]);
+
+  useEffect(() => {
+    if (!cropUrl) return;
+    return () => URL.revokeObjectURL(cropUrl);
+  }, [cropUrl]);
 
   // The profile card links here asking for the bio alone, so it should arrive in the
   // bio, not at the top of a long form. Read from the location rather than
@@ -52,11 +90,9 @@ export default function EditProfilePage() {
     setShowSkillInput(false);
   }
 
-  // The photo saves on its own, the moment it is picked - it is not part of the
-  // form below, so leaving without Save still keeps the new face.
   async function pickPhoto(list: FileList | null) {
     const file = list?.[0];
-    if (!file || !authUser || avatarBusy) return;
+    if (!file || avatarBusy) return;
     if (!file.type.startsWith("image/")) {
       toastError("Pick an image for your photo");
       return;
@@ -65,20 +101,114 @@ export default function EditProfilePage() {
       toastError("Keep the photo under 5MB");
       return;
     }
-    setPhotoPreview(URL.createObjectURL(file));
+    setCropFile(file);
+    setCropUrl(URL.createObjectURL(file));
+    setCropScale(1);
+    setCropOffset({ x: 0, y: 0 });
+    setImageSize(null);
+  }
+
+  function closeCrop() {
+    if (avatarBusy) return;
+    setCropFile(null);
+    setCropUrl(null);
+    setCropScale(1);
+    setCropOffset({ x: 0, y: 0 });
+    setImageSize(null);
+  }
+
+  function clampOffset(offset: { x: number; y: number }, scale: number) {
+    const stage = cropStageRef.current?.getBoundingClientRect();
+    if (!stage || !imageSize) return offset;
+    const fitScale = Math.max(stage.width / imageSize.width, stage.height / imageSize.height);
+    const maxX = Math.max(0, (imageSize.width * fitScale * scale - stage.width) / 2);
+    const maxY = Math.max(0, (imageSize.height * fitScale * scale - stage.height) / 2);
+    return {
+      x: Math.max(-maxX, Math.min(maxX, offset.x)),
+      y: Math.max(-maxY, Math.min(maxY, offset.y)),
+    };
+  }
+
+  function startCropDrag(event: PointerEvent<HTMLDivElement>) {
+    if (!imageSize || event.button !== 0) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragOrigin.current = {
+      pointerId: event.pointerId,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      offsetX: cropOffset.x,
+      offsetY: cropOffset.y,
+    };
+    setDragging(true);
+  }
+
+  function moveCrop(event: PointerEvent<HTMLDivElement>) {
+    const origin = dragOrigin.current;
+    if (!origin || origin.pointerId !== event.pointerId) return;
+    setCropOffset(
+      clampOffset(
+        {
+          x: origin.offsetX + event.clientX - origin.clientX,
+          y: origin.offsetY + event.clientY - origin.clientY,
+        },
+        cropScale,
+      ),
+    );
+  }
+
+  function stopCropDrag() {
+    dragOrigin.current = null;
+    setDragging(false);
+  }
+
+  async function croppedPhoto(): Promise<File> {
+    if (!cropUrl) throw new Error("Choose a photo to crop.");
+    const image = new Image();
+    image.src = cropUrl;
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("This photo could not be opened."));
+    });
+
+    const stage = cropStageRef.current?.getBoundingClientRect();
+    if (!stage?.width) throw new Error("The photo crop area is not ready.");
+    const fitScale = Math.max(stage.width / image.naturalWidth, stage.height / image.naturalHeight);
+    const sourceScale = fitScale * cropScale;
+    const sourceSize = stage.width / sourceScale;
+    const sourceX = (image.naturalWidth - sourceSize) / 2 - cropOffset.x / sourceScale;
+    const sourceY = (image.naturalHeight - sourceSize) / 2 - cropOffset.y / sourceScale;
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("The photo could not be prepared.");
+    context.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, 512, 512);
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.9),
+    );
+    if (!blob) throw new Error("The photo could not be prepared.");
+    return new File([blob], "avatar.jpg", { type: "image/jpeg", lastModified: Date.now() });
+  }
+
+  async function savePhoto() {
+    if (!cropFile || !authUser || avatarBusy) return;
     setAvatarBusy(true);
     try {
+      const file = await croppedPhoto();
+      setPhotoPreview(URL.createObjectURL(file));
       const url = await uploadAvatar(authUser.id, file);
       const result = await updateProfile({ avatarUrl: url });
-      setPhotoPreview(null);
-      if (result.error) {
-        toastError(result.error);
-        return;
-      }
+      if (result.error) throw new Error(result.error);
+      setCropFile(null);
+      setCropUrl(null);
+      setCropScale(1);
+      setCropOffset({ x: 0, y: 0 });
+      setImageSize(null);
       toastSuccess("Photo updated");
-    } catch {
+    } catch (error) {
       setPhotoPreview(null);
-      toastError("Couldn't upload that photo");
+      toastError(error instanceof Error ? error.message : "Couldn't upload that photo");
     } finally {
       setAvatarBusy(false);
     }
@@ -134,7 +264,7 @@ export default function EditProfilePage() {
             {avatarBusy
               ? "Uploading your photo…"
               : profile.avatarUrl
-              ? "This is the face people see on your posts and profile."
+              ? "Tap your photo to edit, crop and save it."
               : "Tap your photo to add one."}
           </p>
         </div>
@@ -152,15 +282,28 @@ export default function EditProfilePage() {
       </div>
 
       <div className="space-y-4">
-        <Field label="Full name" uppercase>
-          <TextInput value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
+        <Field label="Name or business" uppercase>
+          <TextInput
+            value={name}
+            onChange={(e) => {
+              editedFields.current.add("name");
+              setName(e.target.value);
+            }}
+            maxLength={80}
+          />
+          <p className="mt-1.5 text-[10px] leading-[1.5] text-muted">
+            Use your personal name, company or brand name.
+          </p>
         </Field>
 
         <Field label="Email" uppercase>
           <TextInput
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              editedFields.current.add("email");
+              setEmail(e.target.value);
+            }}
             autoComplete="email"
           />
         </Field>
@@ -178,7 +321,10 @@ export default function EditProfilePage() {
         <Field label="Location" uppercase>
           <TextInput
             value={location}
-            onChange={(e) => setLocation(e.target.value)}
+            onChange={(e) => {
+              editedFields.current.add("location");
+              setLocation(e.target.value);
+            }}
             placeholder="London, UK · Open to hybrid work"
             maxLength={80}
           />
@@ -188,7 +334,10 @@ export default function EditProfilePage() {
           <TextArea
             id="profile-bio"
             value={bio}
-            onChange={(e) => setBio(e.target.value)}
+            onChange={(e) => {
+              editedFields.current.add("bio");
+              setBio(e.target.value);
+            }}
             placeholder="What kind of work do you do, and what do you want next?"
             maxLength={280}
           />
@@ -262,6 +411,82 @@ export default function EditProfilePage() {
           {busy ? "Saving…" : "Save changes"}
         </Button>
       </div>
+
+      <Modal open={Boolean(cropUrl)} onClose={closeCrop} title="Crop profile photo">
+        <div className="flex flex-col items-center">
+          <p className="mb-3 text-center text-[11px] leading-[1.5] text-muted">
+            Drag to position your photo, then adjust the zoom.
+          </p>
+          <div
+            ref={cropStageRef}
+            className={`relative aspect-square w-72 max-w-full touch-none overflow-hidden rounded-full bg-cream ${
+              imageSize ? (dragging ? "cursor-grabbing" : "cursor-grab") : "animate-pulse"
+            }`}
+            style={{ touchAction: "none" }}
+            onPointerDown={startCropDrag}
+            onPointerMove={moveCrop}
+            onPointerUp={stopCropDrag}
+            onPointerCancel={stopCropDrag}
+          >
+            {cropUrl ? (
+              <img
+                src={cropUrl}
+                alt="Profile photo crop preview"
+                draggable={false}
+                onLoad={(event) =>
+                  setImageSize({
+                    width: event.currentTarget.naturalWidth,
+                    height: event.currentTarget.naturalHeight,
+                  })
+                }
+                onError={() => toastError("This photo could not be opened. Try another image.")}
+                className="h-full w-full select-none object-cover"
+                style={{
+                  transform: `translate(${cropOffset.x}px, ${cropOffset.y}px) scale(${cropScale})`,
+                  transformOrigin: "center",
+                }}
+              />
+            ) : null}
+          </div>
+          <label className="mt-5 w-full max-w-xs">
+            <span className="mb-2 block text-[10px] font-semibold text-muted">Zoom</span>
+            <input
+              type="range"
+              min="1"
+              max="3"
+              step="0.01"
+              value={cropScale}
+              aria-label="Zoom profile photo"
+              disabled={!imageSize || avatarBusy}
+              onChange={(event) => {
+                const nextScale = Number(event.target.value);
+                setCropScale(nextScale);
+                setCropOffset((current) => clampOffset(current, nextScale));
+              }}
+              className="w-full accent-lime-deep"
+            />
+          </label>
+          <div className="mt-5 flex w-full gap-2">
+            <button
+              type="button"
+              onClick={closeCrop}
+              disabled={avatarBusy}
+              className="flex-1 rounded-btn border border-line bg-paper px-4 py-3 text-[12px] font-semibold text-inksoft transition hover:bg-cream disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void savePhoto()}
+              disabled={!cropFile || !imageSize || avatarBusy}
+              className="flex flex-1 items-center justify-center gap-2 rounded-btn bg-lime px-4 py-3 text-[12px] font-bold text-dark transition hover:bg-lime-deep disabled:cursor-not-allowed disabled:bg-lime-pale disabled:text-muted"
+            >
+              {avatarBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {avatarBusy ? "Saving…" : "Save photo"}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </PhoneShell>
   );
 }

@@ -665,6 +665,7 @@ type FeedRow = {
     initials: string | null;
     avatar_url: string | null;
   }[] | null;
+  scheduled_at?: string | null;
 };
 
 function commentFromJson(row: CommentJson): PostComment {
@@ -720,7 +721,7 @@ function postFromRow(row: FeedRow): FeedPost {
     initials: row.initials ?? "",
     avatarUrl: row.avatar_url ?? null,
     role: row.role ?? null,
-    createdAt: row.created_at,
+    createdAt: row.scheduled_at ?? row.created_at,
     mine: row.mine ?? false,
     authorId: row.author_id ?? null,
     media: row.media ?? [],
@@ -749,7 +750,7 @@ function postFromRow(row: FeedRow): FeedPost {
 }
 
 const FEED_COLUMNS =
-  "id, body, ward_id, full_name, initials, avatar_url, role, created_at, mine, media, likes, comments, recent_comments, title, reshare_of, reshares, reshared, reshare, author_id, post_audience, comment_audience, can_comment, brand_partnership, brand_partner_name, collaborators";
+  "id, body, ward_id, full_name, initials, avatar_url, role, created_at, mine, media, likes, comments, recent_comments, title, reshare_of, reshares, reshared, reshare, author_id, post_audience, comment_audience, can_comment, brand_partnership, brand_partner_name, collaborators, scheduled_at";
 
 /** A public object in a public bucket needs no token, which is what lets an <img>
  *  tag work for someone who has never signed in. */
@@ -1298,8 +1299,9 @@ export async function createPost(input: {
   brandPartnerName?: string | null;
   poll?: PollDraft | null;
   documentPath?: string | null;
+  scheduledAt?: string | null;
   onProgress?: (done: number, total: number) => void;
-}): Promise<FeedPost> {
+}): Promise<FeedPost | null> {
   const {
     title = "",
     body,
@@ -1311,8 +1313,12 @@ export async function createPost(input: {
     brandPartnerName = null,
     poll = null,
     documentPath = null,
+    scheduledAt = null,
     onProgress,
   } = input;
+  if (scheduledAt && (!Number.isFinite(Date.parse(scheduledAt)) || Date.parse(scheduledAt) <= Date.now())) {
+    throw new Error("Choose a future date and time for your post.");
+  }
   const problem = mediaProblem(files);
   if (problem) throw new Error(problem);
   if (poll) {
@@ -1339,6 +1345,7 @@ export async function createPost(input: {
       comment_audience: commentAudience,
       brand_partnership: Boolean(partnershipName),
       brand_partner_name: partnershipName,
+      scheduled_at: scheduledAt,
     })
     .select("id")
     .single();
@@ -1392,6 +1399,8 @@ export async function createPost(input: {
     await supabase.from("posts").delete().eq("id", postId);
     throw error instanceof Error ? error : new Error("Upload failed");
   }
+
+  if (scheduledAt) return null;
 
   const post = await fetchPost(postId);
   if (!post) {
@@ -1650,6 +1659,31 @@ export async function fetchPersonPosts(id: string, limit = 40): Promise<FeedPost
     .limit(limit);
   fail(error);
   return (data as FeedRow[] | null ?? []).map(postFromRow);
+}
+
+export type ScheduledPost = {
+  id: string;
+  title: string;
+  body: string;
+  scheduledAt: string;
+};
+
+export async function fetchScheduledPosts(): Promise<ScheduledPost[]> {
+  const userId = await signedInUserId();
+  const { data, error } = await supabase
+    .from("posts")
+    .select("id, title, body, scheduled_at")
+    .eq("user_id", userId)
+    .gt("scheduled_at", new Date().toISOString())
+    .order("scheduled_at", { ascending: true })
+    .limit(50);
+  fail(error);
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    title: row.title ?? "",
+    body: row.body ?? "",
+    scheduledAt: row.scheduled_at,
+  }));
 }
 
 export async function fetchPersonComments(id: string, limit = 40): Promise<ProfileComment[]> {

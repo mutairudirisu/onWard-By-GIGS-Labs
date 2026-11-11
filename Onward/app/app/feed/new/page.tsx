@@ -43,11 +43,14 @@ import {
   POST_MEDIA_MAX_PER_POST,
   POST_TITLE_MAX,
   createPost,
+  deletePost,
+  fetchScheduledPosts,
   mediaProblem,
   removePostDocument,
   searchPeople,
   uploadPostDocument,
   type ExchangePerson,
+  type ScheduledPost,
 } from "@/lib/db";
 import { useKeyboardInset } from "@/lib/keyboard";
 
@@ -62,6 +65,18 @@ type ComposerPage =
   | null;
 const FORM_INPUT_CLASS =
   "w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[13px] text-ink outline-none placeholder:text-muted focus:border-lime-deep";
+
+function localDateValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function localTimeValue(date: Date) {
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
 const POST_CATEGORIES = [
   { id: "media", label: "Media", Icon: ImagePlus },
   { id: "event", label: "Event", Icon: CalendarDays },
@@ -120,11 +135,17 @@ function Composer() {
   const [documentCaption, setDocumentCaption] = useState("");
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [audienceSettingsOpen, setAudienceSettingsOpen] = useState(false);
-  const [showBanner, setShowBanner] = useState(true);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduleTab, setScheduleTab] = useState<"schedule" | "scheduled">("schedule");
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleTime, setScheduleTime] = useState("");
+  const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[] | null>(null);
+  const [cancelingScheduleId, setCancelingScheduleId] = useState<string | null>(null);
   const [showFormatting, setShowFormatting] = useState(false);
   const [showHeadline, setShowHeadline] = useState(false);
   const mediaRef = useRef<HTMLInputElement>(null);
   const documentRef = useRef<HTMLInputElement>(null);
+  const picksRef = useRef(picks);
   const keyboard = useKeyboardInset(Boolean(user));
 
   // Opening this from an onWard carries its words over; the entry itself stays private.
@@ -137,11 +158,13 @@ function Composer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    picksRef.current = picks;
+  }, [picks]);
+
   useEffect(
-    () => () => picks.forEach((pick) => URL.revokeObjectURL(pick.url)),
-    // Each change hands a fresh teardown for the set it replaced.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [picks],
+    () => () => picksRef.current.forEach((pick) => URL.revokeObjectURL(pick.url)),
+    [],
   );
 
   const room = POST_MEDIA_MAX_PER_POST - picks.length;
@@ -164,6 +187,28 @@ function Composer() {
   );
   const initials = me.initials || (me.name.slice(0, 1).toUpperCase() || "?");
   const audienceLabel = postAudience === "connections" ? "Connections" : "Anyone";
+  const scheduleTimestamp =
+    scheduleDate && scheduleTime ? new Date(`${scheduleDate}T${scheduleTime}`).getTime() : NaN;
+  const validSchedule = Number.isFinite(scheduleTimestamp) && scheduleTimestamp > Date.now();
+
+  useEffect(() => {
+    if (!scheduleOpen || scheduleTab !== "scheduled" || !user) return;
+    let active = true;
+    setScheduledPosts(null);
+    void fetchScheduledPosts()
+      .then((items) => {
+        if (active) setScheduledPosts(items);
+      })
+      .catch((error) => {
+        if (active) {
+          setScheduledPosts([]);
+          toastError(error instanceof Error ? error.message : "Couldn't load scheduled posts.");
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [scheduleOpen, scheduleTab, user]);
 
   useEffect(() => {
     if (!audienceSettingsOpen || audiencePanel !== "collaborators") return;
@@ -189,7 +234,8 @@ function Composer() {
 
   function addFiles(list: FileList | null) {
     if (!list?.length) return;
-    const next = [...picks.map((p) => p.file), ...Array.from(list)];
+    const files = Array.from(list);
+    const next = [...picks.map((p) => p.file), ...files];
     const problem = mediaProblem(next);
     if (problem) {
       toastError(problem);
@@ -197,7 +243,7 @@ function Composer() {
     }
     setPicks((prev) => [
       ...prev,
-      ...Array.from(list).map((file) => ({ file, url: URL.createObjectURL(file) })),
+      ...files.map((file) => ({ file, url: URL.createObjectURL(file) })),
     ]);
   }
 
@@ -232,6 +278,31 @@ function Composer() {
     else if (composerPage) {
       setComposerPage(null);
       setShowCategoryModal(true);
+    }
+  }
+
+  function openSchedule() {
+    if (!user) {
+      router.push("/sign-in");
+      return;
+    }
+    const suggested = new Date(Date.now() + 60 * 60 * 1000);
+    setScheduleDate(localDateValue(suggested));
+    setScheduleTime(localTimeValue(suggested));
+    setScheduleTab("schedule");
+    setScheduleOpen(true);
+  }
+
+  async function cancelScheduledPost(postId: string) {
+    setCancelingScheduleId(postId);
+    try {
+      await deletePost(postId);
+      setScheduledPosts((current) => current?.filter((item) => item.id !== postId) ?? []);
+      toastSuccess("Scheduled post cancelled");
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : "Couldn't cancel the scheduled post.");
+    } finally {
+      setCancelingScheduleId(null);
     }
   }
 
@@ -286,7 +357,7 @@ function Composer() {
     setComposerPage(null);
   }
 
-  async function post() {
+  async function post(scheduledAt: string | null = null) {
     if (empty || busy || composerPage) return;
     if (!user) {
       router.push("/sign-in");
@@ -300,7 +371,13 @@ function Composer() {
       toastError("Add the brand or partner name for this disclosure.");
       return;
     }
-    setBusy(documentFile ? "Uploading your files…" : "Sharing your post…");
+    setBusy(
+      documentFile
+        ? "Uploading your files…"
+        : scheduledAt
+          ? "Scheduling your post…"
+          : "Sharing your post…",
+    );
     setProgress(null);
     let uploadedDocumentPath: string | null = null;
     try {
@@ -332,14 +409,18 @@ function Composer() {
           ? {
               question: pollDraft.question,
               options: pollDraft.options,
-              endsAt: pollEndsAt(pollDraft.hours),
+              endsAt: scheduledAt
+                ? new Date(Date.parse(scheduledAt) + pollDraft.hours * 3_600_000).toISOString()
+                : pollEndsAt(pollDraft.hours),
             }
           : null,
         documentPath: uploadedDocumentPath,
+        scheduledAt,
         onProgress: (done, total) => setProgress({ done, total }),
       });
       uploadedDocumentPath = null;
-      toastSuccess("Shared to the Exchange");
+      toastSuccess(scheduledAt ? "Post scheduled" : "Shared to the Exchange");
+      if (scheduledAt) setScheduleOpen(false);
       router.push("/feed");
     } catch (error) {
       setBusy(null);
@@ -364,7 +445,7 @@ function Composer() {
   return (
     <PhoneShell tab="feed">
       <div
-        className="fixed inset-x-0 top-0 z-[45] mx-auto flex w-full max-w-[400px] items-center gap-2 bg-cream px-5 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] md:static md:mx-auto md:mb-5 md:max-w-[820px] md:bg-transparent md:px-0 md:py-0"
+        className="fixed inset-x-0 top-0 z-[45] mx-auto flex w-full max-w-[400px] items-center gap-2 bg-cream px-5 pb-2 pt-[calc(env(safe-area-inset-top)+1rem)] md:static md:mx-auto md:mb-5 md:max-w-[820px] md:bg-transparent md:px-0 md:py-0"
       >
         <Link
           href="/feed"
@@ -395,10 +476,11 @@ function Composer() {
         </div>
         <button
           type="button"
-          disabled
-          aria-label="Scheduled posting is not available yet"
-          title="Scheduled posting is not available yet"
-          className="flex h-9 w-9 shrink-0 cursor-not-allowed items-center justify-center rounded-full bg-lime-pale text-inksoft"
+          disabled={Boolean(busy)}
+          aria-label="Schedule post"
+          title="Schedule post"
+          onClick={openSchedule}
+          className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-lime-pale text-inksoft transition hover:bg-lime-soft disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Clock3 className="h-4 w-4" strokeWidth={1.9} />
         </button>
@@ -413,12 +495,12 @@ function Composer() {
           }`}
         >
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-          {busy ? "Posting…" : isPoll ? "Publish poll" : "Post"}
+          {busy ? (busy.startsWith("Scheduling") ? "Scheduling…" : "Posting…") : isPoll ? "Publish poll" : "Post"}
         </button>
       </div>
       <div
         aria-hidden="true"
-        className="mb-5 h-[calc(3.5rem+env(safe-area-inset-top))] md:hidden"
+        className="mb-5 h-[calc(4rem+env(safe-area-inset-top))] md:hidden"
       />
 
       <div
@@ -682,24 +764,6 @@ function Composer() {
           </section>
         ) : (
           <>
-            {showBanner && keyboard === 0 ? (
-              <div className="mb-7 flex items-start gap-3 rounded-xl bg-lime-pale px-4 py-4 text-ink">
-                <p className="flex-1 text-[14px] leading-[1.5]">
-                  {ward
-                    ? `Share a thought inspired by “${ward.title}”. Your onWard stays private.`
-                    : "Share a win, a question or an idea with people across the Exchange."}
-                </p>
-                <button
-                  type="button"
-                  aria-label="Dismiss message"
-                  onClick={() => setShowBanner(false)}
-                  className="-mr-1 flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full text-inksoft transition hover:bg-lime-soft"
-                >
-                  <X className="h-5 w-5" strokeWidth={2} />
-                </button>
-              </div>
-            ) : null}
-
             <div className="min-h-[35vh]">
               {isPoll ? (
                 <PollComposer draft={pollDraft} onChange={setPollDraft} disabled={Boolean(busy)} />
@@ -1114,6 +1178,113 @@ function Composer() {
             </button>
           </div>
         ) : null}
+      </Modal>
+
+      <Modal
+        open={scheduleOpen}
+        onClose={() => setScheduleOpen(false)}
+        title="Schedule post"
+      >
+        <div className="mb-4 grid grid-cols-2 border-b border-line">
+          {([
+            ["schedule", "Schedule"],
+            ["scheduled", "Scheduled"],
+          ] as const).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setScheduleTab(key)}
+              aria-current={scheduleTab === key}
+              className={`cursor-pointer border-b-2 px-2 py-2.5 text-[12px] font-semibold transition ${
+                scheduleTab === key
+                  ? "border-lime-deep text-ink"
+                  : "border-transparent text-muted hover:text-ink"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {scheduleTab === "schedule" ? (
+          <div className="space-y-4">
+            <p className="text-[11px] leading-relaxed text-inksoft">
+              Choose when your post should appear on the Exchange.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block text-[10px] font-semibold text-muted">
+                Date
+                <input
+                  type="date"
+                  value={scheduleDate}
+                  min={localDateValue(new Date())}
+                  onChange={(event) => setScheduleDate(event.target.value)}
+                  className={`${FORM_INPUT_CLASS} mt-1`}
+                />
+              </label>
+              <label className="block text-[10px] font-semibold text-muted">
+                Time
+                <input
+                  type="time"
+                  value={scheduleTime}
+                  min={scheduleDate === localDateValue(new Date()) ? localTimeValue(new Date()) : undefined}
+                  onChange={(event) => setScheduleTime(event.target.value)}
+                  className={`${FORM_INPUT_CLASS} mt-1`}
+                />
+              </label>
+            </div>
+            <p className="text-[10px] text-muted">
+              {validSchedule
+                ? `Posting at ${new Date(scheduleTimestamp).toLocaleString(undefined, {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}`
+                : "Choose a future date and time."}
+              {" "}Times use your local timezone ({Intl.DateTimeFormat().resolvedOptions().timeZone}).
+            </p>
+            <button
+              type="button"
+              disabled={!validSchedule || empty || Boolean(busy) || Boolean(composerPage)}
+              onClick={() => {
+                if (!validSchedule) return;
+                void post(new Date(scheduleTimestamp).toISOString());
+              }}
+              className="w-full rounded-full bg-lime-deep px-4 py-3 text-[12px] font-bold text-dark transition hover:bg-lime disabled:cursor-not-allowed disabled:bg-lime-pale disabled:text-muted"
+            >
+              {busy?.startsWith("Scheduling") ? "Scheduling…" : "Schedule post"}
+            </button>
+          </div>
+        ) : scheduledPosts === null ? (
+          <p className="py-6 text-center text-[11px] text-muted">Loading scheduled posts…</p>
+        ) : scheduledPosts.length ? (
+          <div className="divide-y divide-line">
+            {scheduledPosts.map((item) => (
+              <article key={item.id} className="flex items-start gap-3 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-semibold text-ink">
+                    {item.title || item.body.slice(0, 90) || "Scheduled post"}
+                  </p>
+                  <p className="mt-1 text-[10px] text-muted">
+                    {new Date(item.scheduledAt).toLocaleString(undefined, {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={cancelingScheduleId === item.id}
+                  onClick={() => void cancelScheduledPost(item.id)}
+                  className="shrink-0 cursor-pointer rounded-full px-2.5 py-1.5 text-[10px] font-semibold text-danger hover:bg-cream disabled:cursor-wait disabled:opacity-50"
+                >
+                  {cancelingScheduleId === item.id ? "Cancelling…" : "Cancel"}
+                </button>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="py-6 text-center text-[11px] text-muted">No scheduled posts.</p>
+        )}
       </Modal>
 
       <Modal

@@ -238,14 +238,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (patch) => {
       if (!user) return { error: "You are not signed in." };
       const base = profile ?? fallbackProfile(user);
-      const next: Profile = { ...base, ...patch };
-      if (patch.displayName !== undefined) next.initials = initialsFor(patch.displayName);
-      setProfile(next);
+      const updates = { ...patch };
+      if (patch.displayName !== undefined) updates.initials = initialsFor(patch.displayName);
       try {
-        await saveProfile(user.id, next);
+        await saveProfile(user.id, updates);
       } catch (err) {
         return { error: message(err) };
       }
+      setProfile({ ...base, ...updates });
       return {};
     },
     [profile, user],

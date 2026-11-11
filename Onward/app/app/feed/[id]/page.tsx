@@ -18,15 +18,18 @@ import {
   deleteComment,
   deletePost,
   fetchComments,
+  fetchFollowList,
   fetchMyLikes,
   fetchPolls,
   fetchPost,
+  followPerson,
   likeComment,
   likePost,
   reshare,
   unlikeComment,
   unlikePost,
   unreshare,
+  unfollowPerson,
   voteInPoll,
   POST_COMMENT_MAX,
   type FeedPost,
@@ -49,6 +52,9 @@ export default function PostPage() {
   const [likes, setLikes] = useState(0);
   const [reshared, setReshared] = useState(false);
   const [reshares, setReshares] = useState(0);
+  const [followingAuthor, setFollowingAuthor] = useState(false);
+  const [followStatusReady, setFollowStatusReady] = useState(false);
+  const [followBusy, setFollowBusy] = useState(false);
   const [poll, setPoll] = useState<PostPoll | null>(null);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -86,6 +92,47 @@ export default function PostPage() {
       cancelled = true;
     };
   }, [id, user]);
+
+  useEffect(() => {
+    if (!user || !post?.authorId || post.mine) {
+      setFollowingAuthor(false);
+      setFollowStatusReady(!user);
+      return;
+    }
+    let cancelled = false;
+    setFollowStatusReady(false);
+    void fetchFollowList(user.id, "following")
+      .then((people) => {
+        if (cancelled) return;
+        setFollowingAuthor(people.some((person) => person.id === post.authorId));
+        setFollowStatusReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) toastError("Couldn't load follow status");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [post?.authorId, post?.mine, user]);
+
+  const toggleFollowAuthor = useCallback(
+    (authorId: string, currentlyFollowing: boolean) => {
+      if (!user) {
+        router.push("/sign-in");
+        return;
+      }
+      if (followBusy) return;
+      setFollowBusy(true);
+      setFollowingAuthor(!currentlyFollowing);
+      void (currentlyFollowing ? unfollowPerson(authorId) : followPerson(authorId))
+        .catch(() => {
+          setFollowingAuthor(currentlyFollowing);
+          toastError("Couldn't save that");
+        })
+        .finally(() => setFollowBusy(false));
+    },
+    [followBusy, router, user],
+  );
 
   const isMine = Boolean(post?.mine);
 
@@ -306,6 +353,9 @@ export default function PostPage() {
             reshared={reshared}
             reshares={reshares}
             signedIn={Boolean(user)}
+            followed={followingAuthor}
+            followBusy={followBusy}
+            onToggleFollow={followStatusReady || !user ? toggleFollowAuthor : undefined}
             poll={poll}
             onVote={votePoll}
             onLike={toggleLike}
