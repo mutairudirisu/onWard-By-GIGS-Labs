@@ -39,8 +39,8 @@ function useVoiceMeter(listening: boolean, strip: RefObject<HTMLDivElement | nul
 /**
  * A field you can talk into. The mic only appears while the box is focused, so a form
  * full of half-finished thoughts is not also full of mics; once you tap it the bottom
- * edge of the same box turns into a meter that moves with your voice, with the words
- * arriving in the field and a stop button to hand it back.
+ * edge of the same box turns into a meter while you speak. The recognized words are
+ * added to the field once you stop, rather than changing underneath the speaker.
  */
 export function DictateTextArea({
   value,
@@ -63,12 +63,12 @@ export function DictateTextArea({
     valueRef.current = value;
   }, [value]);
 
-  const { supported, listening, transcribing, interim, error, start, stop, cancel, toggle } = useDictation((text) => {
+  const { supported, listening, transcribing, error, start, stop, cancel, toggle } = useDictation((text) => {
     const next = appendDictation(valueRef.current, text);
     valueRef.current = next;
     onChange(next);
   });
-  const displayedValue = interim ? appendDictation(value, interim) : value;
+  const displayedValue = value;
   const active = listening || transcribing;
 
   useLayoutEffect(() => {
@@ -134,14 +134,14 @@ export function DictateTextArea({
                 {WEIGHTS.map((weight, index) => (
                   <span
                     key={index}
-                    className="h-5 w-[3px] rounded-full bg-lime-deep"
+                    className="h-5 w-[3px] rounded-full bg-[#E5484D]"
                     style={{ transform: `scaleY(calc(0.1 + var(--lv, 0) * ${weight}))` }}
                   />
                 ))}
               </span>
             ) : null}
             <span className="min-w-0 flex-1 truncate text-[11px] leading-[1.4] text-muted" role="status">
-              {transcribing ? "Transcribing…" : interim || "Listening…"}
+              {transcribing ? "Transcribing…" : "Listening…"}
             </span>
             {listening ? (
               <button

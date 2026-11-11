@@ -89,7 +89,6 @@ export function useDictation(onText: (text: string) => void) {
   const [supported, setSupported] = useState(false);
   const [listening, setListening] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
-  const [interim, setInterim] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const onTextRef = useRef(onText);
@@ -100,14 +99,12 @@ export function useDictation(onText: (text: string) => void) {
   const chunksRef = useRef<Blob[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const stoppingRef = useRef(false);
-  const interimRef = useRef("");
+  const stopRequestedRef = useRef(false);
+  const flushedRef = useRef(false);
+  const completedTranscriptRef = useRef("");
+  const recognitionResultsRef = useRef(new Map<number, { isFinal: boolean; transcript: string }>());
   const modeRef = useRef<"native" | "recorded" | null>(null);
   const languageRef = useRef("en-US");
-
-  const updateInterim = useCallback((text: string) => {
-    interimRef.current = text;
-    setInterim(text);
-  }, []);
 
   const releaseStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -134,7 +131,6 @@ export function useDictation(onText: (text: string) => void) {
     stoppingRef.current = false;
     chunksRef.current = [];
     setError(null);
-    setInterim("");
     setTranscribing(false);
 
     try {
@@ -156,6 +152,8 @@ export function useDictation(onText: (text: string) => void) {
         stoppingRef.current = true;
         recorderRef.current = null;
         chunksRef.current = [];
+        completedTranscriptRef.current = "";
+        recognitionResultsRef.current.clear();
         releaseStream();
         setListening(false);
         setTranscribing(false);
@@ -212,8 +210,11 @@ export function useDictation(onText: (text: string) => void) {
   const start = useCallback(() => {
     const Ctor = recognitionCtor();
     stoppingRef.current = false;
+    stopRequestedRef.current = false;
+    flushedRef.current = false;
+    completedTranscriptRef.current = "";
+    recognitionResultsRef.current.clear();
     setError(null);
-    setInterim("");
     languageRef.current = document.documentElement.lang || navigator.language || "en-US";
 
     if (!Ctor) {
@@ -229,19 +230,13 @@ export function useDictation(onText: (text: string) => void) {
       recognition.interimResults = true;
       recognition.maxAlternatives = 1;
       recognition.onresult = (event) => {
-        let final = "";
-        let heard = "";
-        for (let i = 0; i < event.results.length; i += 1) {
+        for (let i = event.resultIndex; i < event.results.length; i += 1) {
           const result = event.results[i];
-          const transcript = result[0]?.transcript ?? "";
-          if (result.isFinal) {
-            if (i >= event.resultIndex) final += transcript;
-          } else {
-            heard += transcript;
-          }
+          recognitionResultsRef.current.set(i, {
+            isFinal: result.isFinal,
+            transcript: result[0]?.transcript ?? "",
+          });
         }
-        updateInterim(heard.trim());
-        if (final.trim()) onTextRef.current(final.trim());
       };
       recognition.onerror = (event) => {
         if (event.error === "aborted") return;
@@ -256,10 +251,33 @@ export function useDictation(onText: (text: string) => void) {
         );
       };
       recognition.onend = () => {
-        const pending = interimRef.current.trim();
-        if (pending) onTextRef.current(pending);
-        updateInterim("");
+        const results = [...recognitionResultsRef.current.entries()]
+          .sort(([a], [b]) => a - b)
+          .map(([, result]) => result.transcript)
+          .join(" ")
+          .trim();
+        if (stopRequestedRef.current && !flushedRef.current) {
+          const transcript = appendDictation(completedTranscriptRef.current, results);
+          if (transcript) onTextRef.current(transcript);
+          flushedRef.current = true;
+          completedTranscriptRef.current = "";
+          recognitionResultsRef.current.clear();
+          stopRequestedRef.current = false;
+          setTranscribing(false);
+        } else if (!stoppingRef.current) {
+          const completed = [...recognitionResultsRef.current.values()]
+            .filter((result) => result.isFinal)
+            .map((result) => result.transcript)
+            .join(" ")
+            .trim();
+          completedTranscriptRef.current = appendDictation(
+            completedTranscriptRef.current,
+            completed,
+          );
+          recognitionResultsRef.current.clear();
+        }
         setListening(false);
+        if (!stopRequestedRef.current) setTranscribing(false);
         if (!stoppingRef.current) {
           try {
             recognition.start();
@@ -285,7 +303,7 @@ export function useDictation(onText: (text: string) => void) {
       setListening(false);
       setError("Couldn't start dictation. Check microphone access and try again.");
     }
-  }, [startRecorded, updateInterim]);
+  }, [startRecorded]);
 
   const stop = useCallback(() => {
     if (modeRef.current === "recorded") {
@@ -293,12 +311,16 @@ export function useDictation(onText: (text: string) => void) {
       return;
     }
     stoppingRef.current = true;
+    stopRequestedRef.current = true;
     recognitionRef.current?.stop();
     setListening(false);
+    setTranscribing(true);
   }, []);
 
   const cancel = useCallback(() => {
     stoppingRef.current = true;
+    stopRequestedRef.current = false;
+    flushedRef.current = true;
     abortRef.current?.abort();
     abortRef.current = null;
     if (recorderRef.current?.state === "recording") {
@@ -309,15 +331,14 @@ export function useDictation(onText: (text: string) => void) {
     chunksRef.current = [];
     releaseStream();
     recognitionRef.current?.abort();
-    updateInterim("");
     setListening(false);
     setTranscribing(false);
-  }, [releaseStream, updateInterim]);
+  }, [releaseStream]);
 
   const toggle = useCallback(() => {
     if (listening) stop();
     else start();
   }, [listening, start, stop]);
 
-  return { supported, listening, transcribing, interim, error, start, stop, cancel, toggle };
+  return { supported, listening, transcribing, error, start, stop, cancel, toggle };
 }
