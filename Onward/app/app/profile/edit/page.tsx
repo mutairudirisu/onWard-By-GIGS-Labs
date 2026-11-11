@@ -121,7 +121,7 @@ export default function EditProfilePage() {
           className="group relative shrink-0 cursor-pointer rounded-full disabled:cursor-wait"
         >
           <Avatar initials={profile.initials} src={photoPreview ?? profile.avatarUrl} size="md" />
-          <span className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-paper bg-lime text-dark shadow-card transition group-hover:bg-lime-deep">
+          <span className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-paper bg-lime text-dark shadow-md transition group-hover:bg-lime-deep">
             {avatarBusy ? (
               <Loader2 className="h-3 w-3 animate-spin" />
             ) : (

@@ -4,6 +4,7 @@ import { AuthGate, AuthProvider } from "@/components/auth";
 import { ChecklistReminderScheduler } from "@/components/checklist-widget";
 import { FeedbackPrompt } from "@/components/feedback-prompt";
 import { NotificationsProvider } from "@/components/notifications";
+import { FocusTimerScheduler } from "@/components/pomodoro-widget";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { Sidebar } from "@/components/sidebar";
 import { StoreProvider } from "@/components/store";
@@ -50,6 +51,7 @@ export default function RootLayout({
               <NotificationsProvider>
                 <ThemeManager />
                 <ChecklistReminderScheduler />
+                <FocusTimerScheduler />
                 <div className="mx-auto flex min-h-dvh w-full max-w-[400px] flex-col bg-cream shadow-lift md:max-w-none md:flex-row md:shadow-none">
                   <Sidebar />
                   <div className="flex min-h-dvh flex-1 flex-col">{children}</div>

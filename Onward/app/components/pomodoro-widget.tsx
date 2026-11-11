@@ -71,7 +71,6 @@ export function PomodoroWidget({ onHide }: { onHide: () => void }) {
   const [now, setNow] = useState(() => Date.now());
   const [menu, setMenu] = useState(false);
   const [tone, setTone] = useAlarmTone(user ? user.id : null);
-  const settled = useRef(false);
 
   const running = timer.endsAt != null;
   const remaining = running
@@ -83,53 +82,6 @@ export function PomodoroWidget({ onHide }: { onHide: () => void }) {
     setNow(Date.now());
     const id = window.setInterval(() => setNow(Date.now()), 250);
     return () => window.clearInterval(id);
-  }, [running]);
-
-  const finish = useCallback(
-    (finished: Mode) => {
-      const nextMode: Mode = finished === "focus" ? "break" : "focus";
-      setTimer((t) => {
-        const day = todayISO();
-        const secs = minutesOf(nextMode, t);
-        return {
-          ...t,
-          mode: nextMode,
-          endsAt: null,
-          remainingSec: secs,
-          blockSec: secs,
-          day,
-          done: (t.day === day ? t.done : 0) + (finished === "focus" ? 1 : 0),
-        };
-      });
-      haptic("success", settings.haptics);
-      playAlarm(tone);
-      toastSuccess(
-        finished === "focus" ? "Focus block done — the break is ready" : "Break over — focus is ready",
-      );
-      emitNotice({
-        kind: "win",
-        title: finished === "focus" ? "Focus block finished" : "Break finished",
-        body:
-          finished === "focus"
-            ? `A ${timer.focusMin} minute block is in the day. Take the ${timer.breakMin} minute break.`
-            : "Break's done. Start the next block when you are ready.",
-        href: "/today",
-      });
-    },
-    [setTimer, settings.haptics, timer.breakMin, timer.focusMin, tone],
-  );
-
-  // A block that reaches zero while you are on another screen still settles the
-  // moment this one paints again, and only once.
-  useEffect(() => {
-    if (!running || remaining > 0) return;
-    if (settled.current) return;
-    settled.current = true;
-    finish(timer.mode);
-  }, [finish, remaining, running, timer.mode]);
-
-  useEffect(() => {
-    if (!running) settled.current = false;
   }, [running]);
 
   function toggleRun() {
@@ -309,7 +261,7 @@ export function PomodoroWidget({ onHide }: { onHide: () => void }) {
         <div className="flex flex-col gap-1">
           {permission === "granted" ? (
             <p className="px-3 py-3 text-[12px] leading-[1.55] text-muted">
-              Alerts are on, so a finished block will ring even with onWard closed.
+              Alerts are enabled. A reminder can appear while your browser allows onWard to run in the background.
             </p>
           ) : permission === "denied" ? (
             <p className="px-3 py-3 text-[12px] leading-[1.55] text-muted">
@@ -328,6 +280,10 @@ export function PomodoroWidget({ onHide }: { onHide: () => void }) {
               Turn on alerts
             </button>
           )}
+          <p className="px-3 pb-2 text-[10px] leading-[1.5] text-muted">
+            This timer is stored on your device. If you fully quit the browser, it cannot fire;
+            reliable closed-app alerts need server-side push.
+          </p>
 
           <div className="mt-1 border-t border-line pt-2">
             <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">
@@ -382,5 +338,121 @@ export function PomodoroWidget({ onHide }: { onHide: () => void }) {
         </div>
       </Modal>
     </section>
+  );
+}
+
+export function FocusTimerScheduler() {
+  const { user } = useAuth();
+  const { settings } = useStore();
+  const [tone] = useAlarmTone(user ? user.id : null);
+  const [timer, setTimer, loaded] = useLocalState<Timer>(
+    user ? `onward.timer.v1:${user.id}` : null,
+    fresh(),
+  );
+  const [now, setNow] = useState(() => Date.now());
+  const [completion, setCompletion] = useState<{ mode: Mode; endedAt: number } | null>(null);
+  const handledEnd = useRef<number | null>(null);
+
+  const running = timer.endsAt != null;
+  const remaining = running
+    ? Math.max(0, Math.round(((timer.endsAt ?? 0) - now) / 1000))
+    : timer.remainingSec;
+
+  useEffect(() => {
+    if (!running) return;
+    const update = () => setNow(Date.now());
+    update();
+    const id = window.setInterval(update, 1000);
+    document.addEventListener("visibilitychange", update);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", update);
+    };
+  }, [running]);
+
+  useEffect(() => {
+    if (!loaded || !running || remaining > 0 || timer.endsAt == null) return;
+    const endedAt = timer.endsAt;
+    if (handledEnd.current === endedAt) return;
+    handledEnd.current = endedAt;
+
+    const finished = timer.mode;
+    const nextMode: Mode = finished === "focus" ? "break" : "focus";
+    const nextSeconds = minutesOf(nextMode, timer);
+    setTimer((current) => {
+      if (current.endsAt !== endedAt) return current;
+      const day = todayISO();
+      return {
+        ...current,
+        mode: nextMode,
+        endsAt: null,
+        remainingSec: nextSeconds,
+        blockSec: nextSeconds,
+        day,
+        done: (current.day === day ? current.done : 0) + (finished === "focus" ? 1 : 0),
+      };
+    });
+    haptic("success", settings.haptics);
+    playAlarm(tone);
+    toastSuccess(
+      finished === "focus" ? "Focus block done — the break is ready" : "Break over — focus is ready",
+    );
+    setCompletion({ mode: finished, endedAt });
+    emitNotice({
+      id: `focus-${endedAt}`,
+      kind: "win",
+      title: finished === "focus" ? "Focus block finished" : "Break finished",
+      body:
+        finished === "focus"
+          ? `A ${timer.focusMin} minute block is done. Take the ${timer.breakMin} minute break.`
+          : "Break's done. Start the next block when you are ready.",
+      href: "/today",
+    });
+  }, [loaded, remaining, running, setTimer, settings.haptics, timer, tone]);
+
+  const dismiss = useCallback(() => {
+    if (completion) {
+      const notificationTag = `focus-${completion.endedAt}`;
+      if ("serviceWorker" in navigator) {
+        void navigator.serviceWorker
+          .getRegistration()
+          .then((registration) =>
+            registration?.getNotifications({ tag: notificationTag }).then((notifications) => {
+              notifications.forEach((notification) => notification.close());
+            }),
+          )
+          .catch((error: unknown) => console.warn("Could not dismiss focus notification", error));
+      }
+    }
+    setCompletion(null);
+  }, [completion]);
+
+  return (
+    <Modal
+      open={completion !== null}
+      onClose={dismiss}
+      title={completion?.mode === "focus" ? "Focus block complete" : "Break complete"}
+    >
+      <div className="flex flex-col items-center px-2 pb-1 pt-3 text-center">
+        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-lime-pale text-lime-deep">
+          <Check className="h-6 w-6" strokeWidth={2.2} />
+        </span>
+        <p className="mt-4 text-[14px] font-semibold text-ink">
+          {completion?.mode === "focus" ? "Nice work. Your break is ready." : "Your break is over."}
+        </p>
+        <p className="mt-1.5 max-w-[260px] text-[11px] leading-[1.55] text-muted">
+          {completion?.mode === "focus"
+            ? `You completed a ${timer.focusMin}-minute focus block. Take a ${timer.breakMin}-minute break when you’re ready.`
+            : "Take a breath, then start your next focus block whenever you’re ready."}
+        </p>
+        <button
+          type="button"
+          onClick={dismiss}
+          className="mt-5 min-h-10 w-full cursor-pointer rounded-full bg-lime px-5 text-[12px] font-bold text-dark transition hover:bg-lime-deep"
+        >
+          Close reminder
+        </button>
+      </div>
+    </Modal>
   );
 }
