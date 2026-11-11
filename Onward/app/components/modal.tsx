@@ -9,12 +9,14 @@ export function Modal({
   title,
   children,
   labelledBy,
+  wide = false,
 }: {
   open: boolean;
   onClose: () => void;
   title?: React.ReactNode;
   children: React.ReactNode;
   labelledBy?: string;
+  wide?: boolean;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -45,7 +47,9 @@ export function Modal({
         onClick={onClose}
       />
       <div
-        className="relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-3xl bg-paper shadow-lift sm:max-w-md"
+        className={`relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-3xl bg-paper shadow-lift ${
+          wide ? "sm:max-w-4xl" : "sm:max-w-md"
+        }`}
         style={{ animation: "onward-sheet 0.22s ease-out" }}
       >
         {title != null ? (

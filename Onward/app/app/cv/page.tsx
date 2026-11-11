@@ -8,6 +8,7 @@ import { CvPreview } from "@/components/cv-preview";
 import { useAuth, useCurrentUser } from "@/components/auth";
 import { useStore } from "@/components/store";
 import { ProBadge, UpgradeModal } from "@/components/pro";
+import { Modal } from "@/components/modal";
 import { toastError, toastSuccess } from "@/components/toast";
 import { useActivity } from "@/lib/activity";
 import { downloadBlob } from "@/lib/download";
@@ -105,6 +106,7 @@ export default function CvPage() {
   const [loadError, setLoadError] = useState(false);
   const [skillDraft, setSkillDraft] = useState("");
   const [upgradeTemplate, setUpgradeTemplate] = useState<CvTemplateId | null>(null);
+  const [previewTemplate, setPreviewTemplate] = useState<CvTemplateId | null>(null);
 
   useEffect(() => {
     if (!userId) {
@@ -313,13 +315,21 @@ export default function CvPage() {
           {CV_TEMPLATE_OPTIONS.map((template) => {
             const selected = activeTemplateId === template.id;
             const locked = template.level === "pro" && !isPro;
-            const colors: Record<CvTemplateId, { band: string; line: string }> = {
-              classic: { band: "bg-[#789b2c]", line: "bg-[#dce7c7]" },
-              modern: { band: "bg-[#21718b]", line: "bg-[#cde2e8]" },
-              executive: { band: "bg-[#172b46]", line: "bg-[#d8e0eb]" },
-              elegant: { band: "bg-[#8a5878]", line: "bg-[#eadde6]" },
+            const colors: Record<CvTemplateId, { band: string; line: string; text: string }> = {
+              classic: { band: "bg-[#789b2c]", line: "bg-[#dce7c7]", text: "text-[#526d20]" },
+              modern: { band: "bg-[#21718b]", line: "bg-[#cde2e8]", text: "text-[#1e647c]" },
+              executive: { band: "bg-[#172b46]", line: "bg-[#d8e0eb]", text: "text-[#28476f]" },
+              elegant: { band: "bg-[#8a5878]", line: "bg-[#eadde6]", text: "text-[#754763]" },
             };
             const style = colors[template.id];
+            const previewHeader =
+              template.id === "executive"
+                ? "bg-[#172b46]"
+                : template.id === "modern"
+                  ? "bg-[#f3f8fa] border-b-2 border-[#21718b]"
+                  : template.id === "elegant"
+                    ? "bg-white border-b border-double border-[#8a5878]"
+                    : "bg-white border-t-[3px] border-[#789b2c]";
             return (
               <article
                 key={template.id}
@@ -328,18 +338,42 @@ export default function CvPage() {
                 }`}
               >
                 <div className="bg-cream p-2.5">
-                  <div className="mx-auto h-[74px] max-w-[116px] overflow-hidden rounded-sm bg-white p-2 shadow-sm">
-                    <div className={`h-3 rounded-sm ${style.band}`} />
-                    <div className={`mt-1.5 h-1 w-2/3 rounded-full ${style.band}`} />
-                    <div className="mt-1 h-1 w-1/2 rounded-full bg-line" />
-                    <div className={`mt-2 h-[2px] w-full ${style.line}`} />
-                    <div className="mt-1.5 space-y-1">
-                      <div className={`h-1 w-1/3 rounded-full ${style.band}`} />
-                      <div className="h-1 w-full rounded-full bg-line" />
-                      <div className="h-1 w-4/5 rounded-full bg-line" />
-                      <div className={`h-[2px] w-full ${style.line}`} />
-                      <div className="h-1 w-3/4 rounded-full bg-line" />
+                  <div className="relative mx-auto h-[126px] max-w-[164px] overflow-hidden rounded-sm bg-white shadow-sm">
+                    <div className={`h-8 px-2.5 pt-2 ${previewHeader}`}>
+                      <div className={`h-1.5 w-2/3 rounded-full ${template.id === "executive" ? "bg-white" : style.band}`} />
+                      <div className={`mt-1 h-1 w-1/2 rounded-full ${template.id === "executive" ? "bg-white/50" : "bg-line"}`} />
                     </div>
+                    <div className="space-y-1.5 px-2.5 py-2">
+                      {["PROFILE", "EXPERIENCE", "SKILLS", "EDUCATION"].map((section) => (
+                        <div key={section}>
+                          <div className={`mb-1 flex items-center gap-1 text-[4px] font-bold tracking-[0.12em] ${
+                            template.id === "elegant" ? "font-serif" : ""
+                          }`}>
+                            {template.id === "classic" || template.id === "modern" ? (
+                              <span className={`h-1.5 w-[2px] rounded-full ${style.band}`} />
+                            ) : null}
+                            <span className={style.text}>
+                              {section}
+                            </span>
+                          </div>
+                          <div className={`h-[2px] w-full ${style.line}`} />
+                          <div className="mt-1 space-y-[3px]">
+                            <div className={`h-[2px] w-full rounded-full ${section === "EXPERIENCE" ? "bg-[#c7c8c0]" : "bg-line"}`} />
+                            <div className="h-[2px] w-4/5 rounded-full bg-line" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewTemplate(template.id)}
+                      aria-label={`Preview ${template.name} CV template`}
+                      className="group absolute inset-0 flex cursor-pointer items-center justify-center bg-ink/0 transition hover:bg-ink/30 focus-visible:bg-ink/30"
+                    >
+                      <span className="rounded-full bg-paper/95 px-2.5 py-1 text-[8px] font-bold text-ink opacity-0 shadow transition hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100">
+                        Preview
+                      </span>
+                    </button>
                   </div>
                 </div>
                 <div className="p-2.5">
@@ -356,36 +390,45 @@ export default function CvPage() {
                   <p className="mt-1 min-h-7 text-[8.5px] leading-[1.4] text-muted">
                     {template.description}
                   </p>
-                  <button
-                    type="button"
-                    aria-pressed={selected}
-                    onClick={() => {
-                      if (locked) {
-                        setUpgradeTemplate(template.id);
-                        return;
-                      }
-                      setDoc((current) => ({ ...current, templateId: template.id }));
-                    }}
-                    className={`mt-2 flex h-8 w-full cursor-pointer items-center justify-center gap-1 rounded-lg px-2 text-[9px] font-bold transition ${
-                      selected
-                        ? "bg-lime-pale text-lime-deep"
-                        : locked
-                          ? "border border-line bg-paper text-inksoft hover:bg-cream"
-                          : "bg-lime text-dark hover:bg-lime-deep"
-                    }`}
-                  >
-                    {selected ? (
-                      <>
-                        <Check className="h-3 w-3" /> In use
-                      </>
-                    ) : locked ? (
-                      <>
-                        <Crown className="h-3 w-3" /> Unlock with Pro
-                      </>
-                    ) : (
-                      "Use template"
-                    )}
-                  </button>
+                  <div className="mt-2 grid grid-cols-[auto_1fr] gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewTemplate(template.id)}
+                      className="flex h-8 cursor-pointer items-center justify-center rounded-lg border border-line px-2 text-[9px] font-bold text-inksoft transition hover:bg-cream"
+                    >
+                      Preview
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => {
+                        if (locked) {
+                          setUpgradeTemplate(template.id);
+                          return;
+                        }
+                        setDoc((current) => ({ ...current, templateId: template.id }));
+                      }}
+                      className={`flex h-8 cursor-pointer items-center justify-center gap-1 rounded-lg px-2 text-[9px] font-bold transition ${
+                        selected
+                          ? "bg-lime-pale text-lime-deep"
+                          : locked
+                            ? "border border-line bg-paper text-inksoft hover:bg-cream"
+                            : "bg-lime text-dark hover:bg-lime-deep"
+                      }`}
+                    >
+                      {selected ? (
+                        <>
+                          <Check className="h-3 w-3" /> In use
+                        </>
+                      ) : locked ? (
+                        <>
+                          <Crown className="h-3 w-3" /> Unlock with Pro
+                        </>
+                      ) : (
+                        "Use template"
+                      )}
+                    </button>
+                  </div>
                 </div>
               </article>
             );
@@ -1102,6 +1145,45 @@ export default function CvPage() {
           </p>
         </aside>
       </div>
+      <Modal
+        open={Boolean(previewTemplate)}
+        onClose={() => setPreviewTemplate(null)}
+        title={`${CV_TEMPLATE_OPTIONS.find((template) => template.id === previewTemplate)?.name ?? "CV"} template preview`}
+        wide
+      >
+        {previewTemplate ? (
+          <div>
+            <p className="mb-3 text-[10px] leading-[1.5] text-muted">
+              Previewing with the details currently entered in your CV. You can apply the template
+              or close this preview to compare another.
+            </p>
+            <div className="max-h-[70vh] overflow-y-auto rounded-xl bg-cream p-2 sm:p-4">
+              <CvPreview cv={cv} template={previewTemplate} />
+            </div>
+            <div className="mt-3 flex justify-end">
+              <Button
+                full={false}
+                className="!w-auto !px-5 !py-2.5 text-[11px]"
+                onClick={() => {
+                  const picked = CV_TEMPLATE_OPTIONS.find((template) => template.id === previewTemplate);
+                  if (picked?.level === "pro" && !isPro) {
+                    setPreviewTemplate(null);
+                    setUpgradeTemplate(picked.id);
+                    return;
+                  }
+                  setDoc((current) => ({ ...current, templateId: previewTemplate }));
+                  setPreviewTemplate(null);
+                }}
+              >
+                {CV_TEMPLATE_OPTIONS.find((template) => template.id === previewTemplate)?.level === "pro" &&
+                !isPro
+                  ? "Unlock with Pro"
+                  : "Use this template"}
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
       <UpgradeModal
         open={Boolean(requestedTemplate)}
         onClose={() => setUpgradeTemplate(null)}
