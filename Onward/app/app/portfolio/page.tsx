@@ -4,7 +4,7 @@ import { PhoneShell } from "@/components/phone-shell";
 import { PortfolioDownloadButton, usePortfolio } from "@/components/portfolio-download";
 import { BackButton, Button, Tag } from "@/components/ui";
 import { Wordmark } from "@/components/wordmark";
-import { FileText, Mail, Sprout } from "lucide-react";
+import { ArrowRight, FileText, Mail, Sprout } from "lucide-react";
 
 export default function EmployerPortfolioPage() {
   const portfolio = usePortfolio();
@@ -159,7 +159,13 @@ export default function EmployerPortfolioPage() {
       <PortfolioDownloadButton portfolio={portfolio} />
 
       <div className="mt-2 border-t border-line pt-3">
-        <Button href="/cv" variant="quiet" full={false} className="-ml-2 text-[11px]">
+        <Button
+          href="/cv"
+          variant="primary"
+          iconLeft={<FileText className="h-4 w-4" />}
+          icon={<ArrowRight className="h-4 w-4" />}
+          className="!justify-between !rounded-xl !px-4 !py-3 text-[11px] shadow-sm"
+        >
           Turn these wins into a CV
         </Button>
       </div>

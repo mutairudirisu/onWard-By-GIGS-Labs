@@ -46,6 +46,7 @@ export type CvDoc = {
   jobs: CvJob[];
   certifications: CvCertification[];
   credentialWardIds: string[];
+  experienceWardIds?: string[];
   skills: string[];
 };
 
@@ -128,6 +129,9 @@ export function normalizeCvDoc(value: unknown): CvDoc {
     credentialWardIds: Array.isArray(value.credentialWardIds)
       ? value.credentialWardIds.filter((id): id is string => typeof id === "string")
       : [],
+    experienceWardIds: Array.isArray(value.experienceWardIds)
+      ? value.experienceWardIds.filter((id): id is string => typeof id === "string")
+      : undefined,
     skills: Array.isArray(value.skills)
       ? value.skills.filter((skill): skill is string => typeof skill === "string")
       : [],
@@ -291,12 +295,15 @@ export function buildCv({ user, onWards, days, doc }: Source): CvModel {
   const byDateDesc = (a: OnWard, b: OnWard) => (b.date ?? "").localeCompare(a.date ?? "");
   const ordered = [...onWards].sort(byDateDesc);
   const pinned = ordered.filter((w) => w.inPortfolio);
-  // Same rule as the portfolio: if nothing is pinned, the whole record is the draft.
+  // Saved CVs without explicit experience picks retain their previous portfolio selection.
   const portfolio = pinned.length ? pinned : ordered;
   const credentialIds = new Set(doc.credentialWardIds);
-  const workWards = portfolio.filter((ward) => !credentialIds.has(ward.id));
+  const experienceIds = new Set(
+    doc.experienceWardIds ?? portfolio.filter((ward) => !credentialIds.has(ward.id)).map((ward) => ward.id),
+  );
+  const workWards = ordered.filter((ward) => experienceIds.has(ward.id));
   const credentialWards = ordered.filter((ward) => credentialIds.has(ward.id));
-  const includedWards = [...new Map([...portfolio, ...credentialWards].map((w) => [w.id, w])).values()];
+  const includedWards = [...new Map([...workWards, ...credentialWards].map((w) => [w.id, w])).values()];
 
   const groups = new Map<string, OnWard[]>();
   for (const ward of workWards) {

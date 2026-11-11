@@ -10,6 +10,7 @@ import { useExchangeBadge } from "@/lib/exchange-badge";
 import {
   BarChart3,
   Bell,
+  FileText,
   Flame,
   GraduationCap,
   Home,
@@ -33,6 +34,7 @@ const PROGRESS = [
   { href: "/leaderboard", label: "Leaderboard", Icon: Trophy },
   { href: "/insights", label: "Insights", Icon: BarChart3 },
   { href: "/student", label: "Student space", Icon: GraduationCap },
+  { href: "/cv", label: "CV Builder", Icon: FileText },
 ];
 
 const AUTH_ROUTES = [

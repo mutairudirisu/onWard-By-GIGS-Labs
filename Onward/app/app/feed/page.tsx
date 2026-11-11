@@ -379,8 +379,8 @@ export default function FeedPage() {
 
   return (
     <PhoneShell tab="feed" wide>
-      <div className="mx-auto w-full max-w-[904px] xl:grid xl:grid-cols-[minmax(0,620px)_minmax(220px,260px)] xl:items-start xl:gap-6">
-      <div className="min-w-0">
+      <div className="mx-auto w-full max-w-[840px] xl:grid xl:grid-cols-[minmax(0,560px)_minmax(220px,240px)] xl:items-start xl:gap-6">
+      <div className="mx-auto min-w-0 lg:max-w-[560px] xl:mx-0">
       <div className="relative mb-3.5 flex items-center">
         <button
           type="button"

@@ -1,11 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent, type RefObject } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type RefObject,
+} from "react";
 import { Mic, Square, X } from "lucide-react";
 import { appendDictation, useDictation } from "@/lib/dictation";
 
 /** Each bar's own gain, so the row reads as a voice and not as one pulsing block. */
 const WEIGHTS = [0.55, 1, 0.72, 0.94, 0.6, 0.86, 0.5];
+const MIN_TEXTAREA_HEIGHT = 84;
+const MAX_TEXTAREA_HEIGHT = 320;
 
 /** Animate the recording strip without opening a second microphone stream. */
 function useVoiceMeter(listening: boolean, strip: RefObject<HTMLDivElement | null>) {
@@ -48,6 +57,7 @@ export function DictateTextArea({
 }) {
   const [focused, setFocused] = useState(false);
   const strip = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const valueRef = useRef(value);
   useEffect(() => {
     valueRef.current = value;
@@ -61,6 +71,18 @@ export function DictateTextArea({
   const displayedValue = interim ? appendDictation(value, interim) : value;
   const active = listening || transcribing;
 
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    const height = Math.min(
+      MAX_TEXTAREA_HEIGHT,
+      Math.max(MIN_TEXTAREA_HEIGHT, textarea.scrollHeight),
+    );
+    textarea.style.height = `${height}px`;
+    textarea.style.overflowY = textarea.scrollHeight > MAX_TEXTAREA_HEIGHT ? "auto" : "hidden";
+  }, [displayedValue, active]);
+
   function handleChange(event: ChangeEvent<HTMLTextAreaElement>) {
     const next = event.target.value;
     valueRef.current = next;
@@ -73,11 +95,12 @@ export function DictateTextArea({
   if (!supported) {
     return (
       <textarea
+        ref={textareaRef}
         value={value}
         onChange={handleChange}
         placeholder={placeholder}
         disabled={disabled}
-        className="field-input block min-h-[84px] resize-none leading-[1.5]"
+        className="field-input block min-h-[84px] resize-none overflow-hidden leading-[1.5]"
       />
     );
   }
@@ -88,15 +111,16 @@ export function DictateTextArea({
           bottom edge rather than in a second strip underneath it. */}
       <div className="relative">
         <textarea
+          ref={textareaRef}
           value={displayedValue}
           onChange={handleChange}
           placeholder={placeholder}
           disabled={disabled}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          className={`field-input block min-h-[84px] resize-none leading-[1.5] ${
+          className={`field-input block min-h-[84px] resize-none overflow-hidden leading-[1.5] ${
             focused && !active ? "pr-11" : ""
-            } ${active ? "pb-[54px]" : ""}`}
+          } ${active ? "pb-[54px]" : ""}`}
         />
 
         {active ? (

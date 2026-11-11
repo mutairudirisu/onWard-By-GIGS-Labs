@@ -58,16 +58,16 @@ function MediaStage({ media, className = "" }: { media: PostMedia[]; className?:
   const [index, setIndex] = useState(0);
   if (!media.length) return null;
   return (
-    <div className={`relative overflow-hidden rounded-2xl bg-ink ${className}`}>
+    <div className={`relative overflow-hidden rounded-2xl bg-ink lg:h-[min(58vh,480px)] lg:bg-cream ${className}`}>
       <div
-        className="wheel flex snap-x snap-mandatory overflow-x-auto"
+        className="wheel flex snap-x snap-mandatory overflow-x-auto lg:h-full"
         onScroll={(e) => {
           const el = e.currentTarget;
           if (el.clientWidth) setIndex(Math.round(el.scrollLeft / el.clientWidth));
         }}
       >
         {media.map((item) => (
-          <div key={item.id} className="aspect-[4/5] w-full shrink-0 snap-center">
+          <div key={item.id} className="aspect-[4/5] w-full shrink-0 snap-center lg:aspect-auto lg:h-full">
             {item.kind === "video" ? (
               <video
                 src={mediaUrl(item.path)}
@@ -81,7 +81,7 @@ function MediaStage({ media, className = "" }: { media: PostMedia[]; className?:
                 src={mediaUrl(item.path)}
                 alt=""
                 loading="lazy"
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover lg:object-contain"
               />
             )}
           </div>

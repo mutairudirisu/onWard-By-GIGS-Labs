@@ -329,13 +329,21 @@ export default function LogOnWardPage() {
 
         <div className="grid grid-cols-2 gap-3">
           <Field label="Date completed">
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value || todayISO())}
-              aria-label="Date completed"
-              className="field-input pr-12"
-            />
+            <div className="relative">
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                aria-label="Date completed"
+                placeholder="MM/DD/YYYY"
+                className={`field-input pr-12 ${date ? "" : "text-transparent"}`}
+              />
+              {!date ? (
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[11px] text-faint">
+                  MM/DD/YYYY
+                </span>
+              ) : null}
+            </div>
           </Field>
           <Field label="Project">
             <TextInput value={project} onChange={(e) => setProject(e.target.value)} placeholder="e.g. Atlas" />
@@ -449,22 +457,24 @@ export default function LogOnWardPage() {
               <input
                 ref={fileRef}
                 type="file"
+                multiple
                 accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,image/jpeg,image/png,image/webp,image/gif"
                 hidden
                 onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) void addFileLike(f);
+                  const files = Array.from(e.target.files ?? []);
+                  if (files.length) void Promise.all(files.map(addFileLike));
                   e.target.value = "";
                 }}
               />
               <input
                 ref={imageRef}
                 type="file"
+                multiple
                 accept="image/jpeg,image/png,image/webp,image/gif"
                 hidden
                 onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) void addFileLike(f);
+                  const files = Array.from(e.target.files ?? []);
+                  if (files.length) void Promise.all(files.map(addFileLike));
                   e.target.value = "";
                 }}
               />
@@ -526,7 +536,7 @@ export default function LogOnWardPage() {
           ) : null}
           {uploadingEvidence ? (
             <p role="status" className="mt-2 text-[10px] font-semibold text-muted">
-              Uploading attachment…
+              Uploading {pendingUploadCount} attachment{pendingUploadCount === 1 ? "" : "s"}…
             </p>
           ) : null}
 

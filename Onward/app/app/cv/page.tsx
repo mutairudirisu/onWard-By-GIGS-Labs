@@ -47,6 +47,35 @@ function monthPeriod(start: string, end: string) {
   return `${format(start)} - ${end ? format(end) : "Present"}`;
 }
 
+function MonthInput({
+  value,
+  placeholder,
+  "aria-label": ariaLabel,
+  onChange,
+}: {
+  value: string;
+  placeholder: string;
+  "aria-label": string;
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <div className="relative min-w-0">
+      <TextInput
+        type="month"
+        value={value}
+        onChange={onChange}
+        aria-label={ariaLabel}
+        className={!value ? "text-transparent" : ""}
+      />
+      {!value ? (
+        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[11px] text-faint">
+          {placeholder}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export default function CvPage() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
@@ -130,11 +159,17 @@ export default function CvPage() {
     }));
 
   const portfolioWards = onWards.filter((ward) => ward.inPortfolio);
-  const workSource = portfolioWards.length ? portfolioWards : onWards;
+  const defaultExperienceSource = portfolioWards.length ? portfolioWards : onWards;
   const credentialIds = new Set(doc.credentialWardIds);
+  const experienceWardIds =
+    doc.experienceWardIds ??
+    defaultExperienceSource
+      .filter((ward) => !credentialIds.has(ward.id))
+      .map((ward) => ward.id);
+  const selectedExperienceIds = new Set(experienceWardIds);
+  const workSource = onWards.filter((ward) => selectedExperienceIds.has(ward.id));
   const workGroups = new Map<string, typeof onWards>();
   for (const ward of workSource) {
-    if (credentialIds.has(ward.id)) continue;
     const project = ward.project?.trim() || "Independent work";
     const group = workGroups.get(project) ?? [];
     group.push(ward);
@@ -172,6 +207,23 @@ export default function CvPage() {
         ? current.credentialWardIds.filter((wardId) => wardId !== id)
         : [...current.credentialWardIds, id],
     }));
+  }
+
+  function toggleExperienceWard(id: string) {
+    setDoc((current) => {
+      const currentCredentialIds = new Set(current.credentialWardIds);
+      const currentSelected =
+        current.experienceWardIds ??
+        defaultExperienceSource
+          .filter((ward) => !currentCredentialIds.has(ward.id))
+          .map((ward) => ward.id);
+      return {
+        ...current,
+        experienceWardIds: currentSelected.includes(id)
+          ? currentSelected.filter((wardId) => wardId !== id)
+          : [...currentSelected, id],
+      };
+    });
   }
 
   return (
@@ -342,8 +394,44 @@ export default function CvPage() {
           <section className="card px-4 py-4">
             <SectionHeading
               title="Experience from your onWards"
-              hint="Pin work to your portfolio to choose what appears here. If none are pinned, your log is used. Entries remain unchanged."
+              hint="Choose the onWards to include. Selected entries are grouped by project; add other roles below."
             />
+            {onWards.length ? (
+              <fieldset className="mb-4">
+                <legend className="mb-2 text-[10px] font-semibold text-ink">
+                  Select onWards for your experience
+                </legend>
+                <div className="max-h-52 space-y-1 overflow-y-auto rounded-xl bg-cream p-2">
+                  {onWards.map((ward) => (
+                    <label
+                      key={ward.id}
+                      className="flex cursor-pointer items-start gap-2.5 rounded-lg px-2 py-2 hover:bg-paper"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedExperienceIds.has(ward.id)}
+                        onChange={() => toggleExperienceWard(ward.id)}
+                        className="mt-0.5 accent-[var(--lime-deep)]"
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-[10px] font-semibold text-ink [overflow-wrap:anywhere]">
+                          {ward.title}
+                        </span>
+                        <span className="block text-[9px] text-muted">
+                          {[ward.project || "Independent work", ward.dateLabel]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            ) : (
+              <p className="mb-3 rounded-xl bg-cream px-3 py-3 text-[10px] leading-[1.6] text-muted">
+                Log an onWard to select it here, or add other work experience below.
+              </p>
+            )}
             {workGroups.size ? (
               <div className="space-y-4">
                 {[...workGroups.entries()].map(([project, wards]) => {
@@ -377,17 +465,17 @@ export default function CvPage() {
                           maxLength={60}
                         />
                         <div className="grid grid-cols-2 gap-2">
-                          <TextInput
-                            type="month"
+                          <MonthInput
                             value={span?.start ?? ""}
+                            placeholder="Start date"
                             onChange={(event) =>
                               setSpan(project, { start: event.target.value })
                             }
                             aria-label={`${project} start date`}
                           />
-                          <TextInput
-                            type="month"
+                          <MonthInput
                             value={span?.end ?? ""}
+                            placeholder="End date"
                             onChange={(event) =>
                               setSpan(project, { end: event.target.value })
                             }
@@ -404,7 +492,7 @@ export default function CvPage() {
               </div>
             ) : (
               <p className="rounded-xl bg-cream px-3 py-3 text-[10px] leading-[1.6] text-muted">
-                Pin onWards to your portfolio to include them here, or add your work history below.
+                Select onWards above to include them here, or add other work experience below.
               </p>
             )}
           </section>
@@ -482,15 +570,15 @@ export default function CvPage() {
                         maxLength={80}
                       />
                       <div className="grid grid-cols-2 gap-2">
-                        <TextInput
-                          type="month"
+                        <MonthInput
                           value={job.start}
+                          placeholder="Start date"
                           onChange={(event) => setJob(job.id, { start: event.target.value })}
                           aria-label={`Role ${index + 1} start date`}
                         />
-                        <TextInput
-                          type="month"
+                        <MonthInput
                           value={job.end}
+                          placeholder="End date"
                           onChange={(event) => setJob(job.id, { end: event.target.value })}
                           aria-label={`Role ${index + 1} end date`}
                         />
@@ -683,9 +771,9 @@ export default function CvPage() {
                         aria-label={`Credential ${index + 1} issuer`}
                         maxLength={100}
                       />
-                      <TextInput
-                        type="month"
+                      <MonthInput
                         value={item.date}
+                        placeholder="Month"
                         onChange={(event) =>
                           setCertification(item.id, { date: event.target.value })
                         }
@@ -781,15 +869,15 @@ export default function CvPage() {
                         maxLength={100}
                       />
                       <div className="grid grid-cols-2 gap-2">
-                        <TextInput
-                          type="month"
+                        <MonthInput
                           value={item.start}
+                          placeholder="Start date"
                           onChange={(event) => setEducation(index, { start: event.target.value })}
                           aria-label={`Education ${index + 1} start date`}
                         />
-                        <TextInput
-                          type="month"
+                        <MonthInput
                           value={item.end}
+                          placeholder="End date"
                           onChange={(event) => setEducation(index, { end: event.target.value })}
                           aria-label={`Education ${index + 1} end date`}
                         />
