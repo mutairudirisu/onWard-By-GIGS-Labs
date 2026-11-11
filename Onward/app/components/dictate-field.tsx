@@ -7,94 +7,22 @@ import { appendDictation, useDictation } from "@/lib/dictation";
 /** Each bar's own gain, so the row reads as a voice and not as one pulsing block. */
 const WEIGHTS = [0.55, 1, 0.72, 0.94, 0.6, 0.86, 0.5];
 
-/**
- * How loud you are, written straight onto the strip as `--lv` sixty times a second.
- * It never goes through React state because a re-render per frame would make the very
- * typing you are doing while it runs stutter.
- */
+/** Animate the recording strip without opening a second microphone stream. */
 function useVoiceMeter(listening: boolean, strip: RefObject<HTMLDivElement | null>) {
   useEffect(() => {
     if (!listening) return;
 
     let frame = 0;
-    let closed: (() => void) | null = null;
-    let done = false;
-
-    const write = (level: number) => {
+    const from = performance.now();
+    const tick = () => {
+      const t = (performance.now() - from) / 1000;
+      const level = 0.34 + 0.26 * Math.sin(t * 3.1) + 0.12 * Math.sin(t * 7.9);
       strip.current?.style.setProperty("--lv", level.toFixed(3));
+      frame = requestAnimationFrame(tick);
     };
-
-    const stop = () => {
-      cancelAnimationFrame(frame);
-      closed?.();
-      closed = null;
-    };
-
-    const media = navigator.mediaDevices;
-    if (!media?.getUserMedia) {
-      // No way to hear the level: keep the row moving so it still says "recording".
-      const from = performance.now();
-      const tick = () => {
-        const t = (performance.now() - from) / 1000;
-        write(0.34 + 0.26 * Math.sin(t * 3.1) + 0.12 * Math.sin(t * 7.9));
-        frame = requestAnimationFrame(tick);
-      };
-      tick();
-      return stop;
-    }
-
-    media
-      .getUserMedia({ audio: true })
-      .then((stream) => {
-        if (done) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-        const AudioCtor = window.AudioContext;
-        if (!AudioCtor) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-        const context = new AudioCtor();
-        const analyser = context.createAnalyser();
-        analyser.fftSize = 512;
-        context.createMediaStreamSource(stream).connect(analyser);
-        const samples = new Uint8Array(analyser.fftSize);
-
-        closed = () => {
-          stream.getTracks().forEach((track) => track.stop());
-          void context.close();
-        };
-
-        const tick = () => {
-          analyser.getByteTimeDomainData(samples);
-          let sum = 0;
-          for (const sample of samples) {
-            const offset = (sample - 128) / 128;
-            sum += offset * offset;
-          }
-          // Room tone sits near 0.02; the gain and the floor keep a quiet room from
-          // looking dead while a normal voice still fills the row.
-          const rms = Math.sqrt(sum / samples.length);
-          write(Math.min(1, 0.08 + rms * 4.5));
-          frame = requestAnimationFrame(tick);
-        };
-        tick();
-      })
-      .catch(() => {
-        if (done) return;
-        const from = performance.now();
-        const tick = () => {
-          const t = (performance.now() - from) / 1000;
-          write(0.3 + 0.24 * Math.sin(t * 3.1));
-          frame = requestAnimationFrame(tick);
-        };
-        tick();
-      });
-
+    tick();
     return () => {
-      done = true;
-      stop();
+      cancelAnimationFrame(frame);
     };
   }, [listening, strip]);
 }
@@ -130,7 +58,7 @@ export function DictateTextArea({
     valueRef.current = next;
     onChange(next);
   });
-  const displayedValue = listening && interim ? appendDictation(value, interim) : value;
+  const displayedValue = interim ? appendDictation(value, interim) : value;
 
   function handleChange(event: ChangeEvent<HTMLTextAreaElement>) {
     const next = event.target.value;

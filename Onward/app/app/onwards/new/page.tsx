@@ -249,7 +249,7 @@ export default function LogOnWardPage() {
               value={date}
               onChange={(e) => setDate(e.target.value || todayISO())}
               aria-label="Date completed"
-              className="field-input pr-10"
+              className="field-input pr-12"
             />
           </Field>
           <Field label="Project">

@@ -50,6 +50,12 @@ export function useDictation(onText: (text: string) => void) {
   onTextRef.current = onText;
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const stoppingRef = useRef(false);
+  const interimRef = useRef("");
+
+  const updateInterim = (text: string) => {
+    interimRef.current = text;
+    setInterim(text);
+  };
 
   useEffect(() => {
     setSupported(Boolean(recognitionCtor()));
@@ -82,10 +88,9 @@ export function useDictation(onText: (text: string) => void) {
           if (result.isFinal) final += transcript;
           else heard += transcript;
         }
-        setInterim(heard.trim());
+        updateInterim(heard.trim());
         const clean = final.trim();
         if (clean) {
-          setInterim("");
           onTextRef.current(clean);
         }
       };
@@ -102,14 +107,17 @@ export function useDictation(onText: (text: string) => void) {
       // Chrome ends the session after a pause even in continuous mode; restart
       // it while the user still has dictation switched on.
       recognition.onend = () => {
+        const pending = interimRef.current.trim();
+        if (pending) onTextRef.current(pending);
+        updateInterim("");
         setListening(false);
-        setInterim("");
         if (!stoppingRef.current) {
           try {
             recognition.start();
             setListening(true);
           } catch {
-            /* engine refused to resume — user can tap again */
+            stoppingRef.current = true;
+            setError("Dictation stopped. Tap the mic to try again.");
           }
         }
       };
@@ -119,8 +127,14 @@ export function useDictation(onText: (text: string) => void) {
     try {
       recognitionRef.current.start();
       setListening(true);
-    } catch {
-      /* already running */
+    } catch (startError) {
+      if (startError instanceof DOMException && startError.name === "InvalidStateError") {
+        setListening(true);
+        return;
+      }
+      stoppingRef.current = true;
+      setListening(false);
+      setError("Couldn't start dictation. Check microphone access and try again.");
     }
   }, []);
 
@@ -128,7 +142,6 @@ export function useDictation(onText: (text: string) => void) {
     stoppingRef.current = true;
     recognitionRef.current?.stop();
     setListening(false);
-    setInterim("");
   }, []);
 
   const toggle = useCallback(() => {
