@@ -1,29 +1,57 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { BellRing, Check, EyeOff, Minus, MoreHorizontal, Music2, Pause, Play, Plus, RotateCcw } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  BellRing,
+  CalendarPlus,
+  Check,
+  EyeOff,
+  Minus,
+  MoreHorizontal,
+  Music2,
+  Pause,
+  Play,
+  Plus,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
 import { useAuth } from "@/components/auth";
 import { Modal } from "@/components/modal";
 import { useNotifications } from "@/components/notifications";
 import { useStore } from "@/components/store";
-import { toastSuccess } from "@/components/toast";
+import { toastError, toastSuccess } from "@/components/toast";
 import { todayISO } from "@/lib/dates";
 import { ALARM_TONES, playAlarm, primeAlarm, useAlarmTone } from "@/lib/alarm";
 import { useLocalState } from "@/lib/local-state";
+import { cancelPushNotification, registerPushSubscription, schedulePushNotification } from "@/lib/push-client";
 import { haptic } from "@/lib/haptics";
 import { emitNotice } from "@/lib/notices";
+import { uuid } from "@/lib/db";
 
 /**
  * The pomodoro block from a phone's home screen, living inside the app so a focus
- * session does not need another app. Nothing here goes to the server: the block is
- * a clock, and the clock is kept as the time it ends at, so a reload or a locked
- * phone does not quietly hand minutes back.
+ * session does not need another app. The running block stays on this device and is
+ * kept as the time it ends at; scheduled starts are also registered with push so
+ * they can arrive when the app is closed.
  */
 
 const FOCUS = { min: 5, max: 60, step: 5 };
 const BREAK = { min: 1, max: 15, step: 1 };
 
 type Mode = "focus" | "break";
+type ScheduledFocus = {
+  id: string;
+  title: string;
+  scheduledAt: string;
+  durationMinutes: number;
+  backgroundPush?: boolean;
+};
+
+function localDateTimeValue(date: Date) {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 16);
+}
 
 type Timer = {
   mode: Mode;
@@ -63,7 +91,7 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 export function PomodoroWidget({ onHide }: { onHide: () => void }) {
   const { user } = useAuth();
   const { settings } = useStore();
-  const { permission, enableAlerts } = useNotifications();
+  const { permission, enableAlerts, pushReady, pushError } = useNotifications();
   const [timer, setTimer] = useLocalState<Timer>(
     user ? `onward.timer.v1:${user.id}` : null,
     fresh(),
@@ -71,6 +99,16 @@ export function PomodoroWidget({ onHide }: { onHide: () => void }) {
   const [now, setNow] = useState(() => Date.now());
   const [menu, setMenu] = useState(false);
   const [tone, setTone] = useAlarmTone(user ? user.id : null);
+  const [scheduledFocus, setScheduledFocus, schedulesLoaded] = useLocalState<ScheduledFocus[]>(
+    user ? `onward.focus-schedules.v1:${user.id}` : null,
+    [],
+  );
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduleTitle, setScheduleTitle] = useState("Focus session");
+  const [scheduleAt, setScheduleAt] = useState(() =>
+    localDateTimeValue(new Date(Date.now() + 60 * 60 * 1000)),
+  );
+  const [scheduleDuration, setScheduleDuration] = useState(25);
 
   const running = timer.endsAt != null;
   const remaining = running
@@ -140,6 +178,71 @@ export function PomodoroWidget({ onHide }: { onHide: () => void }) {
       return { ...t, endsAt: null, remainingSec: secs, blockSec: secs };
     });
     setMenu(false);
+  }
+
+  async function saveFocusSchedule(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const timestamp = new Date(scheduleAt).getTime();
+    const title = scheduleTitle.trim();
+    if (!title || !Number.isFinite(timestamp) || timestamp <= Date.now()) {
+      toastError("Enter a title and choose a future start time.");
+      return;
+    }
+
+    const schedule: ScheduledFocus = {
+      id: uuid(),
+      title: title.slice(0, 80),
+      scheduledAt: new Date(timestamp).toISOString(),
+      durationMinutes: scheduleDuration,
+    };
+    setScheduledFocus((current) => [...current, schedule]);
+    setScheduleOpen(false);
+    setMenu(false);
+
+    try {
+      if (!settings.notifications) {
+        throw new Error("Turn on Push notifications in Settings to receive this while the app is closed.");
+      }
+      if (permission !== "granted") {
+        const nextPermission = await enableAlerts();
+        if (nextPermission !== "granted") {
+          throw new Error("Allow notifications in your browser to receive this while the app is closed.");
+        }
+      }
+      await registerPushSubscription();
+      await schedulePushNotification({
+        kind: "focus",
+        eventId: schedule.id,
+        scheduledAt: schedule.scheduledAt,
+        title: "Focus session begins",
+        body: `${schedule.title} · ${schedule.durationMinutes} minute focus session`,
+        href: "/today",
+        data: {
+          scheduleId: schedule.id,
+          focusTitle: schedule.title,
+          durationMinutes: schedule.durationMinutes,
+        },
+      });
+      setScheduledFocus((current) =>
+        current.map((entry) =>
+          entry.id === schedule.id ? { ...entry, backgroundPush: true } : entry,
+        ),
+      );
+      toastSuccess("Focus session scheduled");
+    } catch (error) {
+      toastError(
+        `Saved on this device only. ${error instanceof Error ? error.message : "Background push could not be scheduled."}`,
+      );
+    }
+  }
+
+  function removeFocusSchedule(schedule: ScheduledFocus) {
+    setScheduledFocus((current) => current.filter((entry) => entry.id !== schedule.id));
+    if (schedule.backgroundPush) {
+      void cancelPushNotification("focus", schedule.id).catch((error: unknown) =>
+        toastError(error instanceof Error ? error.message : "Could not cancel the scheduled notification."),
+      );
+    }
   }
 
   const fraction = timer.blockSec > 0 ? clamp(remaining / timer.blockSec, 0, 1) : 0;
@@ -259,13 +362,15 @@ export function PomodoroWidget({ onHide }: { onHide: () => void }) {
 
       <Modal open={menu} onClose={() => setMenu(false)} title="Focus timer">
         <div className="flex flex-col gap-1">
-          {permission === "granted" ? (
+          {pushReady ? (
             <p className="px-3 py-3 text-[12px] leading-[1.55] text-muted">
-              Alerts are enabled. A reminder can appear while your browser allows onWard to run in the background.
+              Background push is enabled on this device.
             </p>
+          ) : pushError ? (
+            <p className="px-3 py-3 text-[12px] leading-[1.55] text-muted">{pushError}</p>
           ) : permission === "denied" ? (
             <p className="px-3 py-3 text-[12px] leading-[1.55] text-muted">
-              This browser has alerts blocked for onWard, so a finished block only shows here.
+              This browser blocks notifications. Focus sessions can still be scheduled for when the app is open.
             </p>
           ) : (
             <button
@@ -280,10 +385,45 @@ export function PomodoroWidget({ onHide }: { onHide: () => void }) {
               Turn on alerts
             </button>
           )}
-          <p className="px-3 pb-2 text-[10px] leading-[1.5] text-muted">
-            This timer is stored on your device. If you fully quit the browser, it cannot fire;
-            reliable closed-app alerts need server-side push.
-          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setMenu(false);
+              setScheduleOpen(true);
+            }}
+            className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-left text-[12.5px] font-semibold text-ink transition hover:bg-cream"
+          >
+            <CalendarPlus className="h-4 w-4 shrink-0 text-inksoft" strokeWidth={2} />
+            Schedule a focus session
+          </button>
+          {schedulesLoaded && scheduledFocus.length ? (
+            <div className="px-3 pb-2">
+              <p className="pb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">
+                Upcoming sessions
+              </p>
+              {scheduledFocus
+                .slice()
+                .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))
+                .map((schedule) => (
+                  <div key={schedule.id} className="flex items-center gap-2 py-1.5">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[11px] font-semibold text-ink">{schedule.title}</span>
+                      <span className="block text-[10px] text-muted">
+                        {new Date(schedule.scheduledAt).toLocaleString()} · {schedule.durationMinutes} min
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      aria-label={`Cancel ${schedule.title}`}
+                      onClick={() => removeFocusSchedule(schedule)}
+                      className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted hover:bg-cream hover:text-ink"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+            </div>
+          ) : null}
 
           <div className="mt-1 border-t border-line pt-2">
             <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">
@@ -337,6 +477,52 @@ export function PomodoroWidget({ onHide }: { onHide: () => void }) {
           </button>
         </div>
       </Modal>
+      <Modal open={scheduleOpen} onClose={() => setScheduleOpen(false)} title="Schedule a focus session">
+        <form className="space-y-3" onSubmit={(event) => void saveFocusSchedule(event)}>
+          <label className="block">
+            <span className="label">Session title</span>
+            <input
+              value={scheduleTitle}
+              onChange={(event) => setScheduleTitle(event.target.value)}
+              maxLength={80}
+              required
+              className="field-input"
+            />
+          </label>
+          <label className="block">
+            <span className="label">Start time</span>
+            <input
+              type="datetime-local"
+              value={scheduleAt}
+              min={localDateTimeValue(new Date())}
+              onChange={(event) => setScheduleAt(event.target.value)}
+              required
+              className="field-input"
+            />
+          </label>
+          <label className="block">
+            <span className="label">Duration</span>
+            <select
+              value={scheduleDuration}
+              onChange={(event) => setScheduleDuration(Number(event.target.value))}
+              className="field-input"
+            >
+              {[5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60].map((minutes) => (
+                <option key={minutes} value={minutes}>{minutes} minutes</option>
+              ))}
+            </select>
+          </label>
+          <p className="text-[10px] leading-[1.5] text-muted">
+            Push notifications alert you at the scheduled time. Tap Start focus to begin the timer.
+          </p>
+          <button
+            type="submit"
+            className="w-full cursor-pointer rounded-btn bg-lime px-4 py-3 text-[12px] font-bold text-dark transition hover:bg-lime-deep"
+          >
+            Schedule session
+          </button>
+        </form>
+      </Modal>
     </section>
   );
 }
@@ -349,14 +535,112 @@ export function FocusTimerScheduler() {
     user ? `onward.timer.v1:${user.id}` : null,
     fresh(),
   );
+  const [scheduledFocus, setScheduledFocus, schedulesLoaded] = useLocalState<ScheduledFocus[]>(
+    user ? `onward.focus-schedules.v1:${user.id}` : null,
+    [],
+  );
   const [now, setNow] = useState(() => Date.now());
   const [completion, setCompletion] = useState<{ mode: Mode; endedAt: number } | null>(null);
   const handledEnd = useRef<number | null>(null);
+  const handledStarts = useRef(new Set<string>());
 
   const running = timer.endsAt != null;
   const remaining = running
     ? Math.max(0, Math.round(((timer.endsAt ?? 0) - now) / 1000))
     : timer.remainingSec;
+
+  const startScheduledFocus = useCallback(
+    (scheduleId: string, durationMinutes: number) => {
+      if (
+        handledStarts.current.has(scheduleId) ||
+        !Number.isInteger(durationMinutes) ||
+        durationMinutes < FOCUS.min ||
+        durationMinutes > FOCUS.max
+      ) {
+        return;
+      }
+      handledStarts.current.add(scheduleId);
+      const durationSec = durationMinutes * 60;
+      setTimer((current) => ({
+        ...current,
+        mode: "focus",
+        focusMin: durationMinutes,
+        remainingSec: durationSec,
+        blockSec: durationSec,
+        endsAt: Date.now() + durationSec * 1000,
+        day: todayISO(),
+      }));
+      setScheduledFocus((current) => current.filter((entry) => entry.id !== scheduleId));
+    },
+    [setScheduledFocus, setTimer],
+  );
+
+  useEffect(() => {
+    if (!loaded || !schedulesLoaded) return;
+    const params = new URLSearchParams(window.location.search);
+    const scheduleId = params.get("focusSchedule");
+    const shouldStart = params.get("startFocus") === "1";
+    if (!scheduleId) return;
+
+    if (shouldStart) {
+      startScheduledFocus(scheduleId, Number(params.get("duration")));
+    } else {
+      setScheduledFocus((current) => current.filter((entry) => entry.id !== scheduleId));
+    }
+
+    params.delete("focusSchedule");
+    params.delete("startFocus");
+    params.delete("duration");
+    params.delete("title");
+    params.delete("focusEventId");
+    const query = params.toString();
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`,
+    );
+  }, [loaded, schedulesLoaded, setScheduledFocus, startScheduledFocus]);
+
+  useEffect(() => {
+    const onMessage = (event: MessageEvent<{
+      type?: string;
+      scheduleId?: string;
+      durationMinutes?: number;
+    }>) => {
+      const message = event.data;
+      if (message?.type !== "START_FOCUS" || !message.scheduleId) return;
+      startScheduledFocus(message.scheduleId, Number(message.durationMinutes));
+    };
+    navigator.serviceWorker?.addEventListener("message", onMessage);
+    return () => navigator.serviceWorker?.removeEventListener("message", onMessage);
+  }, [startScheduledFocus]);
+
+  useEffect(() => {
+    if (!loaded || !schedulesLoaded || !scheduledFocus.length) return;
+    const due = scheduledFocus.filter((entry) => Date.parse(entry.scheduledAt) <= now);
+    for (const entry of due) {
+      if (handledStarts.current.has(entry.id)) continue;
+      const isRecent = now - Date.parse(entry.scheduledAt) < 30 * 60 * 1000;
+      if (isRecent) {
+        startScheduledFocus(entry.id, entry.durationMinutes);
+        emitNotice({
+          id: `focus:${user?.id}:${entry.id}`,
+          kind: "win",
+          title: "Focus session begins",
+          body: `${entry.title} · ${entry.durationMinutes} minute focus session`,
+          href: "/today",
+        });
+      } else {
+        handledStarts.current.add(entry.id);
+        setScheduledFocus((current) => current.filter((schedule) => schedule.id !== entry.id));
+      }
+      if (entry.backgroundPush) {
+        void cancelPushNotification("focus", entry.id).catch((error: unknown) =>
+          console.error("Could not clear due focus push schedule", error),
+        );
+      }
+    }
+  }, [loaded, now, scheduledFocus, schedulesLoaded, setScheduledFocus, startScheduledFocus, user?.id]);
 
   useEffect(() => {
     if (!running) return;
@@ -369,6 +653,17 @@ export function FocusTimerScheduler() {
       document.removeEventListener("visibilitychange", update);
     };
   }, [running]);
+
+  useEffect(() => {
+    if (!scheduledFocus.length) return;
+    const update = () => setNow(Date.now());
+    const id = window.setInterval(update, 1000);
+    document.addEventListener("visibilitychange", update);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", update);
+    };
+  }, [scheduledFocus.length]);
 
   useEffect(() => {
     if (!loaded || !running || remaining > 0 || timer.endsAt == null) return;

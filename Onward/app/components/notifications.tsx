@@ -14,6 +14,7 @@ import { useStore } from "./store";
 import { useActivity } from "@/lib/activity";
 import { toISO } from "@/lib/dates";
 import { NOTICE_EVENT, type AppNotice, type NoticeInput } from "@/lib/notices";
+import { registerPushSubscription } from "@/lib/push-client";
 
 const FEED_KEY = "onward.notices.v1";
 const READ_KEY = "onward.notices.read.v1";
@@ -29,6 +30,8 @@ type NotificationsValue = {
   ready: boolean;
   permission: AlertPermission;
   alertsOn: boolean;
+  pushReady: boolean;
+  pushError: string | null;
   markRead: (id: string) => void;
   markAllRead: () => void;
   enableAlerts: () => Promise<AlertPermission>;
@@ -105,6 +108,8 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   const [readIds, setReadIds] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
   const [permission, setPermission] = useState<AlertPermission>("unsupported");
+  const [pushReady, setPushReady] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
 
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
@@ -137,6 +142,31 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     setPermission(currentPermission());
     permissionRef.current = currentPermission();
   }, []);
+
+  useEffect(() => {
+    if (!userId || !settings.notifications || permission !== "granted") {
+      setPushReady(false);
+      return;
+    }
+
+    let active = true;
+    void registerPushSubscription()
+      .then(() => {
+        if (!active) return;
+        setPushReady(true);
+        setPushError(null);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setPushReady(false);
+        setPushError(
+          error instanceof Error ? error.message : "Could not enable background push notifications.",
+        );
+      });
+    return () => {
+      active = false;
+    };
+  }, [permission, settings.notifications, userId]);
 
   useEffect(() => {
     if (!userId) {
@@ -244,15 +274,31 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       permissionRef.current = "unsupported";
       return "unsupported" as AlertPermission;
     }
-    const next = (await Notification.requestPermission()) as AlertPermission;
+    let next: AlertPermission;
+    try {
+      next = (await Notification.requestPermission()) as AlertPermission;
+    } catch {
+      next = currentPermission();
+      setPushError("Could not request notification permission. Check your browser settings.");
+    }
     setPermission(next);
     permissionRef.current = next;
     if (next === "granted") {
+      try {
+        await registerPushSubscription();
+        setPushReady(true);
+        setPushError(null);
+      } catch (error) {
+        setPushReady(false);
+        setPushError(
+          error instanceof Error ? error.message : "Could not enable background push notifications.",
+        );
+      }
       showAlert({
         id: `test-${uid()}`,
         kind: "welcome",
         title: "Alerts are on",
-        body: "onWard will buzz here when something lands in the Exchange.",
+        body: "onWard can send reminders to this device.",
       });
     }
     return next;
@@ -266,11 +312,25 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       ready,
       permission,
       alertsOn: permission === "granted" && settings.notifications,
+      pushReady,
+      pushError,
       markRead,
       markAllRead,
       enableAlerts,
     }),
-    [items, unread, unreadIds, ready, permission, settings.notifications, markRead, markAllRead, enableAlerts],
+    [
+      items,
+      unread,
+      unreadIds,
+      ready,
+      permission,
+      settings.notifications,
+      pushReady,
+      pushError,
+      markRead,
+      markAllRead,
+      enableAlerts,
+    ],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

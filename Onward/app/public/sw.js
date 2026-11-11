@@ -61,21 +61,75 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
+// Push payloads are delivered by the server while the PWA is closed.
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    payload = { title: "onWard reminder", body: "You have a reminder." };
+  }
+  const kind = payload.kind;
+  const options = {
+    body: payload.body || "You have a reminder.",
+    icon: "/icons/icon-512.png",
+    badge: "/icons/icon-maskable.svg",
+    tag: payload.tag || `onward-${Date.now()}`,
+    renotify: false,
+    data: {
+      href: payload.href || "/today",
+      kind,
+      title: payload.focusTitle,
+      durationMinutes: payload.durationMinutes,
+      scheduledAt: payload.scheduledAt,
+      scheduleId: payload.scheduleId,
+      tag: payload.tag,
+    },
+  };
+  const scheduledAt = Date.parse(payload.scheduledAt || "");
+  const startIsCurrent =
+    !Number.isFinite(scheduledAt) || Date.now() - scheduledAt < 30 * 60 * 1000;
+  if (kind === "focus" && startIsCurrent) {
+    options.actions = [{ action: "start", title: "Start focus" }];
+  }
+  event.waitUntil(self.registration.showNotification(payload.title || "onWard reminder", options));
+});
+
 // Tapping an alert opens the screen it came from.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const href = (event.notification.data && event.notification.data.href) || "/today";
+  const data = event.notification.data || {};
+  const startFocus = event.action === "start" && data.kind === "focus";
+  const scheduledAt = Date.parse(data.scheduledAt || "");
+  const mayStart = startFocus && (!Number.isFinite(scheduledAt) || Date.now() - scheduledAt < 30 * 60 * 1000);
+  const target = new URL(data.href || "/today", self.location.origin);
+  if (data.kind === "focus" && data.scheduleId) {
+    target.searchParams.set("focusSchedule", String(data.scheduleId));
+  }
+  if (mayStart) {
+    target.searchParams.set("startFocus", "1");
+    target.searchParams.set("duration", String(data.durationMinutes || ""));
+    target.searchParams.set("title", String(data.title || ""));
+  } else target.searchParams.delete("startFocus");
+  const href = `${target.pathname}${target.search}${target.hash}`;
   event.waitUntil(
     self.clients
       .matchAll({ type: "window", includeUncontrolled: true })
       .then((windows) => {
         const open = windows.find((w) => "focus" in w);
         if (open) {
-          open.navigate(href);
-          return open.focus();
+          return open.navigate(href).then(() => {
+            if (mayStart) {
+              open.postMessage({
+                type: "START_FOCUS",
+                scheduleId: data.scheduleId,
+                durationMinutes: Number(data.durationMinutes),
+              });
+            }
+            return open.focus();
+          });
         }
         return self.clients.openWindow(href);
       })
   );
 });
-

@@ -54,7 +54,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const { settings, setSetting, isPro } = useStore();
   const { signOut: leave, user } = useAuth();
-  const { enableAlerts, permission, unread } = useNotifications();
+  const { enableAlerts, permission, pushReady, pushError, unread } = useNotifications();
   // The icon and the System note describe what is on the screen, so both answer with
   // the resolved theme rather than the word chosen below it.
   const dark = resolveTheme(settings.theme, useSystemDark()) === "dark";
@@ -156,16 +156,24 @@ export default function SettingsPage() {
               icon={<Bell className="h-[18px] w-[18px]" />}
               title="Push notifications"
               hint={
-                permission === "granted"
-                  ? "Streak nudges and your wins, in the Exchange"
-                  : "Allow the browser prompt to get alerts"
+                pushReady
+                  ? "Background reminders are enabled on this device"
+                  : pushError
+                    ? pushError
+                    : permission === "denied"
+                      ? "Notifications are blocked in this browser's settings"
+                      : permission === "unsupported"
+                        ? "This browser does not support system notifications"
+                        : permission === "granted"
+                          ? "Permission is on; finish setting up background push"
+                          : "Allow the browser prompt to get alerts"
               }
             >
               <Toggle
                 checked={settings.notifications}
                 onChange={(v) => {
                   setSetting("notifications", v);
-                  if (v && permission !== "granted") void enableAlerts();
+                  if (v) void enableAlerts();
                   if (v) haptic("nudge", true);
                 }}
                 label="Push notifications"

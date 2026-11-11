@@ -11,10 +11,16 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth";
 import { Modal } from "@/components/modal";
+import { useNotifications } from "@/components/notifications";
 import { useStore } from "@/components/store";
-import { toastSuccess, toastUndoable } from "@/components/toast";
+import { toastError, toastSuccess, toastUndoable } from "@/components/toast";
 import { playAlarm, primeAlarm, useAlarmTone } from "@/lib/alarm";
 import { useLocalState } from "@/lib/local-state";
+import {
+  cancelPushNotification,
+  registerPushSubscription,
+  schedulePushNotification,
+} from "@/lib/push-client";
 import { haptic } from "@/lib/haptics";
 import { emitNotice } from "@/lib/notices";
 import { uuid } from "@/lib/db";
@@ -22,10 +28,11 @@ import { uuid } from "@/lib/db";
 /**
  * The small list you keep next to the clock: a few things you want off your head
  * today. Checking one is the same as finishing it, so it leaves the list on the
- * spot — with an Undo in case that was a slip. It lives on this device only.
+ * spot — with an Undo in case that was a slip. The list is local; reminder jobs
+ * are also saved to the server so push can arrive while the app is closed.
  */
 
-type Item = { id: string; text: string; reminderAt?: string | null };
+type Item = { id: string; text: string; reminderAt?: string | null; backgroundPush?: boolean };
 
 const SWIPE_DELETE = 56;
 const MAX_TEXT = 120;
@@ -39,6 +46,7 @@ function localDateTimeValue(date: Date) {
 export function ChecklistWidget({ onHide }: { onHide: () => void }) {
   const { user } = useAuth();
   const { settings } = useStore();
+  const { permission, enableAlerts, pushReady } = useNotifications();
   const [items, setItems] = useLocalState<Item[]>(
     user ? `onward.checklist.v1:${user.id}` : null,
     [],
@@ -81,18 +89,51 @@ export function ChecklistWidget({ onHide }: { onHide: () => void }) {
     setReminderError("");
   }
 
-  function saveReminder() {
+  async function saveReminder() {
     const at = new Date(reminderDraft).getTime();
     if (!Number.isFinite(at) || at <= Date.now()) {
       setReminderError("Choose a date and time in the future.");
       return;
     }
     if (!reminderItemId) return;
+    const item = items.find((entry) => entry.id === reminderItemId);
+    if (!item) return;
+    const scheduledAt = new Date(at).toISOString();
     setItems((prev) =>
       prev.map((item) =>
-        item.id === reminderItemId ? { ...item, reminderAt: new Date(at).toISOString() } : item,
+        item.id === reminderItemId
+          ? { ...item, reminderAt: scheduledAt, backgroundPush: false }
+          : item,
       ),
     );
+    try {
+      if (!settings.notifications) {
+        throw new Error("Turn on Push notifications in Settings to get this when the app is closed.");
+      }
+      if (permission !== "granted" && (await enableAlerts()) !== "granted") {
+        throw new Error("Allow notifications in your browser to get this when the app is closed.");
+      }
+      if (!pushReady) await registerPushSubscription();
+      await schedulePushNotification({
+        kind: "checklist",
+        eventId: item.id,
+        scheduledAt,
+        title: "Task reminder",
+        body: item.text,
+        href: "/today",
+      });
+      setItems((prev) =>
+        prev.map((current) =>
+          current.id === item.id && current.reminderAt === scheduledAt
+            ? { ...current, backgroundPush: true }
+            : current,
+        ),
+      );
+    } catch (error) {
+      toastError(
+        `Reminder saved on this device only. ${error instanceof Error ? error.message : "Background push could not be scheduled."}`,
+      );
+    }
     primeAlarm();
     haptic("tap", settings.haptics);
     closeReminder();
@@ -100,9 +141,15 @@ export function ChecklistWidget({ onHide }: { onHide: () => void }) {
 
   function removeReminder() {
     if (!reminderItemId) return;
+    const item = items.find((entry) => entry.id === reminderItemId);
+    if (item?.backgroundPush) {
+      void cancelPushNotification("checklist", reminderItemId).catch((error: unknown) =>
+        toastError(error instanceof Error ? error.message : "Could not cancel the background reminder."),
+      );
+    }
     setItems((prev) =>
       prev.map((item) =>
-        item.id === reminderItemId ? { ...item, reminderAt: null } : item,
+        item.id === reminderItemId ? { ...item, reminderAt: null, backgroundPush: false } : item,
       ),
     );
     closeReminder();
@@ -111,24 +158,71 @@ export function ChecklistWidget({ onHide }: { onHide: () => void }) {
   function remove(target: Item, phrase: string) {
     const at = items.findIndex((i) => i.id === target.id);
     if (at < 0) return;
+    if (target.reminderAt && target.backgroundPush) {
+      void cancelPushNotification("checklist", target.id).catch((error: unknown) =>
+        toastError(error instanceof Error ? error.message : "Could not cancel the background reminder."),
+      );
+    }
     setItems((prev) => prev.filter((i) => i.id !== target.id));
     setOffsets((prev) => ({ ...prev, [target.id]: 0 }));
     haptic("success", settings.haptics);
-    toastUndoable(phrase, "Undo", () =>
+    toastUndoable(phrase, "Undo", () => {
       setItems((prev) =>
         prev.some((i) => i.id === target.id)
           ? prev
           : [...prev.slice(0, at), target, ...prev.slice(at)],
-      ),
-    );
+      );
+      if (target.reminderAt && target.backgroundPush && Date.parse(target.reminderAt) > Date.now()) {
+        void schedulePushNotification({
+          kind: "checklist",
+          eventId: target.id,
+          scheduledAt: target.reminderAt,
+          title: "Task reminder",
+          body: target.text,
+          href: "/today",
+        }).catch((error: unknown) =>
+          toastError(error instanceof Error ? error.message : "Could not restore the background reminder."),
+        );
+      }
+    });
   }
 
   function clearList() {
     const snapshot = items;
     if (!snapshot.length) return;
+    snapshot
+      .filter((item) => item.reminderAt)
+      .forEach((item) => {
+        if (item.backgroundPush) {
+          void cancelPushNotification("checklist", item.id).catch((error: unknown) =>
+            toastError(error instanceof Error ? error.message : "Could not cancel a background reminder."),
+          );
+        }
+      });
     setItems([]);
     setMenu(false);
-    toastUndoable("Checklist cleared", "Undo", () => setItems(snapshot));
+    toastUndoable("Checklist cleared", "Undo", () => {
+      setItems(snapshot);
+      snapshot
+        .filter(
+          (item) =>
+            item.reminderAt &&
+            item.backgroundPush &&
+            Date.parse(item.reminderAt) > Date.now(),
+        )
+        .forEach((item) => {
+          void schedulePushNotification({
+            kind: "checklist",
+            eventId: item.id,
+            scheduledAt: item.reminderAt!,
+            title: "Task reminder",
+            body: item.text,
+            href: "/today",
+          }).catch((error: unknown) =>
+            toastError(error instanceof Error ? error.message : "Could not restore a background reminder."),
+          );
+        });
+    });
   }
 
   /** Slide a row left far enough and it goes, the way the swipe lists behaved. */
@@ -401,7 +495,7 @@ export function ChecklistWidget({ onHide }: { onHide: () => void }) {
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            saveReminder();
+            void saveReminder();
           }}
         >
           <label className="block">
@@ -419,7 +513,8 @@ export function ChecklistWidget({ onHide }: { onHide: () => void }) {
             />
           </label>
           <p className="mt-2 text-[10.5px] leading-[1.5] text-muted">
-            onWard checks for this reminder while the app is open.
+            With notifications enabled, this reminder can reach your device while onWard is closed.
+            Otherwise, it will appear the next time the app is open.
           </p>
           {reminderError ? (
             <p role="alert" className="mt-3 text-[11px] font-semibold text-danger">
@@ -498,10 +593,17 @@ export function ChecklistReminderScheduler() {
     setItems((prev) =>
       prev.map((item) =>
         item.reminderAt && dueKeys.has(`${item.id}:${item.reminderAt}`)
-          ? { ...item, reminderAt: null }
+          ? { ...item, reminderAt: null, backgroundPush: false }
           : item,
       ),
     );
+    for (const item of freshDue) {
+      if (item.backgroundPush) {
+        void cancelPushNotification("checklist", item.id).catch((error: unknown) =>
+          console.error("Could not clear delivered checklist push schedule", error),
+        );
+      }
+    }
     haptic("success", settings.haptics);
     playAlarm(tone);
     toastSuccess(
@@ -511,14 +613,14 @@ export function ChecklistReminderScheduler() {
     );
     for (const item of freshDue) {
       emitNotice({
-        id: `checklist-${item.id}-${Date.parse(item.reminderAt!)}`,
+        id: `checklist:${user?.id}:${item.id}`,
         kind: "win",
-        title: `Time for ${item.text}`,
-        body: "Your checklist reminder is due.",
+        title: "Task reminder",
+        body: item.text,
         href: "/today",
       });
     }
-  }, [items, itemsLoaded, now, setItems, settings.haptics, tone]);
+  }, [items, itemsLoaded, now, setItems, settings.haptics, tone, user?.id]);
 
   return null;
 }
