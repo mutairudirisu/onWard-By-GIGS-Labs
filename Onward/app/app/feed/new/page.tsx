@@ -8,7 +8,6 @@ import {
   BriefcaseBusiness,
   CalendarDays,
   Check,
-  Copy,
   ChevronLeft,
   ChevronDown,
   ChevronRight,
@@ -22,7 +21,6 @@ import {
   PartyPopper,
   Plus,
   Search,
-  Sparkles,
   UserPlus,
   Users,
   X,
@@ -40,7 +38,6 @@ import {
 import { useStore } from "@/components/store";
 import { useAuth, useCurrentUser } from "@/components/auth";
 import { toastError, toastSuccess } from "@/components/toast";
-import { supabase } from "@/lib/supabase";
 import {
   POST_BODY_MAX,
   POST_MEDIA_MAX_PER_POST,
@@ -73,7 +70,6 @@ const POST_CATEGORIES = [
   { id: "poll", label: "Poll", Icon: BarChart3 },
   { id: "document", label: "Document", Icon: FileText },
 ] as const;
-type ProofreadResult = { original: string; corrected: string };
 type AudiencePanel = "overview" | "visibility" | "comments" | "collaborators";
 type PostAudience = "anyone" | "connections";
 type CommentAudience = "anyone" | "connections" | "off";
@@ -127,9 +123,6 @@ function Composer() {
   const [showBanner, setShowBanner] = useState(true);
   const [showFormatting, setShowFormatting] = useState(false);
   const [showHeadline, setShowHeadline] = useState(false);
-  const [proofreading, setProofreading] = useState(false);
-  const [proofreadResult, setProofreadResult] = useState<ProofreadResult | null>(null);
-  const [editorVersion, setEditorVersion] = useState(0);
   const mediaRef = useRef<HTMLInputElement>(null);
   const documentRef = useRef<HTMLInputElement>(null);
   const keyboard = useKeyboardInset(Boolean(user));
@@ -293,82 +286,8 @@ function Composer() {
     setComposerPage(null);
   }
 
-  async function proofread() {
-    const original = body.trim();
-    if (!original || proofreading || busy) return;
-    if (!user) {
-      router.push("/sign-in");
-      return;
-    }
-
-    setProofreading(true);
-    setProofreadResult(null);
-    try {
-      const { data, error } = await supabase.auth.getSession();
-      const accessToken = data.session?.access_token;
-      if (error || !accessToken) {
-        throw new Error("Your session has expired. Sign in again.");
-      }
-
-      const response = await fetch("/api/proofread", {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${accessToken}`,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({ text: original }),
-      });
-      let payload: unknown;
-      try {
-        payload = await response.json();
-      } catch {
-        throw new Error("The proofreading service returned an unreadable response.");
-      }
-      if (!response.ok) {
-        const message =
-          payload && typeof payload === "object" && "error" in payload &&
-          typeof payload.error === "string"
-            ? payload.error
-            : "Couldn't proofread this text.";
-        throw new Error(message);
-      }
-      if (
-        !payload ||
-        typeof payload !== "object" ||
-        !("corrected" in payload) ||
-        typeof payload.corrected !== "string" ||
-        !payload.corrected.trim()
-      ) {
-        throw new Error("The proofreading service returned no corrected text.");
-      }
-      setProofreadResult({ original, corrected: payload.corrected.trim() });
-    } catch (error) {
-      toastError(error instanceof Error ? error.message : "Couldn't proofread this text.");
-    } finally {
-      setProofreading(false);
-    }
-  }
-
-  async function copyProofreadText() {
-    if (!proofreadResult) return;
-    try {
-      await navigator.clipboard.writeText(proofreadResult.corrected);
-      toastSuccess("Improved text copied");
-    } catch {
-      toastError("Couldn't copy the improved text. Check clipboard permissions and try again.");
-    }
-  }
-
-  function replaceWithProofreadText() {
-    if (!proofreadResult) return;
-    setBody(proofreadResult.corrected);
-    setEditorVersion((version) => version + 1);
-    setProofreadResult(null);
-    toastSuccess("Post text updated");
-  }
-
   async function post() {
-    if (empty || busy || composerPage || proofreading) return;
+    if (empty || busy || composerPage) return;
     if (!user) {
       router.push("/sign-in");
       return;
@@ -486,11 +405,11 @@ function Composer() {
         <button
           type="button"
           onClick={() => void post()}
-          disabled={empty || Boolean(busy) || Boolean(composerPage) || proofreading}
+          disabled={empty || Boolean(busy) || Boolean(composerPage)}
           className={`flex h-9 shrink-0 items-center justify-center gap-1 rounded-full px-3 text-[12px] font-semibold transition active:scale-[0.99] ${
-            empty || busy || composerPage || proofreading
+            empty || busy || composerPage
               ? "cursor-not-allowed bg-lime-pale text-muted"
-              : "cursor-pointer bg-lime-pale text-ink hover:bg-lime-soft"
+              : "cursor-pointer bg-lime-deep text-dark hover:bg-lime"
           }`}
         >
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
@@ -502,7 +421,10 @@ function Composer() {
         className="mb-5 h-[calc(3.5rem+env(safe-area-inset-top))] md:hidden"
       />
 
-      <div className="wheel max-h-[calc(100dvh-17rem)] overflow-y-auto overscroll-contain pb-6 md:max-h-none md:overflow-visible md:pb-0">
+      <div
+        className="wheel max-h-[calc(100dvh-17rem)] overflow-y-auto overscroll-contain pb-6 md:!max-h-none md:overflow-visible md:pb-0"
+        style={keyboard > 0 ? { maxHeight: `calc(100dvh - ${keyboard + 232}px)` } : undefined}
+      >
         {composerPage ? (
           <section aria-label="Post creation step">
             <header className="mb-4 flex items-center gap-2 border-b border-line pb-3">
@@ -760,7 +682,7 @@ function Composer() {
           </section>
         ) : (
           <>
-            {showBanner ? (
+            {showBanner && keyboard === 0 ? (
               <div className="mb-7 flex items-start gap-3 rounded-xl bg-lime-pale px-4 py-4 text-ink">
                 <p className="flex-1 text-[14px] leading-[1.5]">
                   {ward
@@ -794,89 +716,20 @@ function Composer() {
                     />
                   ) : null}
                   <PostEditor
-                    key={editorVersion}
                     initial={body}
-                    onChange={(next) => {
-                      setBody(next);
-                      setProofreadResult(null);
-                    }}
+                    onChange={setBody}
                     placeholder="Share a work win, project update, insight or lesson from your professional journey..."
                     max={POST_BODY_MAX}
-                    disabled={Boolean(busy) || proofreading}
+                    disabled={Boolean(busy)}
                     showToolbar={showFormatting}
                     toolbarClassName="fixed inset-x-0 z-[44] mx-auto w-full max-w-[400px] border-t border-b-0 border-line bg-cream/95 px-5 py-2 backdrop-blur md:static md:mx-0 md:max-w-none md:border-t-0 md:border-b md:bg-transparent md:px-2 md:py-1.5 md:backdrop-blur-none"
                     toolbarStyle={{
                       bottom: keyboard > 0 ? keyboard + 84 : 180,
                     }}
-                    editorClassName="!min-h-[calc(100dvh-380px)] !px-0 !pt-0 md:!min-h-[360px]"
+                    editorClassName="!min-h-[96px] !px-0 !pt-0 md:!min-h-[360px]"
                   />
-                  {proofreading ? (
-                    <p
-                      role="status"
-                      className="mt-3 flex items-center gap-2 rounded-xl bg-lime-pale px-3 py-2.5 text-[11px] font-medium text-inksoft"
-                    >
-                      <Loader2 className="h-4 w-4 animate-spin text-lime-deep" />
-                      Checking spelling, grammar, punctuation and clarity…
-                    </p>
-                  ) : null}
-                  {proofreadResult ? (
-                    <section
-                      aria-label="Proofread comparison"
-                      className="mt-4 rounded-2xl border border-line bg-cream p-3"
-                    >
-                      <div className="mb-3 flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 text-[12px] font-semibold text-ink">
-                          <Sparkles className="h-4 w-4 text-lime-deep" />
-                          Proofread result
-                        </div>
-                        <button
-                          type="button"
-                          aria-label="Close proofread result"
-                          onClick={() => setProofreadResult(null)}
-                          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-muted hover:bg-lime-pale"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                      <div className="grid gap-2 md:grid-cols-2">
-                        <div className="min-w-0 rounded-xl border border-line bg-paper p-3">
-                          <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wide text-muted">
-                            Original
-                          </p>
-                          <p className="whitespace-pre-wrap break-words text-[12px] leading-[1.55] text-inksoft">
-                            {proofreadResult.original}
-                          </p>
-                        </div>
-                        <div className="min-w-0 rounded-xl border border-lime-deep/40 bg-lime-pale p-3">
-                          <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wide text-inksoft">
-                            Improved
-                          </p>
-                          <p className="whitespace-pre-wrap break-words text-[12px] leading-[1.55] text-ink">
-                            {proofreadResult.corrected}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-3 flex flex-wrap justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => void copyProofreadText()}
-                          className="flex min-h-9 cursor-pointer items-center gap-1.5 rounded-full border border-line bg-paper px-3 text-[11px] font-semibold text-inksoft transition hover:bg-lime-pale"
-                        >
-                          <Copy className="h-3.5 w-3.5" />
-                          Copy improved
-                        </button>
-                        <button
-                          type="button"
-                          onClick={replaceWithProofreadText}
-                          className="min-h-9 cursor-pointer rounded-full bg-lime-pale px-3 text-[11px] font-semibold text-ink transition hover:bg-lime-soft"
-                        >
-                          Replace original
-                        </button>
-                      </div>
-                    </section>
-                  ) : null}
                   {picks.length ? (
-                    <div className="mt-3 grid grid-cols-3 gap-2">
+                    <div className="mt-3 grid grid-cols-2 gap-2">
                       {picks.map((pick, index) => (
                         <div
                           key={pick.url}
@@ -944,22 +797,9 @@ function Composer() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => void proofread()}
-                disabled={!body.trim() || proofreading || Boolean(busy)}
-                className="flex min-h-10 cursor-pointer items-center gap-1.5 rounded-full border border-dash px-3 text-[12px] font-medium text-inksoft transition hover:border-lime-deep hover:bg-lime-pale disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {proofreading ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Sparkles className="h-3.5 w-3.5 text-lime-deep" />
-                )}
-                {proofreading ? "Checking…" : "Proofread"}
-              </button>
-              <button
-                type="button"
                 aria-pressed={showFormatting}
                 onClick={() => setShowFormatting((visible) => !visible)}
-                disabled={Boolean(busy) || proofreading}
+                disabled={Boolean(busy)}
                 className={`flex min-h-10 cursor-pointer items-center rounded-full border px-3 text-[12px] font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
                   showFormatting
                     ? "border-lime-deep bg-lime-pale text-ink"
