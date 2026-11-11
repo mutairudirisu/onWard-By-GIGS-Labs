@@ -36,7 +36,7 @@ function SproutField() {
   return (
     <svg
       aria-hidden
-      className="pointer-events-none absolute inset-0 h-full w-full text-lime-deep opacity-[0.09]"
+      className="pointer-events-none absolute inset-0 h-full w-full text-lime-deep opacity-[0.18]"
     >
       <defs>
         <pattern
@@ -300,19 +300,19 @@ export default function PersonPage() {
 
   return (
     <PhoneShell tab="feed">
-      <div className="mb-3 flex items-center gap-2">
-        <Link
-          href="/feed"
-          aria-label="Back to the Exchange"
-          className="-ml-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-inksoft transition hover:bg-cream"
-        >
-          <ArrowLeft className="h-[18px] w-[18px]" />
-        </Link>
-        <h1 className="text-[13px] font-bold tracking-tight text-ink">Profile</h1>
-      </div>
-
-      <div className="relative -mx-5 overflow-hidden bg-lime-soft/45 px-5 pb-3 pt-1 md:mx-0 md:rounded-3xl">
+      <div className="relative -mx-5 -mt-5 overflow-hidden bg-lime-soft px-5 pb-3 pt-5 md:mx-0 md:mt-0 md:rounded-3xl">
         <SproutField />
+        <div className="relative mb-3 flex items-center gap-2">
+          <Link
+            href="/feed"
+            aria-label="Back to the Exchange"
+            className="-ml-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-lime-deep/30 bg-paper text-ink transition hover:bg-cream"
+          >
+            <ArrowLeft className="h-[18px] w-[18px]" />
+          </Link>
+          <h1 className="text-[13px] font-bold tracking-tight text-ink">Profile</h1>
+        </div>
+
         <header className="relative">
         <div className="flex items-start gap-3">
           <Avatar initials={card.initials} src={card.avatarUrl} size="lg" />
