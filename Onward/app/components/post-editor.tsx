@@ -283,7 +283,9 @@ export function PostEditor({
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => run(command)}
               className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition hover:bg-cream disabled:cursor-not-allowed disabled:text-faint ${
-                on[command] ? "bg-lime-pale text-ink" : "text-inksoft hover:text-ink"
+                on[command]
+                  ? "bg-lime text-dark shadow-sm ring-1 ring-lime-deep/30"
+                  : "text-inksoft hover:text-ink"
               }`}
             >
               <Icon className="h-[15px] w-[15px]" strokeWidth={2.1} />

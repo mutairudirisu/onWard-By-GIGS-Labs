@@ -451,10 +451,10 @@ export function PostBlock({
               if (post.authorId) onToggleFollow(post.authorId, followed);
             }}
             disabled={followBusy}
-            className={`flex h-7 shrink-0 cursor-pointer items-center gap-0.5 rounded-full px-1.5 text-[10px] font-semibold transition disabled:cursor-wait disabled:opacity-60 ${
+            className={`flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-full px-2.5 text-[10px] font-semibold transition disabled:cursor-wait disabled:opacity-60 ${
               followed
                 ? "text-inksoft hover:bg-cream"
-                : "text-lime-deep hover:bg-lime-pale"
+                : "bg-lime text-dark hover:bg-lime-deep"
             }`}
           >
             {followed ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
