@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Bold, Heading2, Italic, List, ListOrdered, Quote } from "lucide-react";
 
 /**
@@ -180,6 +180,7 @@ export function PostEditor({
   disabled = false,
   showToolbar = true,
   toolbarClassName = "",
+  toolbarStyle,
   editorClassName = "min-h-[132px]",
 }: {
   initial?: string;
@@ -189,6 +190,7 @@ export function PostEditor({
   disabled?: boolean;
   showToolbar?: boolean;
   toolbarClassName?: string;
+  toolbarStyle?: CSSProperties;
   editorClassName?: string;
 }) {
   const box = useRef<HTMLDivElement>(null);
@@ -270,6 +272,7 @@ export function PostEditor({
       {showToolbar ? (
         <div
           className={`flex w-full items-center gap-0.5 border-b border-line px-2 py-1.5 ${toolbarClassName}`}
+          style={toolbarStyle}
         >
           {BUTTONS.map(({ command, label, Icon }) => (
             <button

@@ -159,6 +159,8 @@ function Composer() {
   const documentRef = useRef<HTMLInputElement>(null);
   const picksRef = useRef(picks);
   const keyboard = useKeyboardInset(Boolean(user));
+  const actionBarBottom = keyboard > 0 ? keyboard + 8 : 104;
+  const actionBarHeight = 69;
 
   // Opening this from an onWard carries its words over; the entry itself stays private.
   useEffect(() => {
@@ -874,7 +876,8 @@ function Composer() {
                     max={POST_BODY_MAX}
                     disabled={Boolean(busy)}
                     showToolbar={showFormatting}
-                    toolbarClassName="sticky top-0 z-[46] mx-auto max-w-[400px] justify-between border-t border-line bg-cream/95 px-5 py-2 backdrop-blur md:static md:mx-0 md:max-w-none md:border-t-0 md:bg-transparent md:px-2 md:py-1.5 md:backdrop-blur-none"
+                    toolbarClassName="fixed inset-x-0 z-[46] mx-auto max-w-[400px] justify-between border-t border-line bg-cream/95 px-5 py-2 backdrop-blur md:static md:mx-0 md:max-w-none md:border-t-0 md:bg-transparent md:px-2 md:py-1.5 md:backdrop-blur-none"
+                    toolbarStyle={{ bottom: actionBarBottom + actionBarHeight }}
                     editorClassName="!min-h-[96px] !px-0 !pt-0 md:!min-h-[360px]"
                   />
                   {picks.length ? (
@@ -940,7 +943,7 @@ function Composer() {
       {!composerPage ? (
         <div
           className="fixed inset-x-0 z-[45] mx-auto flex w-full max-w-[400px] items-center gap-3 border-t border-line/60 bg-paper/90 px-5 py-3 backdrop-blur md:static md:mx-auto md:max-w-[820px] md:border-t-0 md:bg-transparent md:px-0 md:backdrop-blur-none"
-          style={{ bottom: keyboard > 0 ? keyboard + 8 : 104 }}
+          style={{ bottom: actionBarBottom }}
         >
           {!isPoll ? (
             <div className="flex items-center gap-2">
