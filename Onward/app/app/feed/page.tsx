@@ -33,7 +33,7 @@ import { withVote } from "@/components/post-poll";
 import { ReshareSheet, type ReshareTarget } from "@/components/reshare-sheet";
 import { PostOptionsSheet } from "@/components/post-options-sheet";
 import { useAuth, useCurrentUser } from "@/components/auth";
-import { UnreadDot, useNotifications } from "@/components/notifications";
+import { useNotifications } from "@/components/notifications";
 import { Wordmark } from "@/components/wordmark";
 import { toastError, toastSuccess, toastUndoable } from "@/components/toast";
 import { askAfterUpvote } from "@/lib/feedback";
@@ -528,10 +528,19 @@ export default function FeedPage() {
         <Link
           href="/notifications"
           aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}
-          className="relative -mr-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink transition hover:bg-cream"
+          className="relative -mr-2 flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full bg-paper px-3 text-muted transition hover:bg-lime-pale"
         >
-          <Bell className="h-[21px] w-[21px]" strokeWidth={2} />
-          <UnreadDot />
+          <span className="relative flex">
+            <Bell className="h-[18px] w-[18px]" strokeWidth={2} />
+            {unread > 0 ? (
+              <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-paper" />
+            ) : null}
+          </span>
+          {unread > 0 ? (
+            <span className="text-[11px] font-medium tabular-nums text-muted">
+              {unread > 99 ? "99+" : unread}
+            </span>
+          ) : null}
         </Link>
       </div>
 
