@@ -59,8 +59,8 @@ import {
   type SharedPost,
 } from "@/lib/db";
 
-/** How often the Exchange looks for anything written since you arrived. */
-const REFRESH_MS = 20_000;
+/** How often the Exchange checks for updates without rearranging the list. */
+const REFRESH_MS = 60_000;
 
 type FeedTab = "for-you" | "following" | "popular";
 
@@ -69,6 +69,11 @@ const FEED_TABS: { id: FeedTab; label: string }[] = [
   { id: "following", label: "Following" },
   { id: "popular", label: "Popular" },
 ];
+
+function mergeNumberMap(current: Record<string, number>, updates: Record<string, number>) {
+  if (!Object.entries(updates).some(([id, value]) => current[id] !== value)) return current;
+  return { ...current, ...updates };
+}
 
 function interactionLine(item: FeedInteraction, post: FeedPost) {
   const who = post.mine ? "your" : `${post.fullName || "someone"}'s`;
@@ -143,6 +148,7 @@ export default function FeedPage() {
   const me = useCurrentUser();
   const { unread } = useNotifications();
   const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [pendingPosts, setPendingPosts] = useState<FeedPost[]>([]);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [liked, setLiked] = useState<Set<string>>(new Set());
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -181,6 +187,11 @@ export default function FeedPage() {
   // Every read of the Exchange carries a token, so a slow answer cannot land on top
   // of a newer one.
   const inflight = useRef(0);
+  const postsRef = useRef<FeedPost[]>([]);
+
+  useEffect(() => {
+    postsRef.current = posts;
+  }, [posts]);
 
   const load = useCallback(() => {
     const token = ++inflight.current;
@@ -199,7 +210,9 @@ export default function FeedPage() {
     ])
       .then(([next, likedSet, interactions, shared, following]) => {
         if (token !== inflight.current) return;
+        postsRef.current = next;
         setPosts(next);
+        setPendingPosts([]);
         setLiked(likedSet);
         setCounts(Object.fromEntries(next.map((post) => [post.id, post.likes])));
         setReshared(new Set(next.filter((post) => post.reshared).map((post) => post.id)));
@@ -272,14 +285,18 @@ export default function FeedPage() {
     void fetchFeed()
       .then((next) => {
         if (token !== inflight.current) return;
-        setPosts(next);
-        setCounts(Object.fromEntries(next.map((post) => [post.id, post.likes])));
-        setReshareCounts(Object.fromEntries(next.map((post) => [post.id, post.reshares])));
-        return fetchPolls(next.map((post) => post.id))
-          .then((found) => {
-            if (token === inflight.current) setPolls(found);
-          })
-          .catch(() => {});
+        const knownIds = new Set(postsRef.current.map((post) => post.id));
+        const incoming = next.filter((post) => !knownIds.has(post.id));
+        if (incoming.length) {
+          setPendingPosts((current) => {
+            const alreadyQueued = new Set([
+              ...knownIds,
+              ...current.map((post) => post.id),
+            ]);
+            const added = incoming.filter((post) => !alreadyQueued.has(post.id));
+            return added.length ? [...added, ...current] : current;
+          });
+        }
       })
       .catch(() => {
         /* a quiet read that fails leaves the timeline as it was */
@@ -294,15 +311,13 @@ export default function FeedPage() {
   }, [load]);
 
   /**
-   * Keeping the Exchange current for everyone reading it. Only while the page is on
-   * screen, and only from the top of the list - new posts land above the ones you are
-   * reading, so dropping them in halfway down would shove your card off the screen.
-   * Scrolling back up picks up anything that was held back.
+   * Read quietly while the page is visible. New posts are held until the reader
+   * chooses to add them, so a refresh never shifts the list under their finger.
    */
   useEffect(() => {
     if (state !== "ready") return;
     let missed = false;
-    let lastAt = 0;
+    let lastAt = Date.now();
 
     const nearTop = () => window.scrollY < 120;
     const run = () => {
@@ -474,6 +489,46 @@ export default function FeedPage() {
     return rows;
   }, [counts, feedTab, followedIds, posts]);
 
+  const pendingToShow =
+    feedTab === "following"
+      ? pendingPosts.filter((post) => post.authorId && followedIds.has(post.authorId))
+      : pendingPosts;
+
+  const showPendingPosts = () => {
+    const incoming = pendingToShow;
+    if (!incoming.length) return;
+    const incomingIds = new Set(incoming.map((post) => post.id));
+    setPosts((current) => {
+      const currentIds = new Set(current.map((post) => post.id));
+      const added = incoming.filter((post) => !currentIds.has(post.id));
+      return [...added, ...current].slice(0, 40);
+    });
+    setCounts((current) =>
+      mergeNumberMap(
+        current,
+        Object.fromEntries(incoming.map((post) => [post.id, post.likes])),
+      ),
+    );
+    setReshareCounts((current) =>
+      mergeNumberMap(
+        current,
+        Object.fromEntries(incoming.map((post) => [post.id, post.reshares])),
+      ),
+    );
+    setReshared((current) => {
+      const next = new Set(current);
+      for (const post of incoming) {
+        if (post.reshared) next.add(post.id);
+        else next.delete(post.id);
+      }
+      return next;
+    });
+    setPendingPosts((current) => current.filter((post) => !incomingIds.has(post.id)));
+    void fetchPolls(incoming.map((post) => post.id))
+      .then((found) => setPolls((current) => ({ ...current, ...found })))
+      .catch(() => {});
+  };
+
   // Only the things still on the feed: a row whose post has gone has no name to show
   // and nothing left to open.
   const recent = useMemo(() => {
@@ -528,7 +583,7 @@ export default function FeedPage() {
         <Link
           href="/notifications"
           aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}
-          className="relative -mr-2 flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full bg-paper px-3 text-muted transition hover:bg-lime-pale"
+          className="relative ml-2 flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full bg-paper px-3 text-muted transition hover:bg-lime-pale"
         >
           <span className="relative flex">
             <Bell className="h-[18px] w-[18px]" strokeWidth={2} />
@@ -563,6 +618,18 @@ export default function FeedPage() {
           </button>
         ))}
       </nav>
+
+      {pendingToShow.length ? (
+        <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-[35] flex justify-center px-4 lg:bottom-6">
+          <button
+            type="button"
+            onClick={showPendingPosts}
+            className="cursor-pointer rounded-full bg-ink px-4 py-2.5 text-[10px] font-bold text-white shadow-lift transition hover:bg-lime-deep hover:text-ink"
+          >
+            {pendingToShow.length} new {pendingToShow.length === 1 ? "post" : "posts"} · Show
+          </button>
+        </div>
+      ) : null}
 
       {menuOpen ? (
         <div className="fixed inset-0 z-[80]">

@@ -8,7 +8,7 @@ import { HomeWidgets } from "@/components/home-widgets";
 import { Button } from "@/components/ui";
 import { useStore } from "@/components/store";
 import { useCurrentUser } from "@/components/auth";
-import { UnreadDot } from "@/components/notifications";
+import { useNotifications } from "@/components/notifications";
 import type { OnWard } from "@/lib/data";
 import { formatLong } from "@/lib/dates";
 import { Bell, ChevronRight, Plus, Sprout } from "lucide-react";
@@ -46,6 +46,7 @@ function WardLine({ ward }: { ward: OnWard }) {
 export default function TodayPage() {
   const { onWards, selectedDate, wardsThisMonth, limits } = useStore();
   const user = useCurrentUser();
+  const { unread } = useNotifications();
   const firstName = user.name.split(" ")[0] || "there";
 
   const dayWards = onWards.filter((w) => w.date === selectedDate);
@@ -64,20 +65,28 @@ export default function TodayPage() {
             </h1>
             <div className="flex items-center gap-2">
               <Link
-                href="/profile"
-                aria-label="Your profile"
-                className="relative flex cursor-pointer items-center justify-center rounded-full"
+                href="/notifications"
+                aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}
+                className="relative flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-full bg-paper px-3 text-muted transition hover:bg-lime-pale"
               >
-                <Avatar initials={user.initials} src={user.avatarUrl} />
-                <UnreadDot />
+                <span className="relative flex">
+                  <Bell className="h-[18px] w-[18px]" />
+                  {unread > 0 ? (
+                    <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-paper" />
+                  ) : null}
+                </span>
+                {unread > 0 ? (
+                  <span className="text-[11px] font-medium tabular-nums text-muted">
+                    {unread > 99 ? "99+" : unread}
+                  </span>
+                ) : null}
               </Link>
               <Link
-                href="/notifications"
-                aria-label="Notifications"
-                className="relative flex h-8 w-8 items-center justify-center rounded-full text-inksoft transition hover:bg-cream"
+                href="/profile"
+                aria-label="Your profile"
+                className="flex cursor-pointer items-center justify-center rounded-full"
               >
-                <Bell className="h-[18px] w-[18px]" />
-                <UnreadDot />
+                <Avatar initials={user.initials} src={user.avatarUrl} size="lg" />
               </Link>
             </div>
           </div>
