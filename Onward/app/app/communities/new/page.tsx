@@ -82,7 +82,7 @@ export default function NewCommunityPage() {
 
   if (!ready) {
     return (
-      <PhoneShell tab="feed">
+      <PhoneShell tab="none">
         <div className="card animate-pulse p-8 text-center text-[11px] text-muted">Loading…</div>
       </PhoneShell>
     );
@@ -90,7 +90,7 @@ export default function NewCommunityPage() {
 
   if (!user) {
     return (
-      <PhoneShell tab="feed">
+      <PhoneShell tab="none">
         <div className="card px-5 py-10 text-center">
           <UsersRound className="mx-auto h-7 w-7 text-lime-deep" />
           <h1 className="mt-2 text-[15px] font-bold text-ink">Sign in to create a community</h1>
@@ -104,7 +104,7 @@ export default function NewCommunityPage() {
 
   return (
     <PhoneShell
-      tab="feed"
+      tab="none"
       primaryAction={{
         label: step === STEPS.length - 1 ? "Create community" : `Continue to ${STEPS[step + 1]}`,
         onClick: step === STEPS.length - 1 ? submit : continueStep,

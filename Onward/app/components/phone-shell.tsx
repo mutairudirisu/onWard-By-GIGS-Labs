@@ -20,7 +20,7 @@ export function PhoneShell({
   primaryAction,
 }: {
   children: ReactNode;
-  tab?: TabId;
+  tab?: TabId | "none";
   indicator?: boolean;
   wide?: boolean;
   primaryAction?: {
@@ -30,7 +30,8 @@ export function PhoneShell({
     icon: ReactNode;
   };
 }) {
-  const showNav = Boolean(tab);
+  const showNav = tab !== undefined;
+  const activeTab = tab === "none" ? null : tab;
   const hasFooter = showNav || indicator;
 
   return (
@@ -53,7 +54,7 @@ export function PhoneShell({
           className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[400px] bg-cream md:hidden"
         >
           <div className="pointer-events-none absolute inset-x-0 -top-8 h-8 bg-gradient-to-t from-cream via-cream/70 to-transparent" />
-          {showNav ? <BottomNav active={tab!} primaryAction={primaryAction} /> : null}
+          {showNav ? <BottomNav active={activeTab ?? null} primaryAction={primaryAction} /> : null}
           {indicator ? <HomeIndicator /> : null}
         </div>
       ) : null}

@@ -39,7 +39,7 @@ export function BottomNav({
   active,
   primaryAction,
 }: {
-  active: TabId;
+  active: TabId | null;
   primaryAction?: {
     label: string;
     onClick: () => void;

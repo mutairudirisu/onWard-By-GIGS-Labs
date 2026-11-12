@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Compass, Plus, Search, UsersRound } from "lucide-react";
+import { ArrowLeft, Compass, Plus, Search, UsersRound } from "lucide-react";
 import { useAuth } from "@/components/auth";
 import { CommunityCard, CommunityTopicIcon } from "@/components/community-card";
 import { PhoneShell } from "@/components/phone-shell";
@@ -81,22 +81,29 @@ export default function CommunitiesPage() {
   };
 
   return (
-    <PhoneShell tab="feed" wide>
+    <PhoneShell tab="none" wide>
       <div className="mx-auto grid w-full max-w-[1080px] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_270px]">
         <main className="min-w-0">
-          <header className="relative mb-5 overflow-hidden rounded-2xl bg-lime-pale px-5 py-6 sm:px-7">
-            <span className="pointer-events-none absolute -right-7 -top-10 h-40 w-40 rounded-full border-[20px] border-lime/20" />
-            <span className="pointer-events-none absolute right-28 top-16 h-10 w-10 rounded-full bg-lime/20" />
-            <div className="relative flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.14em] text-lime-deep">
-              <Compass className="h-4 w-4" /> Find your people
+          <header className="mb-5">
+            <div className="flex items-center gap-3">
+              <Link
+                href="/today"
+                aria-label="Back to home"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink transition hover:bg-paper"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+              <h1 className="text-[22px] font-bold tracking-tight text-ink sm:text-[25px]">
+                Discover communities
+              </h1>
             </div>
-            <h1 className="relative mt-2 text-[25px] font-bold tracking-tight text-ink sm:text-[30px]">
-              Communities
-            </h1>
-            <p className="relative mt-1 max-w-[55ch] text-[11px] leading-[1.6] text-inksoft">
-              A place to learn together, share progress, and make good things happen.
-            </p>
-            <div className="relative mt-4 flex flex-wrap gap-2">
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-[15px] font-bold text-ink">Explore communities by topic</h2>
+                <p className="mt-1 max-w-[55ch] text-[11px] leading-[1.6] text-inksoft">
+                  A place to learn together, share progress, and make good things happen.
+                </p>
+              </div>
               <Link
                 href="/communities/new"
                 className="inline-flex h-9 items-center gap-1.5 rounded-full bg-lime-deep px-4 text-[10px] font-bold text-white transition hover:bg-ink"
@@ -121,7 +128,7 @@ export default function CommunitiesPage() {
             />
           </label>
 
-          <div className="mb-5 overflow-x-auto">
+          <div className="mb-5 wheel overflow-x-auto">
             <nav className="flex min-w-max gap-2" aria-label="Community topics">
               {(["All", ...COMMUNITY_TOPICS] as const).map((item) => (
                 <button
