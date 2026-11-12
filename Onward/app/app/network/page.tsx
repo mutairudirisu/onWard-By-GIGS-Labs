@@ -404,7 +404,7 @@ export default function NetworkPage() {
 
   return (
     <PhoneShell tab="network" wide>
-      <div className="mx-auto grid w-full max-w-[1080px] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
+      <div className="-mx-5 grid w-[calc(100%+2.5rem)] max-w-[1080px] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_260px] md:mx-auto md:w-full">
         <main className="min-w-0">
           <header className="mb-5 overflow-hidden rounded-2xl border border-line bg-paper">
             <div className="relative overflow-hidden bg-lime-pale px-5 pb-5 pt-6 sm:px-7">

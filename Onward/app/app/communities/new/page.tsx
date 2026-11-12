@@ -104,7 +104,7 @@ export default function NewCommunityPage() {
 
   return (
     <PhoneShell tab="feed">
-      <main className="mx-auto w-full max-w-[620px]">
+      <main className="-mx-5 w-[calc(100%+2.5rem)] max-w-[620px] md:mx-auto md:w-full">
         <header className="mb-5 flex items-center justify-between gap-3">
           <Link
             href="/communities"

@@ -447,7 +447,7 @@ export function PostBlock({
           {post.media.length ? (
             <Link
               href={`/feed/${post.id}`}
-              className={`block cursor-pointer ${edgeToEdge ? "-mx-4" : ""}`}
+              className="block cursor-pointer"
             >
               <MediaStage
                 media={post.media}
