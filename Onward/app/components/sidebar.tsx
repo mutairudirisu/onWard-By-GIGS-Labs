@@ -10,6 +10,7 @@ import { useExchangeBadge } from "@/lib/exchange-badge";
 import {
   BarChart3,
   Bell,
+  Compass,
   FileText,
   Flame,
   GraduationCap,
@@ -23,11 +24,12 @@ import {
 } from "lucide-react";
 
 const MENU = [
+  { href: "/communities", label: "Discover communities", Icon: Compass },
+  { href: "/communities/new", label: "Create a community", Icon: Plus },
   { href: "/today", label: "Home", Icon: Home },
   { href: "/onwards", label: "onWards", Icon: Sprout },
   { href: "/feed", label: "Exchange", Icon: MessagesSquare },
   { href: "/network", label: "My Network", Icon: UsersRound },
-  { href: "/communities", label: "Communities", Icon: UsersRound },
   { href: "/notifications", label: "Notifications", Icon: Bell, badge: true },
   { href: "/profile", label: "You", Icon: User },
 ];
@@ -50,6 +52,10 @@ const AUTH_ROUTES = [
 ];
 
 function isActive(pathname: string, href: string) {
+  if (href === "/communities/new") return pathname === href;
+  if (href === "/communities") {
+    return pathname === href || (pathname.startsWith(`${href}/`) && pathname !== "/communities/new");
+  }
   if (href === "/profile") {
     return pathname === "/profile" || pathname.startsWith("/profile/");
   }

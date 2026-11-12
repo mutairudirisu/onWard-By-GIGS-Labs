@@ -674,7 +674,7 @@ export default function NetworkPage() {
               </div>
             )}
           </section>
-          <p className="mt-3 text-center text-[9px] leading-[1.5] text-faint lg:text-left">
+          <p className="mt-3 px-4 text-center text-[9px] leading-[1.5] text-faint lg:px-0 lg:text-left">
             Following is one-way. People can see public Exchange posts whether or not you follow
             them.
           </p>

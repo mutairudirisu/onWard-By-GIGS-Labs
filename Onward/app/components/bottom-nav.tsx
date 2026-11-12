@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Home, MessagesSquare, Plus, Sprout, User, UsersRound, X } from "lucide-react";
@@ -35,7 +35,18 @@ const CREATES = [
   { label: "Create an onWard", href: "/onwards/new", Icon: Sprout },
 ];
 
-export function BottomNav({ active }: { active: TabId }) {
+export function BottomNav({
+  active,
+  primaryAction,
+}: {
+  active: TabId;
+  primaryAction?: {
+    label: string;
+    onClick: () => void;
+    disabled?: boolean;
+    icon: ReactNode;
+  };
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const { settings } = useStore();
@@ -116,16 +127,22 @@ export function BottomNav({ active }: { active: TabId }) {
 
         <button
           type="button"
-          aria-label={straightTo ? "Log an onWard" : "Create"}
-          aria-expanded={choosing}
+          aria-label={primaryAction?.label ?? (straightTo ? "Log an onWard" : "Create")}
+          aria-expanded={primaryAction ? undefined : choosing}
+          disabled={primaryAction?.disabled}
           onClick={() => {
+            if (primaryAction) {
+              buzz("tap");
+              primaryAction.onClick();
+              return;
+            }
             if (straightTo) return go(straightTo);
             buzz("tap");
             setChoosing((open) => !open);
           }}
-          className="flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-full bg-lime text-dark shadow-[0_10px_30px_rgba(16,17,8,0.15)] transition active:scale-95"
+          className="flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-full bg-lime text-dark shadow-[0_10px_30px_rgba(16,17,8,0.15)] transition active:scale-95 disabled:cursor-wait disabled:opacity-60"
         >
-          {choosing ? (
+          {primaryAction ? primaryAction.icon : choosing ? (
             <X className="h-[22px] w-[22px]" strokeWidth={2.4} />
           ) : (
             <Plus className="h-[22px] w-[22px]" strokeWidth={2.4} />

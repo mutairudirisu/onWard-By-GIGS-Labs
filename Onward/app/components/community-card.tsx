@@ -1,8 +1,45 @@
 "use client";
 
 import Link from "next/link";
-import { Hash } from "lucide-react";
-import type { Community } from "@/lib/db";
+import {
+  BriefcaseBusiness,
+  CircleHelp,
+  Cpu,
+  GraduationCap,
+  Heart,
+  Hash,
+  Palette,
+  Plane,
+  Sparkles,
+  Trophy,
+  Utensils,
+  type LucideIcon,
+} from "lucide-react";
+import type { Community, CommunityTopic } from "@/lib/db";
+
+const COMMUNITY_TOPIC_ICONS: Record<CommunityTopic, LucideIcon> = {
+  Technology: Cpu,
+  Business: BriefcaseBusiness,
+  "Education & Career": GraduationCap,
+  Wellness: Heart,
+  "Arts & Design": Palette,
+  "Food & Drink": Utensils,
+  Sports: Trophy,
+  Travel: Plane,
+  Lifestyle: Sparkles,
+  Other: CircleHelp,
+};
+
+export function CommunityTopicIcon({
+  topic,
+  className = "h-3.5 w-3.5",
+}: {
+  topic: CommunityTopic;
+  className?: string;
+}) {
+  const Icon = COMMUNITY_TOPIC_ICONS[topic];
+  return <Icon aria-hidden="true" className={className} />;
+}
 
 export function CommunityIcon({
   large = false,
@@ -42,7 +79,10 @@ export function CommunityCard({
             <h3 className="truncate text-[13px] font-bold text-ink group-hover:text-lime-deep">
               {community.name}
             </h3>
-            <p className="mt-0.5 text-[10px] font-medium text-muted">{community.topic}</p>
+            <p className="mt-0.5 flex items-center gap-1 text-[10px] font-medium text-muted">
+              <CommunityTopicIcon topic={community.topic} className="h-3 w-3" />
+              {community.topic}
+            </p>
           </div>
         </div>
         <p className="mt-3 line-clamp-2 min-h-[32px] text-[10.5px] leading-[1.55] text-inksoft">

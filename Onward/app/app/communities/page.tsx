@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Compass, Plus, Search, UsersRound } from "lucide-react";
 import { useAuth } from "@/components/auth";
-import { CommunityCard } from "@/components/community-card";
+import { CommunityCard, CommunityTopicIcon } from "@/components/community-card";
 import { PhoneShell } from "@/components/phone-shell";
 import { toastError, toastSuccess } from "@/components/toast";
 import {
@@ -123,18 +123,23 @@ export default function CommunitiesPage() {
 
           <div className="mb-5 overflow-x-auto">
             <nav className="flex min-w-max gap-2" aria-label="Community topics">
-              {["All", ...COMMUNITY_TOPICS].map((item) => (
+              {(["All", ...COMMUNITY_TOPICS] as const).map((item) => (
                 <button
                   key={item}
                   type="button"
                   aria-pressed={topic === item}
                   onClick={() => setTopic(item)}
-                  className={`cursor-pointer rounded-full px-3.5 py-2 text-[9.5px] font-semibold transition ${
+                  className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3.5 py-2 text-[9.5px] font-semibold transition ${
                     topic === item
                       ? "bg-ink text-white"
                       : "bg-paper text-muted hover:bg-lime-pale hover:text-ink"
                   }`}
                 >
+                  {item === "All" ? (
+                    <Compass className="h-3.5 w-3.5" aria-hidden="true" />
+                  ) : (
+                    <CommunityTopicIcon topic={item} />
+                  )}
                   {item}
                 </button>
               ))}

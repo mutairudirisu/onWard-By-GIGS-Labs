@@ -16,7 +16,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { useAuth } from "@/components/auth";
-import { CommunityIcon } from "@/components/community-card";
+import { CommunityIcon, CommunityTopicIcon } from "@/components/community-card";
 import { PhoneShell } from "@/components/phone-shell";
 import { toastError, toastSuccess } from "@/components/toast";
 import { timeAgo } from "@/lib/dates";
@@ -218,7 +218,7 @@ export default function CommunityHomePage() {
             <span className="pointer-events-none absolute -right-7 -top-16 h-48 w-48 rounded-full border-[22px] border-lime/20" />
             <span className="pointer-events-none absolute right-40 top-12 h-12 w-12 rounded-full bg-lime/15" />
             <div className="relative flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.13em] text-lime">
-              <UsersRound className="h-4 w-4" /> {community.topic}
+              <CommunityTopicIcon topic={community.topic} className="h-4 w-4" /> {community.topic}
             </div>
             <h1 className="relative mt-2 max-w-[75%] text-[24px] font-bold tracking-tight text-white sm:text-[30px]">
               {community.name}
@@ -474,7 +474,10 @@ export default function CommunityHomePage() {
               <div className="mt-3 space-y-2 text-[9.5px] text-muted">
                 <div className="flex justify-between gap-3">
                   <span>Topic</span>
-                  <span className="font-semibold text-ink">{community.topic}</span>
+                  <span className="inline-flex items-center gap-1 font-semibold text-ink">
+                    <CommunityTopicIcon topic={community.topic} className="h-3.5 w-3.5" />
+                    {community.topic}
+                  </span>
                 </div>
                 <div className="flex justify-between gap-3">
                   <span>Visibility</span>

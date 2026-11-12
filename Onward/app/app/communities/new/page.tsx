@@ -3,9 +3,9 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, Hash, Lightbulb, LockKeyhole, UsersRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Hash, Lightbulb, LockKeyhole, Plus, UsersRound } from "lucide-react";
 import { useAuth } from "@/components/auth";
-import { CommunityIcon } from "@/components/community-card";
+import { CommunityIcon, CommunityTopicIcon } from "@/components/community-card";
 import { PhoneShell } from "@/components/phone-shell";
 import { COMMUNITY_TOPICS, createCommunity, type CommunityTopic } from "@/lib/db";
 
@@ -103,9 +103,20 @@ export default function NewCommunityPage() {
   }
 
   return (
-    <PhoneShell tab="feed">
+    <PhoneShell
+      tab="feed"
+      primaryAction={{
+        label: step === STEPS.length - 1 ? "Create community" : `Continue to ${STEPS[step + 1]}`,
+        onClick: step === STEPS.length - 1 ? submit : continueStep,
+        disabled: busy,
+        icon:
+          step === STEPS.length - 1
+            ? <Plus className="h-[22px] w-[22px]" strokeWidth={2.4} />
+            : <ArrowRight className="h-[22px] w-[22px]" strokeWidth={2.4} />,
+      }}
+    >
       <main className="-mx-5 w-[calc(100%+2.5rem)] max-w-[620px] md:mx-auto md:w-full">
-        <header className="mb-5 flex items-center justify-between gap-3">
+        <header className="mb-5 flex items-center justify-between gap-3 px-4">
           <Link
             href="/communities"
             className="flex h-9 items-center gap-1.5 rounded-full px-3 text-[10px] font-semibold text-muted hover:bg-paper hover:text-ink"
@@ -192,7 +203,13 @@ export default function NewCommunityPage() {
                           : "border-line bg-paper text-inksoft hover:border-lime"
                       }`}
                     >
-                      {item}
+                      <span className="flex min-w-0 items-center gap-2">
+                        <CommunityTopicIcon
+                          topic={item}
+                          className={`h-4 w-4 shrink-0 ${topic === item ? "text-lime-deep" : "text-muted"}`}
+                        />
+                        {item}
+                      </span>
                       {topic === item ? <Check className="h-4 w-4 text-lime-deep" /> : null}
                     </button>
                   ))}
@@ -261,7 +278,10 @@ export default function NewCommunityPage() {
                     <CommunityIcon />
                     <div className="min-w-0">
                       <p className="truncate text-[11px] font-bold text-ink">{name || "Your community"}</p>
-                      <p className="text-[9px] text-muted">{topic} · Public</p>
+                      <p className="inline-flex items-center gap-1 text-[9px] text-muted">
+                        <CommunityTopicIcon topic={topic} className="h-3 w-3" />
+                        {topic} · Public
+                      </p>
                     </div>
                   </div>
                   {description.trim() ? (
@@ -289,22 +309,22 @@ export default function NewCommunityPage() {
               >
                 <ArrowLeft className="h-4 w-4" /> Back
               </button>
-              {step < STEPS.length - 1 ? (
-                <button
-                  type="button"
-                  onClick={continueStep}
-                  className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full bg-lime-deep px-5 text-[10px] font-bold text-white hover:bg-ink"
-                >
-                  Continue <ArrowRight className="h-4 w-4" />
-                </button>
-              ) : (
+              {step === STEPS.length - 1 ? (
                 <button
                   type="button"
                   onClick={submit}
                   disabled={busy}
-                  className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full bg-lime-deep px-5 text-[10px] font-bold text-white hover:bg-ink disabled:cursor-wait disabled:opacity-60"
+                  className="hidden h-10 cursor-pointer items-center gap-1.5 rounded-full bg-lime px-5 text-[10px] font-bold text-dark hover:bg-lime-deep md:inline-flex disabled:cursor-wait disabled:opacity-60"
                 >
-                  <Check className="h-4 w-4" /> {busy ? "Creating…" : "Create community"}
+                  <Plus className="h-4 w-4" /> {busy ? "Creating…" : "Create community"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={continueStep}
+                  className="hidden h-10 cursor-pointer items-center gap-1.5 rounded-full bg-lime px-5 text-[10px] font-bold text-dark hover:bg-lime-deep md:inline-flex"
+                >
+                  Continue <ArrowRight className="h-4 w-4" />
                 </button>
               )}
             </div>
