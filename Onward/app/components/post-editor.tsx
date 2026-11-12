@@ -204,6 +204,7 @@ export function PostEditor({
     bullet: false,
     numbered: false,
   });
+  const [activeCommand, setActiveCommand] = useState<Command | null>(null);
 
   function read() {
     const el = box.current;
@@ -214,7 +215,7 @@ export function PostEditor({
     onChange(markdown);
   }
 
-  function states() {
+  function states(preferred?: Command) {
     const el = box.current;
     if (!el) return;
     const inside = document.getSelection()?.anchorNode
@@ -222,21 +223,28 @@ export function PostEditor({
       : false;
     if (!inside) return;
     const format = (document.queryCommandValue("formatBlock") ?? "").toLowerCase();
-    setOn({
+    const nextOn = {
       bold: document.queryCommandState("bold"),
       italic: document.queryCommandState("italic"),
       head: /^h[1-6]$/.test(format),
       quote: format === "blockquote",
       bullet: document.queryCommandState("insertUnorderedList"),
       numbered: document.queryCommandState("insertOrderedList"),
+    };
+    setOn(nextOn);
+    setActiveCommand((current) => {
+      if (preferred && nextOn[preferred]) return preferred;
+      if (current && nextOn[current]) return current;
+      return BUTTONS.find(({ command }) => nextOn[command])?.command ?? null;
     });
   }
 
   // The caret moves with taps, arrow keys and typing, and every one of those should
   // say what the box would do to the next word.
   useEffect(() => {
-    document.addEventListener("selectionchange", states);
-    return () => document.removeEventListener("selectionchange", states);
+    const handleSelectionChange = () => states();
+    document.addEventListener("selectionchange", handleSelectionChange);
+    return () => document.removeEventListener("selectionchange", handleSelectionChange);
   });
 
   // Only ever fills a box nobody has typed in, which is how the words carried over from
@@ -263,7 +271,8 @@ export function PostEditor({
       const current = (document.queryCommandValue("formatBlock") ?? "").toLowerCase();
       document.execCommand("formatBlock", false, current === want ? "<p>" : `<${want}>`);
     }
-    states();
+    setActiveCommand(on[command] ? null : command);
+    states(command);
     read();
   }
 
@@ -279,14 +288,14 @@ export function PostEditor({
               key={command}
               type="button"
               aria-label={label}
-              aria-pressed={on[command]}
+              aria-pressed={activeCommand === command}
               title={label}
               disabled={disabled}
               // The box keeps the selection the button is about to format.
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => run(command)}
               className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition hover:bg-cream disabled:cursor-not-allowed disabled:text-faint ${
-                on[command]
+                activeCommand === command
                   ? "bg-lime text-dark shadow-sm ring-1 ring-lime-deep/30"
                   : "text-inksoft hover:text-ink"
               }`}
@@ -307,8 +316,8 @@ export function PostEditor({
           suppressContentEditableWarning
           onInput={read}
           onBlur={read}
-          onKeyUp={states}
-          onMouseUp={states}
+          onKeyUp={() => states()}
+          onMouseUp={() => states()}
           onPaste={(event) => {
             // Only words come in: a page's own bold, fonts and tables would be
             // markup the reader has no way to know about.

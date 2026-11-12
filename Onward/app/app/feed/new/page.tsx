@@ -60,6 +60,7 @@ import { useKeyboardInset } from "@/lib/keyboard";
 /** The picked file and the URL its tile shows. Videos preview their first frame. */
 type Pick = { file: File; url: string };
 type ComposerPage =
+  | "destination"
   | "event"
   | "celebration"
   | "celebration-details"
@@ -115,7 +116,6 @@ function Composer() {
   const [audiencePanel, setAudiencePanel] = useState<AudiencePanel>("overview");
   const [postAudience, setPostAudience] = useState<PostAudience>("anyone");
   const [commentAudience, setCommentAudience] = useState<CommentAudience>("anyone");
-  const [communityPickerOpen, setCommunityPickerOpen] = useState(false);
   const [communityQuery, setCommunityQuery] = useState("");
   const [myCommunities, setMyCommunities] = useState<Community[]>([]);
   const [communitiesLoaded, setCommunitiesLoaded] = useState(false);
@@ -151,6 +151,7 @@ function Composer() {
   const [scheduleTab, setScheduleTab] = useState<"schedule" | "scheduled">("schedule");
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("");
+  const [scheduledPostAt, setScheduledPostAt] = useState<string | null>(null);
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[] | null>(null);
   const [cancelingScheduleId, setCancelingScheduleId] = useState<string | null>(null);
   const [showFormatting, setShowFormatting] = useState(false);
@@ -333,6 +334,7 @@ function Composer() {
 
   function backFromComposerPage() {
     if (composerPage === "celebration-details") setComposerPage("celebration");
+    else if (composerPage === "destination") setComposerPage(null);
     else if (composerPage) {
       setComposerPage(null);
       setShowCategoryModal(true);
@@ -344,9 +346,12 @@ function Composer() {
       router.push("/sign-in");
       return;
     }
+    const selectedTime = scheduledPostAt ? new Date(scheduledPostAt) : null;
+    if (selectedTime && selectedTime.getTime() <= Date.now()) setScheduledPostAt(null);
     const suggested = new Date(Date.now() + 60 * 60 * 1000);
-    setScheduleDate(localDateValue(suggested));
-    setScheduleTime(localTimeValue(suggested));
+    const initial = selectedTime && selectedTime.getTime() > Date.now() ? selectedTime : suggested;
+    setScheduleDate(localDateValue(initial));
+    setScheduleTime(localTimeValue(initial));
     setScheduleTab("schedule");
     setScheduleOpen(true);
   }
@@ -417,6 +422,11 @@ function Composer() {
 
   async function post(scheduledAt: string | null = null) {
     if (empty || busy || composerPage) return;
+    if (scheduledAt && Date.parse(scheduledAt) <= Date.now()) {
+      setScheduledPostAt(null);
+      toastError("That scheduled time has passed. Choose a new time.");
+      return;
+    }
     if (!user) {
       router.push("/sign-in");
       return;
@@ -525,9 +535,11 @@ function Composer() {
         </Link>
         <button
           type="button"
-          aria-haspopup="dialog"
           aria-label={`Post to ${selectedCommunity?.name ?? "your profile"}`}
-          onClick={() => setCommunityPickerOpen(true)}
+          onClick={() => {
+            setCommunityQuery("");
+            setComposerPage("destination");
+          }}
           className="flex h-9 max-w-[112px] shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-line bg-paper px-2 transition hover:bg-lime-pale"
         >
           {selectedCommunity ? (
@@ -567,16 +579,20 @@ function Composer() {
         <button
           type="button"
           disabled={Boolean(busy)}
-          aria-label="Schedule post"
-          title="Schedule post"
+          aria-label={scheduledPostAt ? "Change scheduled post time" : "Schedule post"}
+          title={scheduledPostAt ? "Change scheduled post time" : "Schedule post"}
           onClick={openSchedule}
-          className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-lime-pale text-inksoft transition hover:bg-lime-soft disabled:cursor-not-allowed disabled:opacity-50"
+          className={`flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-50 ${
+            scheduledPostAt
+              ? "bg-lime text-dark hover:bg-lime-deep"
+              : "bg-lime-pale text-inksoft hover:bg-lime-soft"
+          }`}
         >
           <Clock3 className="h-4 w-4" strokeWidth={1.9} />
         </button>
         <button
           type="button"
-          onClick={() => void post()}
+          onClick={() => void post(scheduledPostAt)}
           disabled={empty || Boolean(busy) || Boolean(composerPage)}
           className={`flex h-9 shrink-0 items-center justify-center gap-1 rounded-full px-3 text-[12px] font-semibold transition active:scale-[0.99] ${
             empty || busy || composerPage
@@ -585,7 +601,15 @@ function Composer() {
           }`}
         >
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-          {busy ? (busy.startsWith("Scheduling") ? "Scheduling…" : "Posting…") : isPoll ? "Publish poll" : "Post"}
+          {busy
+            ? busy.startsWith("Scheduling")
+              ? "Scheduling…"
+              : "Posting…"
+            : isPoll
+              ? "Publish poll"
+              : scheduledPostAt
+                ? "Schedule"
+                : "Post"}
         </button>
       </div>
       <div
@@ -610,7 +634,9 @@ function Composer() {
               </button>
               <div>
                 <h2 className="text-[15px] font-semibold text-ink">
-                  {composerPage === "event"
+                  {composerPage === "destination"
+                    ? "Post destination"
+                    : composerPage === "event"
                     ? "Create an event"
                     : composerPage === "celebration"
                       ? "Choose a celebration"
@@ -625,6 +651,121 @@ function Composer() {
                 ) : null}
               </div>
             </header>
+
+            {composerPage === "destination" ? (
+              <div className="space-y-4">
+                <p className="text-[11px] leading-relaxed text-muted">
+                  Choose where your post will appear. You’ll always post as yourself.
+                </p>
+                <button
+                  type="button"
+                  aria-pressed={!selectedCommunityId}
+                  onClick={() => {
+                    setSelectedCommunityId(null);
+                    setCommunityQuery("");
+                    setComposerPage(null);
+                  }}
+                  className={`flex w-full cursor-pointer items-center gap-3 rounded-2xl border px-3 py-3 text-left transition ${
+                    !selectedCommunityId
+                      ? "border-lime-deep bg-lime-pale"
+                      : "border-line bg-paper hover:bg-cream"
+                  }`}
+                >
+                  <Avatar initials={initials} src={me.avatarUrl} size="sm" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[12px] font-semibold text-ink">My profile</span>
+                    <span className="block text-[10px] text-muted">Share with the Exchange</span>
+                  </span>
+                  {!selectedCommunityId ? <Check className="h-4 w-4 text-lime-deep" /> : null}
+                </button>
+                <label className="flex items-center gap-2 rounded-xl border border-line bg-paper px-3 py-2.5 focus-within:border-lime-deep">
+                  <Search className="h-4 w-4 shrink-0 text-muted" />
+                  <input
+                    value={communityQuery}
+                    onChange={(event) => setCommunityQuery(event.target.value)}
+                    placeholder="Find a community you joined"
+                    aria-label="Search joined communities"
+                    className="min-w-0 flex-1 bg-transparent text-[12px] text-ink outline-none placeholder:text-muted"
+                  />
+                </label>
+                {!communitiesLoaded ? (
+                  <div className="flex items-center justify-center gap-2 py-6 text-[11px] text-muted">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading communities
+                  </div>
+                ) : communitiesLoadFailed ? (
+                  <div className="rounded-2xl bg-cream px-4 py-5 text-center">
+                    <p className="text-[12px] font-semibold text-ink">Couldn’t load your communities</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCommunitiesLoaded(false);
+                        setCommunitiesLoadFailed(false);
+                        setCommunityFetchAttempt((attempt) => attempt + 1);
+                      }}
+                      className="mt-3 rounded-full bg-lime-deep px-4 py-2 text-[10px] font-bold text-white hover:bg-ink"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                ) : matchingCommunities.length ? (
+                  <div className="space-y-2">
+                    {matchingCommunities.map((community) => {
+                      const isSelected = selectedCommunityId === community.id;
+                      return (
+                        <button
+                          key={community.id}
+                          type="button"
+                          aria-pressed={isSelected}
+                          onClick={() => {
+                            setSelectedCommunityId(community.id);
+                            setPostAudience("anyone");
+                            setCommentAudience("anyone");
+                            setComposerPage(null);
+                            setCommunityQuery("");
+                          }}
+                          className={`flex w-full cursor-pointer items-center gap-3 rounded-2xl border px-3 py-3 text-left transition ${
+                            isSelected
+                              ? "border-lime-deep bg-lime-pale"
+                              : "border-line bg-paper hover:bg-cream"
+                          }`}
+                        >
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-lime-pale text-lime-deep">
+                            <CommunityTopicIcon topic={community.topic} className="h-4 w-4" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[12px] font-semibold text-ink">
+                              {community.name}
+                            </span>
+                            <span className="block truncate text-[10px] text-muted">
+                              {community.topic} · {community.memberCount} members
+                            </span>
+                          </span>
+                          {isSelected ? <Check className="h-4 w-4 shrink-0 text-lime-deep" /> : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : myCommunities.length ? (
+                  <p className="py-5 text-center text-[11px] text-muted">
+                    No joined communities match your search.
+                  </p>
+                ) : (
+                  <div className="rounded-2xl bg-cream px-4 py-5 text-center">
+                    <p className="text-[12px] font-semibold text-ink">You haven’t joined a community yet</p>
+                    <p className="mt-1 text-[10px] text-muted">
+                      Discover a community and join it to post there.
+                    </p>
+                    <Link
+                      href="/communities"
+                      onClick={() => setComposerPage(null)}
+                      className="mt-3 inline-flex rounded-full bg-lime-deep px-4 py-2 text-[10px] font-bold text-white hover:bg-ink"
+                    >
+                      Discover communities
+                    </Link>
+                  </div>
+                )}
+              </div>
+            ) : null}
 
             {composerPage === "event" ? (
               <div className="space-y-3">
@@ -989,128 +1130,6 @@ function Composer() {
       ) : null}
 
       <Modal
-        open={communityPickerOpen}
-        onClose={() => {
-          setCommunityPickerOpen(false);
-          setCommunityQuery("");
-        }}
-        title="Post destination"
-      >
-        <div className="space-y-3">
-          <p className="text-[11px] leading-relaxed text-muted">
-            Choose where your post will appear. You’ll always post as yourself.
-          </p>
-          <button
-            type="button"
-            aria-pressed={!selectedCommunityId}
-            onClick={() => {
-              setSelectedCommunityId(null);
-              setCommunityPickerOpen(false);
-              setCommunityQuery("");
-            }}
-            className={`flex w-full cursor-pointer items-center gap-3 rounded-2xl border px-3 py-3 text-left transition ${
-              !selectedCommunityId
-                ? "border-lime-deep bg-lime-pale"
-                : "border-line bg-paper hover:bg-cream"
-            }`}
-          >
-            <Avatar initials={initials} src={me.avatarUrl} size="sm" />
-            <span className="min-w-0 flex-1">
-              <span className="block text-[12px] font-semibold text-ink">My profile</span>
-              <span className="block text-[10px] text-muted">Share with the Exchange</span>
-            </span>
-            {!selectedCommunityId ? <Check className="h-4 w-4 text-lime-deep" /> : null}
-          </button>
-          <label className="flex items-center gap-2 rounded-xl border border-line bg-paper px-3 py-2.5 focus-within:border-lime-deep">
-            <Search className="h-4 w-4 shrink-0 text-muted" />
-            <input
-              value={communityQuery}
-              onChange={(event) => setCommunityQuery(event.target.value)}
-              placeholder="Find a community you joined"
-              aria-label="Search joined communities"
-              className="min-w-0 flex-1 bg-transparent text-[12px] text-ink outline-none placeholder:text-muted"
-            />
-          </label>
-          {!communitiesLoaded ? (
-            <div className="flex items-center justify-center gap-2 py-6 text-[11px] text-muted">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading communities
-            </div>
-          ) : communitiesLoadFailed ? (
-            <div className="rounded-2xl bg-cream px-4 py-5 text-center">
-              <p className="text-[12px] font-semibold text-ink">Couldn’t load your communities</p>
-              <button
-                type="button"
-                onClick={() => {
-                  setCommunitiesLoaded(false);
-                  setCommunitiesLoadFailed(false);
-                  setCommunityFetchAttempt((attempt) => attempt + 1);
-                }}
-                className="mt-3 rounded-full bg-lime-deep px-4 py-2 text-[10px] font-bold text-white hover:bg-ink"
-              >
-                Try again
-              </button>
-            </div>
-          ) : matchingCommunities.length ? (
-            <div className="max-h-[45vh] space-y-1 overflow-y-auto">
-              {matchingCommunities.map((community) => {
-                const isSelected = selectedCommunityId === community.id;
-                return (
-                  <button
-                    key={community.id}
-                    type="button"
-                    aria-pressed={isSelected}
-                    onClick={() => {
-                      setSelectedCommunityId(community.id);
-                      setPostAudience("anyone");
-                      setCommentAudience("anyone");
-                      setCommunityPickerOpen(false);
-                      setCommunityQuery("");
-                    }}
-                    className={`flex w-full cursor-pointer items-center gap-3 rounded-2xl border px-3 py-3 text-left transition ${
-                      isSelected
-                        ? "border-lime-deep bg-lime-pale"
-                        : "border-transparent bg-paper hover:bg-cream"
-                    }`}
-                  >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-lime-pale text-lime-deep">
-                      <CommunityTopicIcon topic={community.topic} className="h-4 w-4" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[12px] font-semibold text-ink">
-                        {community.name}
-                      </span>
-                      <span className="block truncate text-[10px] text-muted">
-                        {community.topic} · {community.memberCount} members
-                      </span>
-                    </span>
-                    {isSelected ? <Check className="h-4 w-4 shrink-0 text-lime-deep" /> : null}
-                  </button>
-                );
-              })}
-            </div>
-          ) : myCommunities.length ? (
-            <p className="py-5 text-center text-[11px] text-muted">
-              No joined communities match your search.
-            </p>
-          ) : (
-            <div className="rounded-2xl bg-cream px-4 py-5 text-center">
-              <p className="text-[12px] font-semibold text-ink">You haven’t joined a community yet</p>
-              <p className="mt-1 text-[10px] text-muted">
-                Discover a community and join it to post there.
-              </p>
-              <Link
-                href="/communities"
-                onClick={() => setCommunityPickerOpen(false)}
-                className="mt-3 inline-flex rounded-full bg-lime-deep px-4 py-2 text-[10px] font-bold text-white hover:bg-ink"
-              >
-                Discover communities
-              </Link>
-            </div>
-          )}
-        </div>
-      </Modal>
-
-      <Modal
         open={audienceSettingsOpen}
         onClose={() => setAudienceSettingsOpen(false)}
         title={
@@ -1419,7 +1438,7 @@ function Composer() {
         {scheduleTab === "schedule" ? (
           <div className="space-y-4">
             <p className="text-[11px] leading-relaxed text-inksoft">
-              Choose when your post should appear on the Exchange.
+              Set when your post should appear. Finish your post, then tap Schedule.
             </p>
             <div className="grid grid-cols-2 gap-3">
               <label className="block text-[10px] font-semibold text-muted">
@@ -1452,17 +1471,34 @@ function Composer() {
                 : "Choose a future date and time."}
               {" "}Times use your local timezone ({Intl.DateTimeFormat().resolvedOptions().timeZone}).
             </p>
-            <button
-              type="button"
-              disabled={!validSchedule || empty || Boolean(busy) || Boolean(composerPage)}
-              onClick={() => {
-                if (!validSchedule) return;
-                void post(new Date(scheduleTimestamp).toISOString());
-              }}
-              className="w-full rounded-full bg-lime-deep px-4 py-3 text-[12px] font-bold text-dark transition hover:bg-lime disabled:cursor-not-allowed disabled:bg-lime-pale disabled:text-muted"
-            >
-              {busy?.startsWith("Scheduling") ? "Scheduling…" : "Schedule post"}
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={!validSchedule}
+                onClick={() => {
+                  if (!validSchedule) return;
+                  setScheduledPostAt(new Date(scheduleTimestamp).toISOString());
+                  setScheduleOpen(false);
+                  toastSuccess("Schedule set. Finish your post and tap Schedule.");
+                }}
+                className="flex-1 rounded-full bg-lime-deep px-4 py-3 text-[12px] font-bold text-dark transition hover:bg-lime disabled:cursor-not-allowed disabled:bg-lime-pale disabled:text-muted"
+              >
+                {scheduledPostAt ? "Update schedule" : "Set schedule"}
+              </button>
+              {scheduledPostAt ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScheduledPostAt(null);
+                    setScheduleOpen(false);
+                    toastSuccess("Schedule removed.");
+                  }}
+                  className="rounded-full border border-line px-4 py-3 text-[11px] font-semibold text-muted transition hover:bg-cream hover:text-ink"
+                >
+                  Clear
+                </button>
+              ) : null}
+            </div>
           </div>
         ) : scheduledPosts === null ? (
           <p className="py-6 text-center text-[11px] text-muted">Loading scheduled posts…</p>
