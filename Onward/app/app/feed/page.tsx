@@ -59,16 +59,6 @@ import {
   type SharedPost,
 } from "@/lib/db";
 
-/**
- * The key the author strip filters on. The name shown is always the one the author
- * chose, so a tile reads the same to everyone; your own posts still group under one
- * tile whatever the initials happen to be.
- */
-function authorKey(post: FeedPost) {
-  const name = post.fullName || "Someone";
-  return `${post.mine ? "you" : "other"}:${name.toLowerCase()}:${post.initials}`;
-}
-
 /** How often the Exchange looks for anything written since you arrived. */
 const REFRESH_MS = 20_000;
 
@@ -161,7 +151,6 @@ export default function FeedPage() {
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const [followStatusReady, setFollowStatusReady] = useState(false);
   const [followBusyIds, setFollowBusyIds] = useState<Set<string>>(new Set());
-  const [author, setAuthor] = useState<string | null>(null);
   const [feedTab, setFeedTab] = useState<FeedTab>("for-you");
   const [options, setOptions] = useState<FeedPost | null>(null);
   const [pending, setPending] = useState<FeedPost | null>(null);
@@ -471,25 +460,6 @@ export default function FeedPage() {
     [posts, router, user],
   );
 
-  const people = useMemo(() => {
-    const byAuthor = new Map<
-      string,
-      { key: string; name: string; initials: string; avatar: string | null }
-    >();
-    for (const post of posts) {
-      const key = authorKey(post);
-      if (byAuthor.has(key)) continue;
-      const name = post.fullName || "Someone";
-      byAuthor.set(key, {
-        key,
-        name,
-        initials: post.initials || name.slice(0, 1).toUpperCase(),
-        avatar: post.avatarUrl,
-      });
-    }
-    return [...byAuthor.values()];
-  }, [posts]);
-
   const shown = useMemo(() => {
     let rows = posts;
     if (feedTab === "following") {
@@ -501,8 +471,8 @@ export default function FeedPage() {
         return scoreB - scoreA || Date.parse(b.createdAt) - Date.parse(a.createdAt);
       });
     }
-    return author ? rows.filter((post) => authorKey(post) === author) : rows;
-  }, [author, counts, feedTab, followedIds, posts]);
+    return rows;
+  }, [counts, feedTab, followedIds, posts]);
 
   // Only the things still on the feed: a row whose post has gone has no name to show
   // and nothing left to open.
@@ -573,7 +543,6 @@ export default function FeedPage() {
             aria-current={feedTab === item.id ? "page" : undefined}
             onClick={() => {
               setFeedTab(item.id);
-              setAuthor(null);
             }}
             className={`cursor-pointer border-b-2 px-2 py-2.5 text-[11px] font-semibold transition ${
               feedTab === item.id
@@ -716,45 +685,6 @@ export default function FeedPage() {
         </div>
       ) : (
         <>
-          {people.length > 1 ? (
-            <div className="wheel mb-3 flex gap-3.5 overflow-x-auto px-4 md:px-0">
-              {people.map((person) => (
-                <button
-                  key={person.key}
-                  type="button"
-                  aria-pressed={author === person.key}
-                  onClick={() => setAuthor(author === person.key ? null : person.key)}
-                  className="flex w-[52px] shrink-0 cursor-pointer flex-col items-center gap-1"
-                >
-                  <Avatar
-                    initials={person.initials}
-                    src={person.avatar}
-                    ring={author === person.key}
-                    size={author === person.key ? "lg" : "sm"}
-                  />
-                  <span className="w-full truncate text-center text-[8.5px] text-muted">
-                    {person.name}
-                  </span>
-                </button>
-              ))}
-            </div>
-          ) : null}
-
-          {author ? (
-            <div className="mx-4 mb-2.5 flex items-center justify-between rounded-lg bg-lime-pale px-3 py-1.5 md:mx-0">
-              <span className="text-[10.5px] font-semibold text-ink">
-                Posts from {people.find((p) => p.key === author)?.name}
-              </span>
-              <button
-                type="button"
-                onClick={() => setAuthor(null)}
-                className="cursor-pointer text-[10.5px] font-bold text-lime-deep hover:underline"
-              >
-                Show everyone
-              </button>
-            </div>
-          ) : null}
-
           {handed.length ? (
             <section aria-label="Shared with you" className="mb-3.5 px-4 xl:hidden">
               <p className="mb-1 text-[9.5px] uppercase tracking-[0.08em] text-faint">
