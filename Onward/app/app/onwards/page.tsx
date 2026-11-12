@@ -250,6 +250,7 @@ export default function OnWardsPage() {
 
   return (
     <PhoneShell tab="onwards" wide>
+      <div className="-mx-1.5 w-[calc(100%+0.75rem)] md:-mx-2 md:w-[calc(100%+1rem)] lg:-mx-3 lg:w-[calc(100%+1.5rem)]">
       <PageHeader
         title="Your onWards"
         subtitle="Wins worth remembering, made visible."
@@ -379,6 +380,7 @@ export default function OnWardsPage() {
           url={`${window.location.origin}/onwards/${sharing.id}`}
         />
       ) : null}
+      </div>
     </PhoneShell>
   );
 }
