@@ -56,11 +56,13 @@ export function ShareSheet({
   onClose,
   defaultText,
   url,
+  title = "Share this onWard",
 }: {
   open: boolean;
   onClose: () => void;
   defaultText: string;
   url: string;
+  title?: string;
 }) {
   const [draft, setDraft] = useState(defaultText);
   const [copied, setCopied] = useState(false);
@@ -93,7 +95,7 @@ export function ShareSheet({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Share this onWard">
+    <Modal open={open} onClose={onClose} title={title}>
       <p className="mb-3 text-[11.5px] leading-[1.5] text-muted">
         Edit the wording, then pick where to post it.
       </p>

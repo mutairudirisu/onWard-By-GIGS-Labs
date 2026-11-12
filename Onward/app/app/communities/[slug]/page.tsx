@@ -10,17 +10,22 @@ import {
   ChevronUp,
   Clipboard,
   ImagePlus,
+  Info,
   Lightbulb,
   Loader2,
   MessageCircle,
+  MoreHorizontal,
   Pencil,
   Plus,
+  Share2,
   UsersRound,
 } from "lucide-react";
 import { useAuth } from "@/components/auth";
 import { CommunityTopicIcon } from "@/components/community-card";
 import { PostBlock } from "@/components/feed-post";
+import { Modal } from "@/components/modal";
 import { PhoneShell } from "@/components/phone-shell";
+import { ShareSheet } from "@/components/share-sheet";
 import { toastError, toastSuccess } from "@/components/toast";
 import { withVote } from "@/components/post-poll";
 import {
@@ -73,6 +78,9 @@ export default function CommunityHomePage() {
   const [savingDescription, setSavingDescription] = useState(false);
   const [actionError, setActionError] = useState("");
   const [setupOpen, setSetupOpen] = useState(true);
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState("");
   const [imageBusy, setImageBusy] = useState<"avatar" | "banner" | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -312,6 +320,13 @@ export default function CommunityHomePage() {
     }
   };
 
+  const shareCommunity = () => {
+    if (!community) return;
+    setShareUrl(`${window.location.origin}/communities/${slug}`);
+    setOptionsOpen(false);
+    setShareOpen(true);
+  };
+
   if (loading) {
     return (
       <PhoneShell wide whiteBackground>
@@ -392,11 +407,12 @@ export default function CommunityHomePage() {
                 ) : null}
                 <button
                   type="button"
-                  onClick={copyInvite}
-                  aria-label="Copy community link"
+                  onClick={() => setOptionsOpen(true)}
+                  aria-label="Community options"
+                  aria-haspopup="dialog"
                   className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-ink/60 text-white transition hover:bg-ink/80"
                 >
-                  <Clipboard className="h-5 w-5" />
+                  <MoreHorizontal className="h-5 w-5" />
                 </button>
               </div>
             </div>
@@ -409,7 +425,7 @@ export default function CommunityHomePage() {
                   onClick={() => community.isOwner && avatarInputRef.current?.click()}
                   disabled={!community.isOwner || imageBusy !== null}
                   aria-label={community.isOwner ? "Change community photo" : "Community photo"}
-                  className="relative z-10 -mt-8 flex h-[68px] w-[68px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border-4 border-white bg-lime-pale text-lime-deep disabled:cursor-default"
+                  className="relative z-10 -mt-8 flex h-[68px] w-[68px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border-4 border-lime bg-lime-pale text-lime-deep disabled:cursor-default"
                 >
                   {community.avatarPath ? (
                     <img
@@ -680,7 +696,7 @@ export default function CommunityHomePage() {
           </main>
 
           <aside className="space-y-4">
-            <section className="border-t border-line py-4 lg:border-0">
+            <section id="community-details" className="border-t border-line py-4 lg:border-0">
               <h2 className="text-[11px] font-bold text-ink">Community details</h2>
               <div className="mt-3 space-y-2 text-[9.5px] text-muted">
                 <div className="flex justify-between gap-3">
@@ -708,6 +724,94 @@ export default function CommunityHomePage() {
         </div>
       </div>
       </div>
+      <Modal open={optionsOpen} onClose={() => setOptionsOpen(false)} title="Community options">
+        <div className="-mx-5">
+          <button
+            type="button"
+            onClick={() => {
+              setOptionsOpen(false);
+              void copyInvite();
+            }}
+            className="flex w-full cursor-pointer items-center gap-3 border-b border-line px-5 py-3.5 text-left text-[12px] font-semibold text-ink transition hover:bg-cream"
+          >
+            <Clipboard className="h-5 w-5 text-inksoft" />
+            Copy link
+          </button>
+          <button
+            type="button"
+            onClick={shareCommunity}
+            className="flex w-full cursor-pointer items-center gap-3 border-b border-line px-5 py-3.5 text-left text-[12px] font-semibold text-ink transition hover:bg-cream"
+          >
+            <Share2 className="h-5 w-5 text-inksoft" />
+            Share community
+          </button>
+          <a
+            href="#community-details"
+            onClick={() => setOptionsOpen(false)}
+            className="flex w-full cursor-pointer items-center gap-3 border-b border-line px-5 py-3.5 text-left text-[12px] font-semibold text-ink transition hover:bg-cream"
+          >
+            <Info className="h-5 w-5 text-inksoft" />
+            Learn about this community
+          </a>
+          {community.isOwner ? (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setOptionsOpen(false);
+                  setEditing(true);
+                }}
+                className="flex w-full cursor-pointer items-center gap-3 border-b border-line px-5 py-3.5 text-left text-[12px] font-semibold text-ink transition hover:bg-cream"
+              >
+                <Pencil className="h-5 w-5 text-inksoft" />
+                Edit community details
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setOptionsOpen(false);
+                  avatarInputRef.current?.click();
+                }}
+                className="flex w-full cursor-pointer items-center gap-3 border-b border-line px-5 py-3.5 text-left text-[12px] font-semibold text-ink transition hover:bg-cream"
+              >
+                <ImagePlus className="h-5 w-5 text-inksoft" />
+                Change community photo
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setOptionsOpen(false);
+                  bannerInputRef.current?.click();
+                }}
+                className="flex w-full cursor-pointer items-center gap-3 border-b border-line px-5 py-3.5 text-left text-[12px] font-semibold text-ink transition hover:bg-cream"
+              >
+                <ImagePlus className="h-5 w-5 text-inksoft" />
+                Change banner photo
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setOptionsOpen(false);
+                void toggleMembership();
+              }}
+              disabled={joining}
+              className="flex w-full cursor-pointer items-center gap-3 px-5 py-3.5 text-left text-[12px] font-semibold text-ink transition hover:bg-cream disabled:cursor-wait disabled:opacity-60"
+            >
+              <UsersRound className="h-5 w-5 text-inksoft" />
+              {community.isMember ? "Leave community" : "Join community"}
+            </button>
+          )}
+        </div>
+      </Modal>
+      <ShareSheet
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        defaultText={`${community.name}: ${community.description}`}
+        url={shareUrl}
+        title={`Share ${community.name}`}
+      />
     </PhoneShell>
   );
 }
