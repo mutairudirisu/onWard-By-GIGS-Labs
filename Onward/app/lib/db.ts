@@ -607,6 +607,8 @@ export type FeedPost = {
   communityName: string | null;
   communitySlug: string | null;
   communityTopic: CommunityTopic | null;
+  communityDescription: string | null;
+  communityAvatarPath: string | null;
   communityIsMember: boolean;
 };
 
@@ -678,6 +680,8 @@ type FeedRow = {
   community_name?: string | null;
   community_slug?: string | null;
   community_topic?: CommunityTopic | null;
+  community_description?: string | null;
+  community_avatar_path?: string | null;
   community_is_member?: boolean | null;
 };
 
@@ -763,12 +767,14 @@ function postFromRow(row: FeedRow): FeedPost {
     communityName: row.community_name ?? null,
     communitySlug: row.community_slug ?? null,
     communityTopic: row.community_topic ?? null,
+    communityDescription: row.community_description ?? null,
+    communityAvatarPath: row.community_avatar_path ?? null,
     communityIsMember: row.community_is_member ?? false,
   };
 }
 
 const FEED_COLUMNS =
-  "id, body, ward_id, full_name, initials, avatar_url, role, created_at, mine, media, likes, comments, recent_comments, title, reshare_of, reshares, reshared, reshare, author_id, post_audience, comment_audience, can_comment, brand_partnership, brand_partner_name, collaborators, scheduled_at, community_id, community_name, community_slug, community_topic, community_is_member";
+  "id, body, ward_id, full_name, initials, avatar_url, role, created_at, mine, media, likes, comments, recent_comments, title, reshare_of, reshares, reshared, reshare, author_id, post_audience, comment_audience, can_comment, brand_partnership, brand_partner_name, collaborators, scheduled_at, community_id, community_name, community_slug, community_topic, community_is_member, community_description, community_avatar_path";
 
 /** A public object in a public bucket needs no token, which is what lets an <img>
  *  tag work for someone who has never signed in. */

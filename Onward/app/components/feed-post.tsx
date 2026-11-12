@@ -16,7 +16,14 @@ import {
   Share2,
   ThumbsUp,
 } from "lucide-react";
-import { mediaUrl, type FeedPost, type PostMedia, type PostPoll } from "@/lib/db";
+import {
+  communityMediaUrl,
+  initialsFor,
+  mediaUrl,
+  type FeedPost,
+  type PostMedia,
+  type PostPoll,
+} from "@/lib/db";
 import { CarriedPollBlock, PollBlock } from "@/components/post-poll";
 import { PostText } from "@/components/post-text";
 import { timeAgo } from "@/lib/dates";
@@ -319,8 +326,14 @@ export function PostBlock({
   const parsedPost = extractPostDocument(post.body);
   const cleanPost = { ...post, body: parsedPost.body };
   const long = parsedPost.body.length > 180;
-  // An entry always carries the name its author shows, including to themselves.
-  const name = post.fullName || "Someone";
+  const communityPost = Boolean(post.communityId);
+  const name = communityPost ? post.communityName || "Community" : post.fullName || "Someone";
+  const authorHref =
+    communityPost && post.communitySlug
+      ? `/communities/${post.communitySlug}`
+      : post.authorId
+        ? `/people/${post.authorId}`
+        : `/feed/${post.id}`;
   // What is being passed on, when this card is a reshare rather than a writing.
   const carried = post.reshare;
 
@@ -349,28 +362,30 @@ export function PostBlock({
     <article className="border-0 pb-3.5">
       <header className={`flex items-center gap-2.5 py-2.5 ${edgeToEdge ? "px-4" : ""}`}>
         <Link
-          href={post.authorId ? `/people/${post.authorId}` : `/feed/${post.id}`}
+          href={authorHref}
           className="group flex min-w-0 flex-1 cursor-pointer items-center gap-2.5"
         >
-          <Avatar initials={post.initials} src={post.avatarUrl} size="lg" />
+          <Avatar
+            initials={communityPost ? initialsFor(name) : post.initials}
+            src={communityPost ? communityMediaUrl(post.communityAvatarPath) : post.avatarUrl}
+            size="lg"
+          />
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[12px] font-bold tracking-tight text-ink group-hover:underline">
               {name}
             </span>
-            {post.role ? (
+            {communityPost ? (
+              post.communityDescription ? (
+                <span className="block truncate text-[9px] text-muted">{post.communityDescription}</span>
+              ) : null
+            ) : post.role ? (
               <span className="block truncate text-[9px] text-muted">{post.role}</span>
             ) : null}
-          <span className="flex items-center gap-1 text-[9px] text-muted">
-            {timeAgo(post.createdAt)}
-            {post.communityName ? (
-              <>
-                <span aria-hidden="true">·</span>
-                <span className="truncate font-medium text-lime-deep">{post.communityName}</span>
-              </>
-            ) : null}
-            <span aria-hidden="true">·</span>
-            <Globe2 className="h-2.5 w-2.5" aria-label="Public post" />
-          </span>
+            <span className="flex items-center gap-1 text-[9px] text-muted">
+              {timeAgo(post.createdAt)}
+              <span aria-hidden="true">·</span>
+              <Globe2 className="h-2.5 w-2.5" aria-label="Public post" />
+            </span>
             {post.brandPartnership ? (
               <span className="block truncate text-[9px] font-medium text-inksoft">
                 Paid partnership{post.brandPartnerName ? ` with ${post.brandPartnerName}` : ""}
@@ -383,27 +398,17 @@ export function PostBlock({
             ) : null}
           </span>
         </Link>
-        {post.communityId && onJoinCommunity ? (
+        {post.communityId && onJoinCommunity && !communityJoined ? (
           <button
             type="button"
-            aria-pressed={communityJoined}
-            aria-label={
-              communityJoined
-                ? `Joined ${post.communityName ?? "community"}`
-                : `Join ${post.communityName ?? "community"}`
-            }
-            onClick={() => {
-              if (!communityJoined) onJoinCommunity(post.communityId!);
-            }}
-            disabled={communityJoined || communityBusy}
-            className={`flex h-7 shrink-0 items-center gap-0.5 rounded-full px-1.5 text-[10px] font-semibold transition disabled:cursor-default disabled:opacity-70 ${
-              communityJoined ? "text-inksoft" : "cursor-pointer text-lime-deep hover:bg-lime-pale"
-            }`}
+            aria-label={`Join ${post.communityName ?? "community"}`}
+            onClick={() => onJoinCommunity(post.communityId!)}
+            disabled={communityBusy}
+            className="flex h-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-lime-deep px-3 text-[10px] font-semibold text-white transition hover:bg-ink disabled:cursor-wait disabled:opacity-70"
           >
-            {communityJoined ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
-            {communityBusy ? "Joining" : communityJoined ? "Joined" : "Join"}
+            {communityBusy ? "Joining…" : "Join"}
           </button>
-        ) : post.authorId && !post.mine && onToggleFollow ? (
+        ) : !post.communityId && post.authorId && !post.mine && onToggleFollow ? (
           <button
             type="button"
             aria-pressed={followed}

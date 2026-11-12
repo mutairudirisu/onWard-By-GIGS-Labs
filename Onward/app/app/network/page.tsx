@@ -406,8 +406,8 @@ export default function NetworkPage() {
     <PhoneShell tab="network" wide>
       <div className="grid w-full max-w-[1080px] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
         <main className="min-w-0">
-          <header className="mb-5 overflow-hidden bg-paper">
-            <div className="relative min-h-[190px] overflow-hidden bg-ink px-5 pb-6 pt-5 sm:px-7">
+          <header className="mb-5 -mx-5 -mt-5 w-[calc(100%+2.5rem)] overflow-hidden bg-paper md:mx-0 md:mt-0 md:w-auto">
+            <div className="relative min-h-[190px] overflow-hidden bg-ink px-4 pb-7 pt-4 sm:px-7">
               <span className="pointer-events-none absolute -right-7 -top-16 h-48 w-48 rounded-full border-[22px] border-lime/20" />
               <span className="pointer-events-none absolute right-40 top-12 h-12 w-12 rounded-full bg-lime/15" />
               <span className="pointer-events-none absolute -bottom-16 left-[36%] h-36 w-36 rounded-full bg-lime/10" />
