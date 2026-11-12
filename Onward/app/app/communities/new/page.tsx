@@ -163,7 +163,7 @@ export default function NewCommunityPage() {
                   onChange={(event) => setIdea(event.target.value)}
                   maxLength={1000}
                   rows={5}
-                  placeholder="I want to bring together people who…"
+                  placeholder="Community idea"
                   className="mt-2 w-full resize-y rounded-xl border border-line bg-cream px-3 py-3 text-[11px] leading-[1.6] text-ink outline-none placeholder:text-faint focus:border-lime-deep"
                 />
                 <div className="mt-1 flex justify-between text-[9px] text-muted">
