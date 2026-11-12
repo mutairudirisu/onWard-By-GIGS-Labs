@@ -282,7 +282,7 @@ export default function EditProfilePage() {
       </div>
 
       <div className="space-y-4">
-        <Field label="Name or business" uppercase>
+        <Field label="Full Name" uppercase>
           <TextInput
             value={name}
             onChange={(e) => {
@@ -292,7 +292,7 @@ export default function EditProfilePage() {
             maxLength={80}
           />
           <p className="mt-1.5 text-[10px] leading-[1.5] text-muted">
-            Use your personal name, company or brand name.
+            Use the name you want people to see on your profile.
           </p>
         </Field>
 

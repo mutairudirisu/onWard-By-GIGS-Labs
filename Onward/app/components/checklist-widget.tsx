@@ -132,9 +132,7 @@ export function ChecklistWidget({ onHide }: { onHide: () => void }) {
         ),
       );
     } catch (error) {
-      toastError(
-        `Reminder saved on this device only. ${error instanceof Error ? error.message : "Background push could not be scheduled."}`,
-      );
+      console.error("Could not schedule background checklist reminder", error);
     }
     primeAlarm();
     haptic("tap", settings.haptics);

@@ -23,6 +23,7 @@ import {
   fetchPolls,
   fetchPost,
   followPerson,
+  joinCommunity,
   likeComment,
   likePost,
   reshare,
@@ -55,6 +56,7 @@ export default function PostPage() {
   const [followingAuthor, setFollowingAuthor] = useState(false);
   const [followStatusReady, setFollowStatusReady] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
+  const [communityBusy, setCommunityBusy] = useState(false);
   const [poll, setPoll] = useState<PostPoll | null>(null);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -132,6 +134,32 @@ export default function PostPage() {
         .finally(() => setFollowBusy(false));
     },
     [followBusy, router, user],
+  );
+
+  const joinPostCommunity = useCallback(
+    async (communityId: string) => {
+      if (!user) {
+        router.push("/sign-in");
+        return;
+      }
+      if (communityBusy || post?.communityIsMember) return;
+      setCommunityBusy(true);
+      setPost((current) =>
+        current?.communityId === communityId ? { ...current, communityIsMember: true } : current,
+      );
+      try {
+        await joinCommunity(communityId);
+        toastSuccess("Joined community");
+      } catch (error) {
+        setPost((current) =>
+          current?.communityId === communityId ? { ...current, communityIsMember: false } : current,
+        );
+        toastError(error instanceof Error ? error.message : "Couldn't join that community");
+      } finally {
+        setCommunityBusy(false);
+      }
+    },
+    [communityBusy, post?.communityIsMember, router, user],
   );
 
   const isMine = Boolean(post?.mine);
@@ -356,6 +384,9 @@ export default function PostPage() {
             followed={followingAuthor}
             followBusy={followBusy}
             onToggleFollow={followStatusReady || !user ? toggleFollowAuthor : undefined}
+            communityJoined={post.communityIsMember ?? false}
+            communityBusy={communityBusy}
+            onJoinCommunity={joinPostCommunity}
             poll={poll}
             onVote={votePoll}
             onLike={toggleLike}

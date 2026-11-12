@@ -404,19 +404,23 @@ export default function NetworkPage() {
 
   return (
     <PhoneShell tab="network" wide>
-      <div className="-mx-5 grid w-[calc(100%+2.5rem)] max-w-[1080px] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_260px] md:mx-auto md:w-full">
+      <div className="grid w-full max-w-[1080px] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
         <main className="min-w-0">
-          <header className="mb-5 overflow-hidden rounded-2xl border border-line bg-paper">
-            <div className="relative overflow-hidden bg-lime-pale px-5 pb-5 pt-6 sm:px-7">
-              <span className="pointer-events-none absolute -right-4 -top-8 h-36 w-36 rounded-full border-[18px] border-lime/20" />
-              <span className="pointer-events-none absolute right-20 top-12 h-12 w-12 rounded-full bg-lime/25" />
-              <div className="relative flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.14em] text-lime-deep">
-                <UsersRound className="h-4 w-4" /> Your people
+          <header className="mb-5 overflow-hidden bg-paper">
+            <div className="relative min-h-[190px] overflow-hidden bg-ink px-5 pb-6 pt-5 sm:px-7">
+              <span className="pointer-events-none absolute -right-7 -top-16 h-48 w-48 rounded-full border-[22px] border-lime/20" />
+              <span className="pointer-events-none absolute right-40 top-12 h-12 w-12 rounded-full bg-lime/15" />
+              <span className="pointer-events-none absolute -bottom-16 left-[36%] h-36 w-36 rounded-full bg-lime/10" />
+              <div className="relative flex h-10 items-center gap-2 text-[9px] font-bold uppercase tracking-[0.14em] text-lime">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-lime/15 text-lime">
+                  <UsersRound className="h-5 w-5" />
+                </span>
+                Your people
               </div>
-              <h1 className="relative mt-2 text-[24px] font-bold tracking-tight text-ink sm:text-[28px]">
+              <h1 className="relative mt-3 text-[24px] font-bold tracking-tight text-white sm:text-[28px]">
                 My Network
               </h1>
-              <p className="relative mt-1 max-w-[54ch] text-[11px] leading-[1.6] text-inksoft">
+              <p className="relative mt-1 max-w-[54ch] text-[11px] leading-[1.6] text-white/75">
                 Find people sharing what they know and doing work worth learning from. Following is
                 one-way, so you choose whose updates to keep up with.
               </p>

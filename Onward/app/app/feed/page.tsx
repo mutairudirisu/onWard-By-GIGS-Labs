@@ -47,6 +47,7 @@ import {
   fetchPolls,
   fetchSharedWithMe,
   followPerson,
+  joinCommunity,
   likePost,
   reshare,
   unlikePost,
@@ -157,6 +158,7 @@ export default function FeedPage() {
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const [followStatusReady, setFollowStatusReady] = useState(false);
   const [followBusyIds, setFollowBusyIds] = useState<Set<string>>(new Set());
+  const [communityBusyIds, setCommunityBusyIds] = useState<Set<string>>(new Set());
   const [feedTab, setFeedTab] = useState<FeedTab>("for-you");
   const [options, setOptions] = useState<FeedPost | null>(null);
   const [pending, setPending] = useState<FeedPost | null>(null);
@@ -273,6 +275,40 @@ export default function FeedPage() {
         });
     },
     [followBusyIds, router, user],
+  );
+
+  const updateCommunityMembership = useCallback((communityId: string, isMember: boolean) => {
+    const update = (post: FeedPost) =>
+      post.communityId === communityId ? { ...post, communityIsMember: isMember } : post;
+    setPosts((current) => current.map(update));
+    setPendingPosts((current) => current.map(update));
+    postsRef.current = postsRef.current.map(update);
+  }, []);
+
+  const joinCommunityFromPost = useCallback(
+    async (communityId: string) => {
+      if (!user) {
+        router.push("/sign-in");
+        return;
+      }
+      if (communityBusyIds.has(communityId)) return;
+      setCommunityBusyIds((current) => new Set(current).add(communityId));
+      updateCommunityMembership(communityId, true);
+      try {
+        await joinCommunity(communityId);
+        toastSuccess("Joined community");
+      } catch (error) {
+        updateCommunityMembership(communityId, false);
+        toastError(error instanceof Error ? error.message : "Couldn't join that community");
+      } finally {
+        setCommunityBusyIds((current) => {
+          const next = new Set(current);
+          next.delete(communityId);
+          return next;
+        });
+      }
+    },
+    [communityBusyIds, router, updateCommunityMembership, user],
   );
 
   /**
@@ -807,6 +843,9 @@ export default function FeedPage() {
                 onToggleFollow={
                   followStatusReady || !user ? toggleFollowAuthor : undefined
                 }
+                communityJoined={post.communityIsMember ?? false}
+                communityBusy={post.communityId ? communityBusyIds.has(post.communityId) : false}
+                onJoinCommunity={joinCommunityFromPost}
                 poll={polls[post.id] ?? null}
                 onVote={votePoll}
                 onLike={toggleLike}

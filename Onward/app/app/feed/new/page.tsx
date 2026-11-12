@@ -28,6 +28,7 @@ import {
 import { PhoneShell } from "@/components/phone-shell";
 import { Avatar } from "@/components/feed-post";
 import { Modal } from "@/components/modal";
+import { CommunityTopicIcon } from "@/components/community-card";
 import { PostEditor } from "@/components/post-editor";
 import {
   PollComposer,
@@ -44,12 +45,14 @@ import {
   POST_TITLE_MAX,
   createPost,
   deletePost,
+  fetchMyCommunities,
   fetchScheduledPosts,
   mediaProblem,
   removePostDocument,
   searchPeople,
   uploadPostDocument,
   type ExchangePerson,
+  type Community,
   type ScheduledPost,
 } from "@/lib/db";
 import { useKeyboardInset } from "@/lib/keyboard";
@@ -93,7 +96,7 @@ function Composer() {
   const router = useRouter();
   const params = useSearchParams();
   const { onWards } = useStore();
-  const { user } = useAuth();
+  const { user, ready } = useAuth();
   const me = useCurrentUser();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -112,6 +115,15 @@ function Composer() {
   const [audiencePanel, setAudiencePanel] = useState<AudiencePanel>("overview");
   const [postAudience, setPostAudience] = useState<PostAudience>("anyone");
   const [commentAudience, setCommentAudience] = useState<CommentAudience>("anyone");
+  const [communityPickerOpen, setCommunityPickerOpen] = useState(false);
+  const [communityQuery, setCommunityQuery] = useState("");
+  const [myCommunities, setMyCommunities] = useState<Community[]>([]);
+  const [communitiesLoaded, setCommunitiesLoaded] = useState(false);
+  const [communitiesLoadFailed, setCommunitiesLoadFailed] = useState(false);
+  const [communityFetchAttempt, setCommunityFetchAttempt] = useState(0);
+  const [selectedCommunityId, setSelectedCommunityId] = useState<string | null>(
+    () => params.get("community"),
+  );
   const [collaborators, setCollaborators] = useState<ExchangePerson[]>([]);
   const [peopleResults, setPeopleResults] = useState<ExchangePerson[]>([]);
   const [peopleQuery, setPeopleQuery] = useState("");
@@ -159,6 +171,46 @@ function Composer() {
   }, []);
 
   useEffect(() => {
+    if (!ready) return;
+    setCommunitiesLoaded(false);
+    setCommunitiesLoadFailed(false);
+    if (!user) {
+      setMyCommunities([]);
+      setCommunitiesLoaded(true);
+      return;
+    }
+    let active = true;
+    void fetchMyCommunities()
+      .then((items) => {
+        if (active) setMyCommunities(items);
+      })
+      .catch((reason) => {
+        if (active) {
+          setCommunitiesLoadFailed(true);
+          toastError(reason instanceof Error ? reason.message : "Couldn't load your communities.");
+        }
+      })
+      .finally(() => {
+        if (active) setCommunitiesLoaded(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [communityFetchAttempt, ready, user]);
+
+  useEffect(() => {
+    if (!user || !communitiesLoaded || communitiesLoadFailed || !selectedCommunityId) return;
+    if (myCommunities.some((item) => item.id === selectedCommunityId)) return;
+    setSelectedCommunityId(null);
+    toastError("Join that community before posting to it.");
+  }, [communitiesLoadFailed, communitiesLoaded, myCommunities, selectedCommunityId, user]);
+
+  useEffect(() => {
+    const prompt = params.get("prompt");
+    if (prompt && !title && !body) setBody(prompt.slice(0, POST_BODY_MAX));
+  }, [body, params, title]);
+
+  useEffect(() => {
     picksRef.current = picks;
   }, [picks]);
 
@@ -187,6 +239,10 @@ function Composer() {
   );
   const initials = me.initials || (me.name.slice(0, 1).toUpperCase() || "?");
   const audienceLabel = postAudience === "connections" ? "Connections" : "Anyone";
+  const selectedCommunity = myCommunities.find((item) => item.id === selectedCommunityId) ?? null;
+  const matchingCommunities = myCommunities.filter((item) =>
+    `${item.name} ${item.description} ${item.topic}`.toLowerCase().includes(communityQuery.trim().toLowerCase()),
+  );
   const scheduleTimestamp =
     scheduleDate && scheduleTime ? new Date(`${scheduleDate}T${scheduleTime}`).getTime() : NaN;
   const validSchedule = Number.isFinite(scheduleTimestamp) && scheduleTimestamp > Date.now();
@@ -363,6 +419,10 @@ function Composer() {
       router.push("/sign-in");
       return;
     }
+    if (selectedCommunityId && (!communitiesLoaded || communitiesLoadFailed || !selectedCommunity)) {
+      toastError("Choose a destination again after your communities finish loading.");
+      return;
+    }
     if (postAudience !== "anyone" && (picks.length || documentFile)) {
       toastError("Connections-only posts can’t include media or documents yet.");
       return;
@@ -401,6 +461,7 @@ function Composer() {
         body: postBody,
         files: isPoll ? [] : picks.map((p) => p.file),
         wardId: ward?.id ?? null,
+        communityId: selectedCommunity?.id ?? null,
         audience: postAudience,
         commentAudience,
         collaboratorIds: collaborators.map((person) => person.id),
@@ -419,7 +480,13 @@ function Composer() {
         onProgress: (done, total) => setProgress({ done, total }),
       });
       uploadedDocumentPath = null;
-      toastSuccess(scheduledAt ? "Post scheduled" : "Shared to the Exchange");
+      toastSuccess(
+        scheduledAt
+          ? "Post scheduled"
+          : selectedCommunity
+            ? `Posted to ${selectedCommunity.name}`
+            : "Shared to the Exchange",
+      );
       if (scheduledAt) setScheduleOpen(false);
       router.push("/feed");
     } catch (error) {
@@ -454,22 +521,43 @@ function Composer() {
         >
           <X className="h-5 w-5" strokeWidth={1.8} />
         </Link>
-        <Avatar initials={initials} src={me.avatarUrl} size="sm" />
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          aria-label={`Post to ${selectedCommunity?.name ?? "your profile"}`}
+          onClick={() => setCommunityPickerOpen(true)}
+          className="flex h-9 max-w-[112px] shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-line bg-paper px-2 transition hover:bg-lime-pale"
+        >
+          {selectedCommunity ? (
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-lime-pale text-lime-deep">
+              <CommunityTopicIcon topic={selectedCommunity.topic} className="h-4 w-4" />
+            </span>
+          ) : (
+            <Avatar initials={initials} src={me.avatarUrl} size="sm" />
+          )}
+          <span className="min-w-0 truncate text-[10px] font-semibold text-ink">
+            {selectedCommunity?.name ?? "My profile"}
+          </span>
+          <ChevronDown className="h-3 w-3 shrink-0 text-muted" />
+        </button>
         <div className="min-w-0 flex-1">
           <button
             type="button"
             aria-haspopup="dialog"
+            disabled={Boolean(selectedCommunity)}
             onClick={() => {
               setAudiencePanel("overview");
               setAudienceSettingsOpen(true);
             }}
-            className="flex cursor-pointer items-center gap-1 text-[14px] font-semibold leading-tight text-ink"
+            className="flex cursor-pointer items-center gap-1 text-[11px] font-semibold leading-tight text-ink disabled:cursor-default"
           >
-            {audienceLabel}
-            <ChevronDown className="h-3.5 w-3.5" strokeWidth={2} />
+            {selectedCommunity ? "Anyone" : audienceLabel}
+            {!selectedCommunity ? <ChevronDown className="h-3.5 w-3.5" strokeWidth={2} /> : null}
           </button>
-          <p className="mt-1 truncate text-[11px] leading-tight text-muted">
-            {postAudience === "connections"
+          <p className="mt-1 truncate text-[9px] leading-tight text-muted">
+            {selectedCommunity
+              ? "Posting as you"
+              : postAudience === "connections"
               ? "Visible to mutual followers"
               : "Public on the Exchange"}
           </p>
@@ -899,6 +987,128 @@ function Composer() {
           </div>
         </div>
       ) : null}
+
+      <Modal
+        open={communityPickerOpen}
+        onClose={() => {
+          setCommunityPickerOpen(false);
+          setCommunityQuery("");
+        }}
+        title="Post destination"
+      >
+        <div className="space-y-3">
+          <p className="text-[11px] leading-relaxed text-muted">
+            Choose where your post will appear. You’ll always post as yourself.
+          </p>
+          <button
+            type="button"
+            aria-pressed={!selectedCommunityId}
+            onClick={() => {
+              setSelectedCommunityId(null);
+              setCommunityPickerOpen(false);
+              setCommunityQuery("");
+            }}
+            className={`flex w-full cursor-pointer items-center gap-3 rounded-2xl border px-3 py-3 text-left transition ${
+              !selectedCommunityId
+                ? "border-lime-deep bg-lime-pale"
+                : "border-line bg-paper hover:bg-cream"
+            }`}
+          >
+            <Avatar initials={initials} src={me.avatarUrl} size="sm" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[12px] font-semibold text-ink">My profile</span>
+              <span className="block text-[10px] text-muted">Share with the Exchange</span>
+            </span>
+            {!selectedCommunityId ? <Check className="h-4 w-4 text-lime-deep" /> : null}
+          </button>
+          <label className="flex items-center gap-2 rounded-xl border border-line bg-paper px-3 py-2.5 focus-within:border-lime-deep">
+            <Search className="h-4 w-4 shrink-0 text-muted" />
+            <input
+              value={communityQuery}
+              onChange={(event) => setCommunityQuery(event.target.value)}
+              placeholder="Find a community you joined"
+              aria-label="Search joined communities"
+              className="min-w-0 flex-1 bg-transparent text-[12px] text-ink outline-none placeholder:text-muted"
+            />
+          </label>
+          {!communitiesLoaded ? (
+            <div className="flex items-center justify-center gap-2 py-6 text-[11px] text-muted">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading communities
+            </div>
+          ) : communitiesLoadFailed ? (
+            <div className="rounded-2xl bg-cream px-4 py-5 text-center">
+              <p className="text-[12px] font-semibold text-ink">Couldn’t load your communities</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setCommunitiesLoaded(false);
+                  setCommunitiesLoadFailed(false);
+                  setCommunityFetchAttempt((attempt) => attempt + 1);
+                }}
+                className="mt-3 rounded-full bg-lime-deep px-4 py-2 text-[10px] font-bold text-white hover:bg-ink"
+              >
+                Try again
+              </button>
+            </div>
+          ) : matchingCommunities.length ? (
+            <div className="max-h-[45vh] space-y-1 overflow-y-auto">
+              {matchingCommunities.map((community) => {
+                const isSelected = selectedCommunityId === community.id;
+                return (
+                  <button
+                    key={community.id}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => {
+                      setSelectedCommunityId(community.id);
+                      setPostAudience("anyone");
+                      setCommentAudience("anyone");
+                      setCommunityPickerOpen(false);
+                      setCommunityQuery("");
+                    }}
+                    className={`flex w-full cursor-pointer items-center gap-3 rounded-2xl border px-3 py-3 text-left transition ${
+                      isSelected
+                        ? "border-lime-deep bg-lime-pale"
+                        : "border-transparent bg-paper hover:bg-cream"
+                    }`}
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-lime-pale text-lime-deep">
+                      <CommunityTopicIcon topic={community.topic} className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[12px] font-semibold text-ink">
+                        {community.name}
+                      </span>
+                      <span className="block truncate text-[10px] text-muted">
+                        {community.topic} · {community.memberCount} members
+                      </span>
+                    </span>
+                    {isSelected ? <Check className="h-4 w-4 shrink-0 text-lime-deep" /> : null}
+                  </button>
+                );
+              })}
+            </div>
+          ) : myCommunities.length ? (
+            <p className="py-5 text-center text-[11px] text-muted">
+              No joined communities match your search.
+            </p>
+          ) : (
+            <div className="rounded-2xl bg-cream px-4 py-5 text-center">
+              <p className="text-[12px] font-semibold text-ink">You haven’t joined a community yet</p>
+              <p className="mt-1 text-[10px] text-muted">
+                Discover a community and join it to post there.
+              </p>
+              <Link
+                href="/communities"
+                onClick={() => setCommunityPickerOpen(false)}
+                className="mt-3 inline-flex rounded-full bg-lime-deep px-4 py-2 text-[10px] font-bold text-white hover:bg-ink"
+              >
+                Discover communities
+              </Link>
+            </div>
+          )}
+        </div>
+      </Modal>
 
       <Modal
         open={audienceSettingsOpen}

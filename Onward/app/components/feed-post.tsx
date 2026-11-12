@@ -281,6 +281,9 @@ export function PostBlock({
   followed = false,
   followBusy = false,
   onToggleFollow,
+  communityJoined = post.communityIsMember ?? false,
+  communityBusy = false,
+  onJoinCommunity,
   previewThread = true,
   edgeToEdge = false,
 }: {
@@ -305,6 +308,9 @@ export function PostBlock({
   followed?: boolean;
   followBusy?: boolean;
   onToggleFollow?: (authorId: string, followed: boolean) => void;
+  communityJoined?: boolean;
+  communityBusy?: boolean;
+  onJoinCommunity?: (communityId: string) => void;
   /** Off where the whole thread is already on the page underneath. */
   previewThread?: boolean;
   edgeToEdge?: boolean;
@@ -356,6 +362,12 @@ export function PostBlock({
             ) : null}
           <span className="flex items-center gap-1 text-[9px] text-muted">
             {timeAgo(post.createdAt)}
+            {post.communityName ? (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="truncate font-medium text-lime-deep">{post.communityName}</span>
+              </>
+            ) : null}
             <span aria-hidden="true">·</span>
             <Globe2 className="h-2.5 w-2.5" aria-label="Public post" />
           </span>
@@ -371,7 +383,27 @@ export function PostBlock({
             ) : null}
           </span>
         </Link>
-        {post.authorId && !post.mine && onToggleFollow ? (
+        {post.communityId && onJoinCommunity ? (
+          <button
+            type="button"
+            aria-pressed={communityJoined}
+            aria-label={
+              communityJoined
+                ? `Joined ${post.communityName ?? "community"}`
+                : `Join ${post.communityName ?? "community"}`
+            }
+            onClick={() => {
+              if (!communityJoined) onJoinCommunity(post.communityId!);
+            }}
+            disabled={communityJoined || communityBusy}
+            className={`flex h-7 shrink-0 items-center gap-0.5 rounded-full px-1.5 text-[10px] font-semibold transition disabled:cursor-default disabled:opacity-70 ${
+              communityJoined ? "text-inksoft" : "cursor-pointer text-lime-deep hover:bg-lime-pale"
+            }`}
+          >
+            {communityJoined ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+            {communityBusy ? "Joining" : communityJoined ? "Joined" : "Join"}
+          </button>
+        ) : post.authorId && !post.mine && onToggleFollow ? (
           <button
             type="button"
             aria-pressed={followed}
@@ -536,7 +568,7 @@ export function PostBlock({
       </div>
 
       {previewThread && post.comments > 0 ? (
-        <div className="mt-1.5 space-y-1">
+        <div className={`mt-1.5 space-y-1 ${edgeToEdge ? "px-4" : ""}`}>
           {post.comments > post.recentComments.length ? (
             <button
               type="button"

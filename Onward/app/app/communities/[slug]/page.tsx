@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -9,27 +9,32 @@ import {
   ChevronDown,
   ChevronUp,
   Clipboard,
+  ImagePlus,
   Lightbulb,
   Loader2,
   MessageCircle,
   Pencil,
   Plus,
-  Send,
   UsersRound,
 } from "lucide-react";
 import { useAuth } from "@/components/auth";
 import { CommunityTopicIcon } from "@/components/community-card";
 import { PhoneShell } from "@/components/phone-shell";
+import { PostText } from "@/components/post-text";
 import { toastError, toastSuccess } from "@/components/toast";
 import { timeAgo } from "@/lib/dates";
 import {
-  createCommunityPost,
   COMMUNITY_TYPE_OPTIONS,
+  communityMediaUrl,
   fetchCommunity,
   fetchCommunityPosts,
   joinCommunity,
   leaveCommunity,
+  mediaUrl,
+  removeCommunityImage,
+  updateCommunityAppearance,
   updateCommunityDescription,
+  uploadCommunityImage,
   type Community,
   type CommunityPost,
 } from "@/lib/db";
@@ -51,15 +56,14 @@ export default function CommunityHomePage() {
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [joining, setJoining] = useState(false);
-  const [composerOpen, setComposerOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [posting, setPosting] = useState(false);
   const [editing, setEditing] = useState(false);
   const [description, setDescription] = useState("");
   const [savingDescription, setSavingDescription] = useState(false);
   const [actionError, setActionError] = useState("");
   const [setupOpen, setSetupOpen] = useState(true);
+  const [imageBusy, setImageBusy] = useState<"avatar" | "banner" | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -113,35 +117,53 @@ export default function CommunityHomePage() {
     }
   };
 
-  const publish = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!community) return;
-    setPosting(true);
+  const saveCommunityImage = async (target: "avatar" | "banner", file: File | undefined) => {
+    if (!community || !user || !community.isOwner || !file || imageBusy) return;
+    setImageBusy(target);
     setActionError("");
+    const oldPath = target === "avatar" ? community.avatarPath : community.bannerPath;
+    let uploadedPath: string | null = null;
     try {
-      await createCommunityPost({ communityId: community.id, title, body });
-      setTitle("");
-      setBody("");
-      setComposerOpen(false);
-      toastSuccess("Your community post is live.");
-      try {
-        const [nextCommunity, nextPosts] = await Promise.all([
-          fetchCommunity(community.slug),
-          fetchCommunityPosts(community.id),
-        ]);
-        if (nextCommunity) setCommunity(nextCommunity);
-        setPosts(nextPosts);
-      } catch (refreshReason) {
-        setActionError(
-          `Your post was published, but the page could not refresh: ${
-            refreshReason instanceof Error ? refreshReason.message : "Please reload the page."
-          }`,
-        );
+      uploadedPath = await uploadCommunityImage(user.id, file);
+      await updateCommunityAppearance(
+        community.id,
+        target === "avatar" ? { avatarPath: uploadedPath } : { bannerPath: uploadedPath },
+      );
+      setCommunity((current) =>
+        current
+          ? {
+              ...current,
+              [target === "avatar" ? "avatarPath" : "bannerPath"]: uploadedPath,
+            }
+          : current,
+      );
+      toastSuccess(target === "avatar" ? "Community photo updated." : "Community banner updated.");
+      if (oldPath) {
+        try {
+          await removeCommunityImage(oldPath);
+        } catch (reason) {
+          toastError(
+            reason instanceof Error
+              ? `Updated the image, but couldn’t remove the old one: ${reason.message}`
+              : "Updated the image, but couldn’t remove the old one.",
+          );
+        }
       }
     } catch (reason) {
-      setActionError(reason instanceof Error ? reason.message : "Could not publish this post.");
+      let cleanupMessage = "";
+      if (uploadedPath) {
+        try {
+          await removeCommunityImage(uploadedPath);
+        } catch (cleanupError) {
+          cleanupMessage =
+            cleanupError instanceof Error ? ` Uploaded file cleanup failed: ${cleanupError.message}` : "";
+        }
+      }
+      setActionError(
+        `${reason instanceof Error ? reason.message : "Could not update the community image."}${cleanupMessage}`,
+      );
     } finally {
-      setPosting(false);
+      setImageBusy(null);
     }
   };
 
@@ -212,6 +234,16 @@ export default function CommunityHomePage() {
       <div className="-mx-5 -mt-5 w-[calc(100%+2.5rem)] md:mx-auto md:mt-0 md:w-full md:max-w-[1080px]">
         <header className="mb-5">
           <div className="relative min-h-[190px] overflow-hidden bg-ink px-4 pb-7 pt-4 sm:px-7">
+            {community.bannerPath ? (
+              <>
+                <img
+                  src={communityMediaUrl(community.bannerPath) ?? undefined}
+                  alt=""
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+                <span className="absolute inset-0 bg-ink/45" />
+              </>
+            ) : null}
             <span className="pointer-events-none absolute -right-7 -top-16 h-48 w-48 rounded-full border-[22px] border-lime/20" />
             <span className="pointer-events-none absolute right-40 top-12 h-12 w-12 rounded-full bg-lime/15" />
             <span className="pointer-events-none absolute -bottom-16 left-[36%] h-36 w-36 rounded-full bg-lime/10" />
@@ -223,22 +255,62 @@ export default function CommunityHomePage() {
               >
                 <ArrowLeft className="h-5 w-5" />
               </Link>
-              <button
-                type="button"
-                onClick={copyInvite}
-                aria-label="Copy community link"
-                className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-ink/60 text-white transition hover:bg-ink/80"
-              >
-                <Clipboard className="h-5 w-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                {community.isOwner ? (
+                  <button
+                    type="button"
+                    onClick={() => bannerInputRef.current?.click()}
+                    disabled={imageBusy !== null}
+                    aria-label="Change community banner photo"
+                    className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-ink/60 text-white transition hover:bg-ink/80 disabled:cursor-wait disabled:opacity-70"
+                  >
+                    {imageBusy === "banner" ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <ImagePlus className="h-5 w-5" />
+                    )}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={copyInvite}
+                  aria-label="Copy community link"
+                  className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-ink/60 text-white transition hover:bg-ink/80"
+                >
+                  <Clipboard className="h-5 w-5" />
+                </button>
+              </div>
             </div>
           </div>
           <div className="px-4 pb-4 sm:px-7">
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
-                <span className="relative z-10 -mt-8 flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-full border-4 border-white bg-lime-pale text-lime-deep">
-                  <CommunityTopicIcon topic={community.topic} className="h-8 w-8" />
-                </span>
+                <button
+                  type="button"
+                  onClick={() => community.isOwner && avatarInputRef.current?.click()}
+                  disabled={!community.isOwner || imageBusy !== null}
+                  aria-label={community.isOwner ? "Change community photo" : "Community photo"}
+                  className="relative z-10 -mt-8 flex h-[68px] w-[68px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border-4 border-white bg-lime-pale text-lime-deep disabled:cursor-default"
+                >
+                  {community.avatarPath ? (
+                    <img
+                      src={communityMediaUrl(community.avatarPath) ?? undefined}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <CommunityTopicIcon topic={community.topic} className="h-8 w-8" />
+                  )}
+                  {community.isOwner ? (
+                    <span className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-lime text-ink">
+                      {imageBusy === "avatar" ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Pencil className="h-3 w-3" />
+                      )}
+                    </span>
+                  ) : null}
+                </button>
                 <div className="min-w-0 pb-1">
                   <h1 className="truncate text-[20px] font-bold tracking-tight text-ink sm:text-[24px]">
                     {community.name}
@@ -260,6 +332,31 @@ export default function CommunityHomePage() {
                 {community.isOwner ? "Owner" : community.isMember ? "Joined" : "Join"}
               </button>
             </div>
+
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              aria-label="Community photo"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                void saveCommunityImage("avatar", file);
+              }}
+            />
+            <input
+              ref={bannerInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              aria-label="Community banner photo"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                void saveCommunityImage("banner", file);
+              }}
+            />
 
             {editing && community.isOwner ? (
               <div className="mt-4">
@@ -326,8 +423,9 @@ export default function CommunityHomePage() {
           </div>
         </header>
 
+        <div className="space-y-5 px-5 sm:px-7">
         {community.isOwner ? (
-          <section className="mb-5 rounded-[28px] bg-[#edf0f2] p-4 sm:p-6">
+          <section className="rounded-2xl bg-lime-pale/60 p-4 sm:p-5">
             <button
               type="button"
               aria-expanded={setupOpen}
@@ -338,28 +436,28 @@ export default function CommunityHomePage() {
                 <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-lime-deep">
                   <CommunityTopicIcon topic={community.topic} className="h-7 w-7" />
                 </span>
-                <span className="text-[17px] font-bold text-ink">Get ready for visitors</span>
+                <span className="text-[15px] font-bold text-ink">Get ready for visitors</span>
               </span>
               {setupOpen ? <ChevronUp className="h-5 w-5 text-ink" /> : <ChevronDown className="h-5 w-5 text-ink" />}
             </button>
             {setupOpen ? (
               <div className="mt-4 space-y-3">
-                <div className="flex items-center gap-3 rounded-[24px] bg-[#e4e9ed] p-4">
+                <div className="flex items-center gap-3 rounded-xl bg-paper p-3.5">
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-lime-deep">
                     <CommunityTopicIcon topic={community.topic} className="h-6 w-6" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-bold text-ink">Community logo</span>
-                    <span className="mt-1 block text-[10.5px] text-muted">Your topic icon is ready to represent this space.</span>
+                    <span className="block text-[12px] font-bold text-ink">Community logo</span>
+                    <span className="mt-1 block text-[11px] leading-[1.5] text-muted">Your topic icon is ready to represent this space.</span>
                   </span>
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#159447] text-white">
                     <Check className="h-4 w-4" strokeWidth={3} />
                   </span>
                 </div>
-                <div className="rounded-[24px] bg-[#e4e9ed] p-4 sm:p-5">
+                <div className="rounded-xl bg-paper p-3.5 sm:p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h2 className="text-[15px] font-bold text-ink">Make 3 posts</h2>
+                      <h2 className="text-[13px] font-bold text-ink">Make 3 posts</h2>
                       <p className="mt-1 text-[11px] leading-[1.6] text-muted">
                         A few posts help new visitors see what your community is about.
                       </p>
@@ -379,43 +477,28 @@ export default function CommunityHomePage() {
                       <p className="mt-4 text-[10.5px] italic text-muted">Try these ideas</p>
                       <div className="wheel mt-2 flex gap-3 overflow-x-auto pb-1">
                         {STARTER_PROMPTS.map((prompt) => (
-                          <button
+                          <Link
                             key={prompt}
-                            type="button"
-                            onClick={() => {
-                              setBody(prompt);
-                              setComposerOpen(true);
-                              document.getElementById("community-feed")?.scrollIntoView({
-                                behavior: "smooth",
-                                block: "start",
-                              });
-                            }}
-                            className="min-w-[220px] max-w-[280px] cursor-pointer rounded-[20px] bg-white p-4 text-left text-[12px] font-semibold leading-[1.5] text-ink hover:bg-lime-pale"
+                            href={`/feed/new?community=${community.id}&prompt=${encodeURIComponent(prompt)}`}
+                            className="min-w-[220px] max-w-[280px] cursor-pointer rounded-xl bg-cream p-4 text-left text-[12px] font-semibold leading-[1.5] text-ink hover:bg-lime-pale"
                           >
                             <span className="mb-2 flex items-center gap-2 text-[10px] font-bold text-muted">
                               <Lightbulb className="h-4 w-4 text-lime-deep" /> Prompt
                             </span>
                             {prompt}
-                          </button>
+                          </Link>
                         ))}
                       </div>
                     </>
                   ) : (
                     <p className="mt-3 text-[10px] font-semibold text-lime-deep">Starter posts complete</p>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setComposerOpen(true);
-                      document.getElementById("community-feed")?.scrollIntoView({
-                        behavior: "smooth",
-                        block: "start",
-                      });
-                    }}
-                    className="mt-3 cursor-pointer text-[10px] font-bold text-lime-deep hover:underline"
+                  <Link
+                    href={`/feed/new?community=${community.id}`}
+                    className="mt-3 inline-flex cursor-pointer text-[11px] font-bold text-lime-deep hover:underline"
                   >
                     Write a welcome post
-                  </button>
+                  </Link>
                 </div>
               </div>
             ) : null}
@@ -424,112 +507,65 @@ export default function CommunityHomePage() {
 
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
           <main className="min-w-0">
-            <section id="community-feed" className="mb-4 border-t border-line pt-5">
+            <section id="community-feed" className="border-t border-line pt-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-lime-deep">Community feed</p>
-                  <h2 className="mt-1 text-[15px] font-bold text-ink">A good place to begin</h2>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-lime-deep">Community feed</p>
+                  <h2 className="mt-1 text-[17px] font-bold text-ink">A good place to begin</h2>
                 </div>
                 {community.isMember ? (
-                  <button
-                    type="button"
-                    onClick={() => setComposerOpen((open) => !open)}
-                    className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full bg-lime-deep px-3.5 text-[9.5px] font-bold text-white hover:bg-ink"
+                  <Link
+                    href={`/feed/new?community=${community.id}`}
+                    className="inline-flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-full bg-lime-deep px-4 text-[11px] font-bold text-white hover:bg-ink"
                   >
                     <Plus className="h-4 w-4" /> Create post
-                  </button>
+                  </Link>
                 ) : null}
               </div>
 
-              {community.isMember && composerOpen ? (
-                <form onSubmit={publish} className="mt-4 rounded-xl border border-line bg-cream p-3">
-                  <label htmlFor="community-post-title" className="sr-only">Post title (optional)</label>
-                  <input
-                    id="community-post-title"
-                    value={title}
-                    onChange={(event) => setTitle(event.target.value)}
-                    maxLength={120}
-                    placeholder="Add a title (optional)"
-                    className="mb-2 h-9 w-full rounded-lg border border-line bg-paper px-3 text-[10.5px] text-ink outline-none placeholder:text-faint focus:border-lime-deep"
-                  />
-                  <label htmlFor="community-post-body" className="sr-only">Your post</label>
-                  <textarea
-                    id="community-post-body"
-                    value={body}
-                    onChange={(event) => setBody(event.target.value)}
-                    maxLength={2000}
-                    rows={4}
-                    required
-                    placeholder="Share an idea, ask a question, or tell us what you’re working on…"
-                    className="w-full resize-y rounded-lg border border-line bg-paper px-3 py-2.5 text-[10.5px] leading-[1.6] text-ink outline-none placeholder:text-faint focus:border-lime-deep"
-                  />
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <span className="text-[9px] text-muted">{body.length}/2000</span>
-                    <button
-                      type="submit"
-                      disabled={posting || !body.trim()}
-                      className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-lime-deep px-3 text-[9px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {posting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                      {posting ? "Posting…" : "Publish"}
-                    </button>
-                  </div>
-                </form>
-              ) : null}
-
-              {actionError && composerOpen ? <p role="alert" className="mt-2 text-[10px] text-danger">{actionError}</p> : null}
-
               {posts.length ? (
-                <div className="mt-4 space-y-3">
+                <div className="mt-3 divide-y divide-line">
                   {posts.map((post) => (
-                    <article key={post.id} className="rounded-xl border border-line bg-paper p-3.5">
-                      <div className="flex items-center gap-2.5">
+                    <article key={post.id} className="py-4">
+                      <Link href={post.authorId ? `/people/${post.authorId}` : `/feed/${post.id}`} className="flex items-center gap-2.5">
                         {post.authorAvatarUrl ? (
-                          <img
-                            src={post.authorAvatarUrl}
-                            alt=""
-                            className="h-8 w-8 rounded-full object-cover"
-                          />
+                          <img src={post.authorAvatarUrl} alt="" className="h-9 w-9 rounded-full object-cover" />
                         ) : (
-                          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-lime-pale text-[9px] font-bold text-lime-deep">
+                          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-lime-pale text-[11px] font-bold text-lime-deep">
                             {post.authorInitials || "?"}
                           </span>
                         )}
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[10px] font-bold text-ink">{post.authorName}</p>
-                          <p className="text-[8.5px] text-muted">{timeAgo(post.createdAt)}</p>
-                        </div>
-                        {post.mine ? <span className="text-[8px] font-semibold text-lime-deep">You</span> : null}
-                      </div>
-                      {post.title ? <h3 className="mt-3 text-[12px] font-bold text-ink">{post.title}</h3> : null}
-                      <p className="mt-2 whitespace-pre-wrap text-[10.5px] leading-[1.65] text-inksoft">{post.body}</p>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[12px] font-bold text-ink">{post.authorName}</span>
+                          <span className="block text-[10px] text-muted">{timeAgo(post.createdAt)}</span>
+                        </span>
+                        {post.mine ? <span className="text-[10px] font-semibold text-lime-deep">You</span> : null}
+                      </Link>
+                      <Link href={`/feed/${post.id}`} className="mt-2 block">
+                        {post.title ? <h3 className="text-[14px] font-bold text-ink">{post.title}</h3> : null}
+                        {post.body ? (
+                          <PostText text={post.body} className="mt-1 text-[13px] leading-[1.6] text-inksoft" />
+                        ) : null}
+                        {post.media[0] ? (
+                          <img
+                            src={mediaUrl(post.media[0].path)}
+                            alt=""
+                            className="mt-3 max-h-[360px] w-full rounded-xl object-cover"
+                          />
+                        ) : null}
+                      </Link>
                     </article>
                   ))}
                 </div>
               ) : (
-                <div className="mt-4 rounded-xl bg-cream px-4 py-6 text-center">
+                <div className="mt-4 rounded-xl bg-lime-pale/60 px-4 py-7 text-center">
                   <MessageCircle className="mx-auto h-6 w-6 text-lime-deep" />
-                  <p className="mt-2 text-[11px] font-semibold text-ink">Start the conversation</p>
-                  <p className="mt-1 text-[9.5px] text-muted">
-                    {community.isMember ? "A thoughtful first post can make it easier for others to join in." : "Join the community to share the first post."}
+                  <p className="mt-2 text-[13px] font-semibold text-ink">Start the conversation</p>
+                  <p className="mt-1 text-[11px] leading-[1.5] text-muted">
+                    {community.isMember
+                      ? "Use the post composer to share something with this community."
+                      : "Join the community to share the first post."}
                   </p>
-                  {community.isMember ? (
-                    <div className="mt-3 flex flex-wrap justify-center gap-2">
-                      {STARTER_PROMPTS.map((prompt) => (
-                        <button
-                          key={prompt}
-                          type="button"
-                          onClick={() => {
-                            setBody(prompt);
-                            setComposerOpen(true);
-                          }}
-                          className="cursor-pointer rounded-full bg-paper px-3 py-1.5 text-[8.5px] font-semibold text-inksoft hover:bg-lime-pale"
-                        >
-                          {prompt}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
                 </div>
               )}
             </section>
@@ -562,6 +598,7 @@ export default function CommunityHomePage() {
             </section>
           </aside>
         </div>
+      </div>
       </div>
     </PhoneShell>
   );

@@ -147,7 +147,9 @@ export function uuid(): string {
 export function initialsFor(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "";
-  return (parts[0][0] + (parts[1]?.[0] ?? "")).toUpperCase();
+  const first = Array.from(parts[0] ?? "")[0] ?? "";
+  const second = Array.from(parts[1] ?? "")[0] ?? "";
+  return `${first}${second}`.toUpperCase();
 }
 
 // ------------------------------------------------------------------------ reading
@@ -488,6 +490,7 @@ export async function removeWardEvidenceFiles(paths: string[]): Promise<void> {
 // ------------------------------------------------------------------------ feed
 
 export const POST_MEDIA_BUCKET = "post-media";
+export const COMMUNITY_MEDIA_BUCKET = "community-media";
 export const POST_MEDIA_MAX_BYTES = 26_214_400;
 export const POST_MEDIA_MAX_PER_POST = 5;
 const POST_DOCUMENT_EXTENSIONS: Record<string, { extension: string; mime: string }> = {
@@ -600,6 +603,11 @@ export type FeedPost = {
   brandPartnership?: boolean;
   brandPartnerName?: string;
   collaborators?: ExchangePerson[];
+  communityId: string | null;
+  communityName: string | null;
+  communitySlug: string | null;
+  communityTopic: CommunityTopic | null;
+  communityIsMember: boolean;
 };
 
 type CommentJson = {
@@ -666,6 +674,11 @@ type FeedRow = {
     avatar_url: string | null;
   }[] | null;
   scheduled_at?: string | null;
+  community_id?: string | null;
+  community_name?: string | null;
+  community_slug?: string | null;
+  community_topic?: CommunityTopic | null;
+  community_is_member?: boolean | null;
 };
 
 function commentFromJson(row: CommentJson): PostComment {
@@ -746,11 +759,16 @@ function postFromRow(row: FeedRow): FeedPost {
       avatarUrl: person.avatar_url,
       role: null,
     })),
+    communityId: row.community_id ?? null,
+    communityName: row.community_name ?? null,
+    communitySlug: row.community_slug ?? null,
+    communityTopic: row.community_topic ?? null,
+    communityIsMember: row.community_is_member ?? false,
   };
 }
 
 const FEED_COLUMNS =
-  "id, body, ward_id, full_name, initials, avatar_url, role, created_at, mine, media, likes, comments, recent_comments, title, reshare_of, reshares, reshared, reshare, author_id, post_audience, comment_audience, can_comment, brand_partnership, brand_partner_name, collaborators, scheduled_at";
+  "id, body, ward_id, full_name, initials, avatar_url, role, created_at, mine, media, likes, comments, recent_comments, title, reshare_of, reshares, reshared, reshare, author_id, post_audience, comment_audience, can_comment, brand_partnership, brand_partner_name, collaborators, scheduled_at, community_id, community_name, community_slug, community_topic, community_is_member";
 
 /** A public object in a public bucket needs no token, which is what lets an <img>
  *  tag work for someone who has never signed in. */
@@ -1293,6 +1311,7 @@ export async function createPost(input: {
   body: string;
   files: File[];
   wardId?: string | null;
+  communityId?: string | null;
   audience?: "anyone" | "connections";
   commentAudience?: "anyone" | "connections" | "off";
   collaboratorIds?: string[];
@@ -1307,6 +1326,7 @@ export async function createPost(input: {
     body,
     files,
     wardId = null,
+    communityId = null,
     audience = "anyone",
     commentAudience = "anyone",
     collaboratorIds = [],
@@ -1328,6 +1348,9 @@ export async function createPost(input: {
   if (audience !== "anyone" && (files.length || documentPath)) {
     throw new Error("Private post audiences are not available with media or document attachments yet.");
   }
+  if (communityId && audience !== "anyone") {
+    throw new Error("Community posts must be visible to everyone.");
+  }
   if (collaboratorIds.length > 5) throw new Error("Tag up to five collaborators.");
   const partnershipName = brandPartnerName?.trim() ?? "";
   if (partnershipName.length > 120) throw new Error("Keep the brand partner name under 120 characters.");
@@ -1341,6 +1364,7 @@ export async function createPost(input: {
       title: title.trim(),
       body,
       ward_id: wardId,
+      community_id: communityId,
       audience,
       comment_audience: commentAudience,
       brand_partnership: Boolean(partnershipName),
@@ -1774,6 +1798,8 @@ export type Community = {
   id: string;
   slug: string;
   name: string;
+  avatarPath: string | null;
+  bannerPath: string | null;
   topic: CommunityTopic;
   communityType: CommunityType;
   isMature: boolean;
@@ -1794,6 +1820,8 @@ export type CommunityPost = {
   authorName: string;
   authorInitials: string;
   authorAvatarUrl: string | null;
+  authorId: string | null;
+  media: PostMedia[];
   mine: boolean;
 };
 
@@ -1801,6 +1829,8 @@ type CommunityRow = {
   id: string;
   slug: string;
   name: string;
+  avatar_path: string | null;
+  banner_path: string | null;
   topic: CommunityTopic;
   community_type: CommunityType;
   is_mature: boolean;
@@ -1817,6 +1847,8 @@ function communityFromRow(row: CommunityRow): Community {
     id: row.id,
     slug: row.slug,
     name: row.name,
+    avatarPath: row.avatar_path,
+    bannerPath: row.banner_path,
     topic: row.topic,
     communityType: row.community_type,
     isMature: row.is_mature,
@@ -1829,12 +1861,71 @@ function communityFromRow(row: CommunityRow): Community {
   };
 }
 
+const COMMUNITY_IMAGE_TYPES: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
+
+export function communityMediaUrl(path: string | null | undefined): string | null {
+  return path
+    ? supabase.storage.from(COMMUNITY_MEDIA_BUCKET).getPublicUrl(path).data.publicUrl
+    : null;
+}
+
+export async function uploadCommunityImage(userId: string, file: File): Promise<string> {
+  const extension = COMMUNITY_IMAGE_TYPES[file.type];
+  if (!extension) throw new Error("Choose a JPG, PNG, or WebP image.");
+  if (file.size > 5 * 1024 * 1024) throw new Error("Keep community images under 5MB.");
+  const path = `${userId}/communities/${uuid()}.${extension}`;
+  const { error } = await supabase.storage.from(COMMUNITY_MEDIA_BUCKET).upload(path, file, {
+    contentType: file.type,
+    upsert: false,
+  });
+  if (error) throw new Error(error.message);
+  return path;
+}
+
+export async function updateCommunityAppearance(
+  communityId: string,
+  patch: { avatarPath?: string | null; bannerPath?: string | null },
+): Promise<void> {
+  const update: { avatar_path?: string | null; banner_path?: string | null } = {};
+  if (patch.avatarPath !== undefined) update.avatar_path = patch.avatarPath;
+  if (patch.bannerPath !== undefined) update.banner_path = patch.bannerPath;
+  if (!Object.keys(update).length) return;
+  const { data, error } = await supabase
+    .from("communities")
+    .update(update)
+    .eq("id", communityId)
+    .select("id")
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("You don’t have permission to change this community’s photos.");
+}
+
+export async function removeCommunityImage(path: string): Promise<void> {
+  const { error } = await supabase.storage.from(COMMUNITY_MEDIA_BUCKET).remove([path]);
+  if (error) throw new Error(error.message);
+}
+
 export async function fetchCommunities(): Promise<Community[]> {
   const { data, error } = await supabase
     .from("community_directory")
     .select("*")
     .order("member_count", { ascending: false })
     .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as CommunityRow[]).map(communityFromRow);
+}
+
+export async function fetchMyCommunities(): Promise<Community[]> {
+  const { data, error } = await supabase
+    .from("community_directory")
+    .select("*")
+    .eq("is_member", true)
+    .order("name", { ascending: true })
     .limit(100);
   if (error) throw new Error(error.message);
   return ((data ?? []) as CommunityRow[]).map(communityFromRow);
@@ -1903,64 +1994,27 @@ export async function leaveCommunity(communityId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-type CommunityPostRow = {
-  id: string;
-  community_id: string;
-  title: string;
-  body: string;
-  created_at: string;
-  author_name: string;
-  author_initials: string;
-  author_avatar_url: string | null;
-  mine: boolean;
-};
-
-function communityPostFromRow(row: CommunityPostRow): CommunityPost {
-  return {
-    id: row.id,
-    communityId: row.community_id,
-    title: row.title,
-    body: row.body,
-    createdAt: row.created_at,
-    authorName: row.author_name,
-    authorInitials: row.author_initials,
-    authorAvatarUrl: row.author_avatar_url,
-    mine: row.mine,
-  };
-}
-
 export async function fetchCommunityPosts(communityId: string): Promise<CommunityPost[]> {
   const { data, error } = await supabase
-    .from("community_post_cards")
-    .select("*")
+    .from("feed_posts")
+    .select(FEED_COLUMNS)
     .eq("community_id", communityId)
     .order("created_at", { ascending: false })
     .limit(40);
   if (error) throw new Error(error.message);
-  return ((data ?? []) as CommunityPostRow[]).map(communityPostFromRow);
-}
-
-export async function createCommunityPost(input: {
-  communityId: string;
-  title: string;
-  body: string;
-}): Promise<void> {
-  const title = input.title.trim();
-  const body = input.body.trim();
-  if (title.length > 120) throw new Error("Keep the post title under 120 characters.");
-  if (!body || body.length > POST_BODY_MAX) {
-    throw new Error(`Write 1 to ${POST_BODY_MAX} characters for your post.`);
-  }
-  const { data, error: authError } = await supabase.auth.getUser();
-  if (authError) throw new Error(authError.message);
-  if (!data.user) throw new Error("Sign in to post in this community.");
-  const { error } = await supabase.from("community_posts").insert({
-    community_id: input.communityId,
-    author_id: data.user.id,
-    title,
-    body,
-  });
-  if (error) throw new Error(error.message);
+  return ((data ?? []) as FeedRow[]).map(postFromRow).map((post) => ({
+    id: post.id,
+    communityId: post.communityId ?? communityId,
+    title: post.title,
+    body: post.body,
+    createdAt: post.createdAt,
+    authorName: post.fullName,
+    authorInitials: post.initials,
+    authorAvatarUrl: post.avatarUrl,
+    authorId: post.authorId,
+    media: post.media,
+    mine: post.mine,
+  }));
 }
 
 export async function updateCommunityDescription(
