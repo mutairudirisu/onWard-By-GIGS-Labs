@@ -51,7 +51,9 @@ const PUBLIC_ROUTES = [
 function isPublicRoute(pathname: string) {
   if (PUBLIC_ROUTES.includes(pathname)) return true;
   if (pathname === "/feed") return true;
-  return pathname.startsWith("/feed/") && pathname !== "/feed/new";
+  if (pathname.startsWith("/feed/")) return pathname !== "/feed/new";
+  if (pathname === "/communities") return true;
+  return pathname.startsWith("/communities/") && pathname !== "/communities/new";
 }
 
 // These are the entry screens a signed-in user should be bounced away from.

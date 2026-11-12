@@ -1746,3 +1746,216 @@ export async function searchExchange(query = ""): Promise<SearchHits> {
     })),
   };
 }
+
+export const COMMUNITY_TOPICS = [
+  "Technology",
+  "Business",
+  "Education & Career",
+  "Wellness",
+  "Arts & Design",
+  "Food & Drink",
+  "Sports",
+  "Travel",
+  "Lifestyle",
+  "Other",
+] as const;
+
+export type CommunityTopic = (typeof COMMUNITY_TOPICS)[number];
+
+export type Community = {
+  id: string;
+  slug: string;
+  name: string;
+  topic: CommunityTopic;
+  description: string;
+  createdAt: string;
+  memberCount: number;
+  postCount: number;
+  isMember: boolean;
+  isOwner: boolean;
+};
+
+export type CommunityPost = {
+  id: string;
+  communityId: string;
+  title: string;
+  body: string;
+  createdAt: string;
+  authorName: string;
+  authorInitials: string;
+  authorAvatarUrl: string | null;
+  mine: boolean;
+};
+
+type CommunityRow = {
+  id: string;
+  slug: string;
+  name: string;
+  topic: CommunityTopic;
+  description: string;
+  created_at: string;
+  member_count: number;
+  post_count: number;
+  is_member: boolean;
+  is_owner: boolean;
+};
+
+function communityFromRow(row: CommunityRow): Community {
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    topic: row.topic,
+    description: row.description,
+    createdAt: row.created_at,
+    memberCount: row.member_count,
+    postCount: row.post_count,
+    isMember: row.is_member,
+    isOwner: row.is_owner,
+  };
+}
+
+export async function fetchCommunities(): Promise<Community[]> {
+  const { data, error } = await supabase
+    .from("community_directory")
+    .select("*")
+    .order("member_count", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as CommunityRow[]).map(communityFromRow);
+}
+
+export async function fetchCommunity(slug: string): Promise<Community | null> {
+  const { data, error } = await supabase
+    .from("community_directory")
+    .select("*")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? communityFromRow(data as CommunityRow) : null;
+}
+
+export async function createCommunity(input: {
+  name: string;
+  slug: string;
+  topic: CommunityTopic;
+  description: string;
+  idea: string;
+}): Promise<{ id: string; slug: string }> {
+  const { data, error } = await supabase.rpc("create_community", {
+    p_name: input.name,
+    p_slug: input.slug,
+    p_topic: input.topic,
+    p_description: input.description,
+    p_idea: input.idea,
+  });
+  if (error) {
+    if (error.code === "23505") throw new Error("That community name is already in use.");
+    throw new Error(error.message);
+  }
+  const result = Array.isArray(data) ? data[0] : null;
+  if (!result || typeof result.id !== "string" || typeof result.slug !== "string") {
+    throw new Error("The community was not created. Please try again.");
+  }
+  return { id: result.id, slug: result.slug };
+}
+
+export async function joinCommunity(communityId: string): Promise<void> {
+  const { data, error: authError } = await supabase.auth.getUser();
+  if (authError) throw new Error(authError.message);
+  if (!data.user) throw new Error("Sign in to join a community.");
+  const { error } = await supabase.from("community_members").insert({
+    community_id: communityId,
+    user_id: data.user.id,
+    role: "member",
+  });
+  if (error && error.code !== "23505") throw new Error(error.message);
+}
+
+export async function leaveCommunity(communityId: string): Promise<void> {
+  const { data, error: authError } = await supabase.auth.getUser();
+  if (authError) throw new Error(authError.message);
+  if (!data.user) throw new Error("Sign in to leave a community.");
+  const { error } = await supabase
+    .from("community_members")
+    .delete()
+    .eq("community_id", communityId)
+    .eq("user_id", data.user.id);
+  if (error) throw new Error(error.message);
+}
+
+type CommunityPostRow = {
+  id: string;
+  community_id: string;
+  title: string;
+  body: string;
+  created_at: string;
+  author_name: string;
+  author_initials: string;
+  author_avatar_url: string | null;
+  mine: boolean;
+};
+
+function communityPostFromRow(row: CommunityPostRow): CommunityPost {
+  return {
+    id: row.id,
+    communityId: row.community_id,
+    title: row.title,
+    body: row.body,
+    createdAt: row.created_at,
+    authorName: row.author_name,
+    authorInitials: row.author_initials,
+    authorAvatarUrl: row.author_avatar_url,
+    mine: row.mine,
+  };
+}
+
+export async function fetchCommunityPosts(communityId: string): Promise<CommunityPost[]> {
+  const { data, error } = await supabase
+    .from("community_post_cards")
+    .select("*")
+    .eq("community_id", communityId)
+    .order("created_at", { ascending: false })
+    .limit(40);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as CommunityPostRow[]).map(communityPostFromRow);
+}
+
+export async function createCommunityPost(input: {
+  communityId: string;
+  title: string;
+  body: string;
+}): Promise<void> {
+  const title = input.title.trim();
+  const body = input.body.trim();
+  if (title.length > 120) throw new Error("Keep the post title under 120 characters.");
+  if (!body || body.length > POST_BODY_MAX) {
+    throw new Error(`Write 1 to ${POST_BODY_MAX} characters for your post.`);
+  }
+  const { data, error: authError } = await supabase.auth.getUser();
+  if (authError) throw new Error(authError.message);
+  if (!data.user) throw new Error("Sign in to post in this community.");
+  const { error } = await supabase.from("community_posts").insert({
+    community_id: input.communityId,
+    author_id: data.user.id,
+    title,
+    body,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function updateCommunityDescription(
+  communityId: string,
+  description: string,
+): Promise<void> {
+  const trimmed = description.trim();
+  if (trimmed.length < 15 || trimmed.length > 500) {
+    throw new Error("Descriptions must be 15 to 500 characters.");
+  }
+  const { error } = await supabase
+    .from("communities")
+    .update({ description: trimmed })
+    .eq("id", communityId);
+  if (error) throw new Error(error.message);
+}

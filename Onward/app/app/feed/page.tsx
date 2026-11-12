@@ -630,6 +630,8 @@ export default function FeedPage() {
             </MenuSection>
             <MenuSection title="Explore">
               <MenuLink href="/network" icon={<Compass className="h-5 w-5" />} label="Discover people" onClick={() => setMenuOpen(false)} />
+              <MenuLink href="/communities" icon={<UsersRound className="h-5 w-5" />} label="Discover communities" onClick={() => setMenuOpen(false)} />
+              <MenuLink href={user ? "/communities/new" : "/sign-in"} icon={<UsersRound className="h-5 w-5" />} label="Start a community" onClick={() => setMenuOpen(false)} />
               <MenuLink href="/portfolio" icon={<BriefcaseBusiness className="h-5 w-5" />} label="Portfolio" onClick={() => setMenuOpen(false)} />
               <MenuLink href="/settings" icon={<Settings className="h-5 w-5" />} label="Settings" onClick={() => setMenuOpen(false)} />
               <MenuLink href="/insights" icon={<Bookmark className="h-5 w-5" />} label="Insights" onClick={() => setMenuOpen(false)} />

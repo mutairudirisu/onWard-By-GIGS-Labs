@@ -1,0 +1,91 @@
+"use client";
+
+import Link from "next/link";
+import { Hash } from "lucide-react";
+import type { Community } from "@/lib/db";
+
+export function CommunityIcon({
+  large = false,
+}: {
+  large?: boolean;
+}) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex shrink-0 items-center justify-center rounded-2xl bg-lime-pale text-lime-deep ${
+        large ? "h-16 w-16" : "h-11 w-11"
+      }`}
+    >
+      <Hash className={large ? "h-7 w-7" : "h-5 w-5"} strokeWidth={2.2} />
+    </span>
+  );
+}
+
+export function CommunityCard({
+  community,
+  onJoin,
+  joining = false,
+}: {
+  community: Community;
+  onJoin?: (community: Community) => void;
+  joining?: boolean;
+}) {
+  return (
+    <article className="card flex min-w-0 flex-col gap-3 p-4">
+      <Link
+        href={`/communities/${community.slug}`}
+        className="group min-w-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-lime-deep"
+      >
+        <div className="flex items-center gap-3">
+          <CommunityIcon />
+          <div className="min-w-0">
+            <h3 className="truncate text-[13px] font-bold text-ink group-hover:text-lime-deep">
+              {community.name}
+            </h3>
+            <p className="mt-0.5 text-[10px] font-medium text-muted">{community.topic}</p>
+          </div>
+        </div>
+        <p className="mt-3 line-clamp-2 min-h-[32px] text-[10.5px] leading-[1.55] text-inksoft">
+          {community.description}
+        </p>
+      </Link>
+      <div className="flex items-center justify-between gap-2 border-t border-line pt-3">
+        <p className="text-[9.5px] text-muted">
+          <span className="font-semibold tabular-nums text-ink">{community.memberCount}</span>{" "}
+          {community.memberCount === 1 ? "member" : "members"}
+          <span className="mx-1.5 text-line">·</span>
+          <span className="font-semibold tabular-nums text-ink">{community.postCount}</span>{" "}
+          posts
+        </p>
+        {community.isOwner ? (
+          <span className="rounded-full bg-lime-pale px-2.5 py-1 text-[9px] font-bold text-lime-deep">
+            Owner
+          </span>
+        ) : community.isMember ? (
+          <Link
+            href={`/communities/${community.slug}`}
+            className="rounded-full bg-cream px-3 py-1.5 text-[9px] font-bold text-ink hover:bg-lime-pale"
+          >
+            Open
+          </Link>
+        ) : onJoin ? (
+          <button
+            type="button"
+            disabled={joining}
+            onClick={() => onJoin(community)}
+            className="cursor-pointer rounded-full bg-lime-deep px-3 py-1.5 text-[9px] font-bold text-white transition hover:bg-ink disabled:cursor-wait disabled:opacity-60"
+          >
+            {joining ? "Joining…" : "Join"}
+          </button>
+        ) : (
+          <Link
+            href={`/communities/${community.slug}`}
+            className="rounded-full bg-cream px-3 py-1.5 text-[9px] font-bold text-ink hover:bg-lime-pale"
+          >
+            Explore
+          </Link>
+        )}
+      </div>
+    </article>
+  );
+}

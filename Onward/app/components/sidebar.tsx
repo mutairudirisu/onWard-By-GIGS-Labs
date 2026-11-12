@@ -27,6 +27,7 @@ const MENU = [
   { href: "/onwards", label: "onWards", Icon: Sprout },
   { href: "/feed", label: "Exchange", Icon: MessagesSquare },
   { href: "/network", label: "My Network", Icon: UsersRound },
+  { href: "/communities", label: "Communities", Icon: UsersRound },
   { href: "/notifications", label: "Notifications", Icon: Bell, badge: true },
   { href: "/profile", label: "You", Icon: User },
 ];
