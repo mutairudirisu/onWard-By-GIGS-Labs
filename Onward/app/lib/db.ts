@@ -492,7 +492,7 @@ export async function removeWardEvidenceFiles(paths: string[]): Promise<void> {
 export const POST_MEDIA_BUCKET = "post-media";
 export const COMMUNITY_MEDIA_BUCKET = "community-media";
 export const POST_MEDIA_MAX_BYTES = 26_214_400;
-export const POST_MEDIA_MAX_PER_POST = 5;
+export const POST_MEDIA_MAX_PER_POST = 10;
 const POST_DOCUMENT_EXTENSIONS: Record<string, { extension: string; mime: string }> = {
   "application/pdf": { extension: "pdf", mime: "application/pdf" },
   "application/msword": { extension: "doc", mime: "application/msword" },
@@ -1817,20 +1817,6 @@ export type Community = {
   isOwner: boolean;
 };
 
-export type CommunityPost = {
-  id: string;
-  communityId: string;
-  title: string;
-  body: string;
-  createdAt: string;
-  authorName: string;
-  authorInitials: string;
-  authorAvatarUrl: string | null;
-  authorId: string | null;
-  media: PostMedia[];
-  mine: boolean;
-};
-
 type CommunityRow = {
   id: string;
   slug: string;
@@ -2000,7 +1986,7 @@ export async function leaveCommunity(communityId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-export async function fetchCommunityPosts(communityId: string): Promise<CommunityPost[]> {
+export async function fetchCommunityPosts(communityId: string): Promise<FeedPost[]> {
   const { data, error } = await supabase
     .from("feed_posts")
     .select(FEED_COLUMNS)
@@ -2008,19 +1994,7 @@ export async function fetchCommunityPosts(communityId: string): Promise<Communit
     .order("created_at", { ascending: false })
     .limit(40);
   if (error) throw new Error(error.message);
-  return ((data ?? []) as FeedRow[]).map(postFromRow).map((post) => ({
-    id: post.id,
-    communityId: post.communityId ?? communityId,
-    title: post.title,
-    body: post.body,
-    createdAt: post.createdAt,
-    authorName: post.fullName,
-    authorInitials: post.initials,
-    authorAvatarUrl: post.avatarUrl,
-    authorId: post.authorId,
-    media: post.media,
-    mine: post.mine,
-  }));
+  return ((data ?? []) as FeedRow[]).map(postFromRow);
 }
 
 export async function updateCommunityDescription(

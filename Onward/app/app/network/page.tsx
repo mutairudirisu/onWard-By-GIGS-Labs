@@ -404,7 +404,7 @@ export default function NetworkPage() {
 
   return (
     <PhoneShell tab="network" wide>
-      <div className="grid w-full max-w-[1080px] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
+      <div className="-mx-1.5 grid w-[calc(100%+0.75rem)] max-w-[1080px] items-start gap-6 md:-mx-2 md:w-[calc(100%+1rem)] lg:-mx-3 lg:w-[calc(100%+1.5rem)] lg:grid-cols-[minmax(0,1fr)_260px]">
         <main className="min-w-0">
           <header className="mb-5 -mx-5 -mt-5 w-[calc(100%+2.5rem)] overflow-hidden bg-paper md:mx-0 md:mt-0 md:w-auto">
             <div className="relative min-h-[190px] overflow-hidden bg-ink px-4 pb-7 pt-4 sm:px-7">
@@ -429,22 +429,36 @@ export default function NetworkPage() {
               <button
                 type="button"
                 onClick={() => setTab("following")}
-                className="cursor-pointer px-4 py-3 text-left transition hover:bg-cream"
+                aria-pressed={tab === "following"}
+                className={`flex cursor-pointer items-center justify-between border-b-2 px-4 py-3 text-left transition ${
+                  tab === "following"
+                    ? "border-lime-deep bg-lime-pale/60"
+                    : "border-transparent hover:bg-cream"
+                }`}
               >
-                <span className="block text-[17px] font-bold tabular-nums text-ink">
+                <span className={`text-[11px] font-semibold ${tab === "following" ? "text-ink" : "text-muted"}`}>
+                  Following
+                </span>
+                <span className="rounded-full bg-paper px-2.5 py-1 text-[12px] font-bold tabular-nums text-ink">
                   {loadingLists ? "—" : following.length}
                 </span>
-                <span className="text-[9.5px] font-semibold text-muted">Following</span>
               </button>
               <button
                 type="button"
                 onClick={() => setTab("followers")}
-                className="cursor-pointer px-4 py-3 text-left transition hover:bg-cream"
+                aria-pressed={tab === "followers"}
+                className={`flex cursor-pointer items-center justify-between border-b-2 px-4 py-3 text-left transition ${
+                  tab === "followers"
+                    ? "border-lime-deep bg-lime-pale/60"
+                    : "border-transparent hover:bg-cream"
+                }`}
               >
-                <span className="block text-[17px] font-bold tabular-nums text-ink">
+                <span className={`text-[11px] font-semibold ${tab === "followers" ? "text-ink" : "text-muted"}`}>
+                  Followers
+                </span>
+                <span className="rounded-full bg-paper px-2.5 py-1 text-[12px] font-bold tabular-nums text-ink">
                   {loadingLists ? "—" : followers.length}
                 </span>
-                <span className="text-[9.5px] font-semibold text-muted">Followers</span>
               </button>
             </div>
           </header>

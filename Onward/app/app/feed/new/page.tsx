@@ -874,10 +874,7 @@ function Composer() {
                     max={POST_BODY_MAX}
                     disabled={Boolean(busy)}
                     showToolbar={showFormatting}
-                    toolbarClassName="fixed inset-x-0 z-[44] mx-auto w-full max-w-[400px] border-t border-b-0 border-line bg-cream/95 px-5 py-2 backdrop-blur md:static md:mx-0 md:max-w-none md:border-t-0 md:border-b md:bg-transparent md:px-2 md:py-1.5 md:backdrop-blur-none"
-                    toolbarStyle={{
-                      bottom: keyboard > 0 ? keyboard + 84 : 180,
-                    }}
+                    toolbarClassName="sticky top-0 z-[44] mx-auto max-w-[400px] justify-between border-t border-line bg-cream/95 px-5 py-2 backdrop-blur md:static md:mx-0 md:max-w-none md:border-t-0 md:bg-transparent md:px-2 md:py-1.5 md:backdrop-blur-none"
                     editorClassName="!min-h-[96px] !px-0 !pt-0 md:!min-h-[360px]"
                   />
                   {picks.length ? (

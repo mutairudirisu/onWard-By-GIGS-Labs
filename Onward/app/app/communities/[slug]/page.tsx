@@ -19,24 +19,31 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth";
 import { CommunityTopicIcon } from "@/components/community-card";
+import { PostBlock } from "@/components/feed-post";
 import { PhoneShell } from "@/components/phone-shell";
-import { PostText } from "@/components/post-text";
 import { toastError, toastSuccess } from "@/components/toast";
-import { timeAgo } from "@/lib/dates";
+import { withVote } from "@/components/post-poll";
 import {
   COMMUNITY_TYPE_OPTIONS,
   communityMediaUrl,
+  fetchMyLikes,
+  fetchPolls,
   fetchCommunity,
   fetchCommunityPosts,
+  likePost,
   joinCommunity,
   leaveCommunity,
-  mediaUrl,
+  reshare as resharePost,
   removeCommunityImage,
+  unlikePost,
+  unreshare as unresharePost,
   updateCommunityAppearance,
   updateCommunityDescription,
   uploadCommunityImage,
   type Community,
-  type CommunityPost,
+  type FeedPost,
+  type PostPoll,
+  voteInPoll,
 } from "@/lib/db";
 
 const STARTER_PROMPTS = [
@@ -51,7 +58,12 @@ export default function CommunityHomePage() {
   const router = useRouter();
   const { user } = useAuth();
   const [community, setCommunity] = useState<Community | null>(null);
-  const [posts, setPosts] = useState<CommunityPost[]>([]);
+  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [polls, setPolls] = useState<Record<string, PostPoll>>({});
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
+  const [resharedPosts, setResharedPosts] = useState<Set<string>>(new Set());
+  const [reshareCounts, setReshareCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
@@ -73,16 +85,35 @@ export default function CommunityHomePage() {
       setCommunity(current);
       if (current) {
         setDescription(current.description);
-        setPosts(await fetchCommunityPosts(current.id));
+        const nextPosts = await fetchCommunityPosts(current.id);
+        setPosts(nextPosts);
+        setLikeCounts(Object.fromEntries(nextPosts.map((post) => [post.id, post.likes])));
+        setResharedPosts(new Set(nextPosts.filter((post) => post.reshared).map((post) => post.id)));
+        setReshareCounts(Object.fromEntries(nextPosts.map((post) => [post.id, post.reshares])));
+        const [nextPolls, nextLikes] = await Promise.all([
+          fetchPolls(nextPosts.map((post) => post.id)).catch((reason: unknown) => {
+            toastError(reason instanceof Error ? reason.message : "Could not load community polls.");
+            return {};
+          }),
+          user
+            ? fetchMyLikes().catch((reason: unknown) => {
+                toastError(reason instanceof Error ? reason.message : "Could not load your upvotes.");
+                return new Set<string>();
+              })
+            : Promise.resolve(new Set<string>()),
+        ]);
+        setPolls(nextPolls);
+        setLikedPosts(nextLikes);
       } else {
         setPosts([]);
+        setPolls({});
       }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not load this community.");
     } finally {
       setLoading(false);
     }
-  }, [slug]);
+  }, [slug, user]);
 
   useEffect(() => {
     void load();
@@ -104,17 +135,105 @@ export default function CommunityHomePage() {
         await joinCommunity(community.id);
       }
       if (!community.isOwner) {
+        const isMember = !wasMember;
         setCommunity({
           ...community,
-          isMember: !wasMember,
+          isMember,
           memberCount: Math.max(0, community.memberCount + (wasMember ? -1 : 1)),
         });
+        setPosts((current) =>
+          current.map((post) => ({ ...post, communityIsMember: isMember })),
+        );
       }
     } catch (reason) {
       setActionError(reason instanceof Error ? reason.message : "Could not update your membership.");
     } finally {
       setJoining(false);
     }
+  };
+
+  const toggleLike = (postId: string) => {
+    if (!user) {
+      router.push("/sign-in");
+      return;
+    }
+    const turningOn = !likedPosts.has(postId);
+    const count = likeCounts[postId] ?? posts.find((post) => post.id === postId)?.likes ?? 0;
+    const update = (on: boolean) => {
+      setLikedPosts((current) => {
+        const next = new Set(current);
+        if (on) next.add(postId);
+        else next.delete(postId);
+        return next;
+      });
+      setLikeCounts((current) => ({ ...current, [postId]: Math.max(0, count + (on ? 1 : -1)) }));
+    };
+    update(turningOn);
+    void (turningOn ? likePost(postId) : unlikePost(postId)).catch(() => {
+      update(!turningOn);
+      toastError("Couldn't save that");
+    });
+  };
+
+  const toggleReshare = (postId: string) => {
+    if (!user) {
+      router.push("/sign-in");
+      return;
+    }
+    const turningOn = !resharedPosts.has(postId);
+    const count = reshareCounts[postId] ?? posts.find((post) => post.id === postId)?.reshares ?? 0;
+    const update = (on: boolean) => {
+      setResharedPosts((current) => {
+        const next = new Set(current);
+        if (on) next.add(postId);
+        else next.delete(postId);
+        return next;
+      });
+      setReshareCounts((current) => ({
+        ...current,
+        [postId]: Math.max(0, count + (on ? 1 : -1)),
+      }));
+    };
+    update(turningOn);
+    void (turningOn ? resharePost(postId) : unresharePost(postId)).catch(() => {
+      update(!turningOn);
+      toastError("Couldn't reshare that post");
+    });
+  };
+
+  const votePoll = (postId: string, optionId: string) => {
+    if (!user) {
+      router.push("/sign-in");
+      return;
+    }
+    const poll = polls[postId];
+    if (!poll || poll.closed || poll.myOptionId === optionId) return;
+    setPolls((current) => ({ ...current, [postId]: withVote(poll, optionId) }));
+    void voteInPoll(optionId).catch(() => {
+      setPolls((current) => ({ ...current, [postId]: poll }));
+      toastError("Couldn't record that vote");
+    });
+  };
+
+  const sharePost = async (postId: string) => {
+    const url = `${window.location.origin}/feed/${postId}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ url });
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+        toastSuccess("Post link copied.");
+      } else {
+        throw new Error("Sharing is unavailable in this browser.");
+      }
+    } catch (reason) {
+      if (reason instanceof Error && reason.name === "AbortError") return;
+      toastError(reason instanceof Error ? reason.message : "Could not share this post.");
+    }
+  };
+
+  const joinFromPost = (communityId: string) => {
+    if (community?.id === communityId && !community.isMember) void toggleMembership();
   };
 
   const saveCommunityImage = async (target: "avatar" | "banner", file: File | undefined) => {
@@ -524,37 +643,26 @@ export default function CommunityHomePage() {
               </div>
 
               {posts.length ? (
-                <div className="mt-3 divide-y divide-line">
+                <div className="mt-3 divide-y-2 divide-line">
                   {posts.map((post) => (
-                    <article key={post.id} className="py-4">
-                      <Link href={post.authorId ? `/people/${post.authorId}` : `/feed/${post.id}`} className="flex items-center gap-2.5">
-                        {post.authorAvatarUrl ? (
-                          <img src={post.authorAvatarUrl} alt="" className="h-9 w-9 rounded-full object-cover" />
-                        ) : (
-                          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-lime-pale text-[11px] font-bold text-lime-deep">
-                            {post.authorInitials || "?"}
-                          </span>
-                        )}
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[12px] font-bold text-ink">{post.authorName}</span>
-                          <span className="block text-[10px] text-muted">{timeAgo(post.createdAt)}</span>
-                        </span>
-                        {post.mine ? <span className="text-[10px] font-semibold text-lime-deep">You</span> : null}
-                      </Link>
-                      <Link href={`/feed/${post.id}`} className="mt-2 block">
-                        {post.title ? <h3 className="text-[14px] font-bold text-ink">{post.title}</h3> : null}
-                        {post.body ? (
-                          <PostText text={post.body} className="mt-1 text-[13px] leading-[1.6] text-inksoft" />
-                        ) : null}
-                        {post.media[0] ? (
-                          <img
-                            src={mediaUrl(post.media[0].path)}
-                            alt=""
-                            className="mt-3 max-h-[360px] w-full rounded-xl object-cover"
-                          />
-                        ) : null}
-                      </Link>
-                    </article>
+                    <PostBlock
+                      key={post.id}
+                      post={post}
+                      liked={likedPosts.has(post.id)}
+                      likes={likeCounts[post.id] ?? post.likes}
+                      reshared={resharedPosts.has(post.id)}
+                      reshares={reshareCounts[post.id] ?? post.reshares}
+                      signedIn={Boolean(user)}
+                      poll={polls[post.id] ?? null}
+                      onVote={votePoll}
+                      onLike={toggleLike}
+                      onReshare={toggleReshare}
+                      onShare={sharePost}
+                      onOpen={(id) => router.push(`/feed/${id}`)}
+                      communityBusy={joining}
+                      onJoinCommunity={joinFromPost}
+                      edgeToEdge
+                    />
                   ))}
                 </div>
               ) : (
