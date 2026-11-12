@@ -340,7 +340,7 @@ export function PostBlock({
     );
 
   return (
-    <article className="pb-3.5">
+    <article className="border-0 pb-3.5">
       <header className={`flex items-center gap-2.5 py-2.5 ${edgeToEdge ? "px-4" : ""}`}>
         <Link
           href={post.authorId ? `/people/${post.authorId}` : `/feed/${post.id}`}
