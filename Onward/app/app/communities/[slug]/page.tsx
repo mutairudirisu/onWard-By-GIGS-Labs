@@ -612,16 +612,24 @@ export default function CommunityHomePage() {
                       <p className="mt-4 text-[10.5px] italic text-muted">Try these ideas</p>
                       <div className="wheel mt-2 flex gap-3 overflow-x-auto pb-1">
                         {STARTER_PROMPTS.map((prompt) => (
-                          <Link
+                          <div
                             key={prompt}
-                            href={`/feed/new?community=${community.id}&prompt=${encodeURIComponent(prompt)}`}
-                            className="min-w-[220px] max-w-[280px] cursor-pointer rounded-xl bg-cream p-4 text-left text-[12px] font-semibold leading-[1.5] text-ink hover:bg-lime-pale"
+                            className="flex min-w-[220px] max-w-[280px] items-center gap-3 rounded-xl bg-cream p-4"
                           >
-                            <span className="mb-2 flex items-center gap-2 text-[10px] font-bold text-muted">
-                              <Lightbulb className="h-4 w-4 text-lime-deep" /> Prompt
+                            <span className="min-w-0 flex-1 text-left text-[12px] font-semibold leading-[1.5] text-ink">
+                              <span className="mb-2 flex items-center gap-2 text-[10px] font-bold text-muted">
+                                <Lightbulb className="h-4 w-4 text-lime-deep" /> Prompt
+                              </span>
+                              {prompt}
                             </span>
-                            {prompt}
-                          </Link>
+                            <Link
+                              href={`/feed/new?community=${community.id}&prompt=${encodeURIComponent(prompt)}`}
+                              aria-label={`Create a post with prompt: ${prompt}`}
+                              className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full border border-line bg-paper text-ink transition hover:border-lime-deep hover:bg-lime-pale"
+                            >
+                              <Plus className="h-5 w-5" />
+                            </Link>
+                          </div>
                         ))}
                       </div>
                     </>
