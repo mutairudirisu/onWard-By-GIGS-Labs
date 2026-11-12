@@ -6,22 +6,25 @@ import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Check,
+  ChevronDown,
+  ChevronUp,
   Clipboard,
+  Lightbulb,
   Loader2,
   MessageCircle,
   Pencil,
   Plus,
   Send,
-  Settings2,
   UsersRound,
 } from "lucide-react";
 import { useAuth } from "@/components/auth";
-import { CommunityIcon, CommunityTopicIcon } from "@/components/community-card";
+import { CommunityTopicIcon } from "@/components/community-card";
 import { PhoneShell } from "@/components/phone-shell";
 import { toastError, toastSuccess } from "@/components/toast";
 import { timeAgo } from "@/lib/dates";
 import {
   createCommunityPost,
+  COMMUNITY_TYPE_OPTIONS,
   fetchCommunity,
   fetchCommunityPosts,
   joinCommunity,
@@ -56,6 +59,7 @@ export default function CommunityHomePage() {
   const [description, setDescription] = useState("");
   const [savingDescription, setSavingDescription] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [setupOpen, setSetupOpen] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -205,65 +209,222 @@ export default function CommunityHomePage() {
 
   return (
     <PhoneShell wide whiteBackground>
-      <div className="mx-auto w-full max-w-[1080px]">
-        <Link
-          href="/communities"
-          className="mb-3 inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[10px] font-semibold text-muted hover:bg-paper hover:text-ink"
-        >
-          <ArrowLeft className="h-4 w-4" /> All communities
-        </Link>
-
-        <header className="mb-5 overflow-hidden rounded-2xl border border-line bg-paper">
-          <div className="relative min-h-[130px] overflow-hidden bg-ink px-5 pb-7 pt-6 sm:px-7">
+      <div className="-mx-5 -mt-5 w-[calc(100%+2.5rem)] md:mx-auto md:mt-0 md:w-full md:max-w-[1080px]">
+        <header className="mb-5">
+          <div className="relative min-h-[190px] overflow-hidden bg-ink px-4 pb-7 pt-4 sm:px-7">
             <span className="pointer-events-none absolute -right-7 -top-16 h-48 w-48 rounded-full border-[22px] border-lime/20" />
             <span className="pointer-events-none absolute right-40 top-12 h-12 w-12 rounded-full bg-lime/15" />
-            <div className="relative flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.13em] text-lime">
-              <CommunityTopicIcon topic={community.topic} className="h-4 w-4" /> {community.topic}
-            </div>
-            <h1 className="relative mt-2 max-w-[75%] text-[24px] font-bold tracking-tight text-white sm:text-[30px]">
-              {community.name}
-            </h1>
-            <p className="relative mt-1 text-[10px] text-white/65">onWard/{community.slug}</p>
-            <div className="absolute bottom-0 left-5 translate-y-1/2 sm:left-7">
-              <CommunityIcon large />
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 px-5 pb-4 pt-11 sm:px-7">
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[9.5px] text-muted">
-              <span><strong className="text-ink">{community.memberCount}</strong> {community.memberCount === 1 ? "member" : "members"}</span>
-              <span><strong className="text-ink">{community.postCount}</strong> posts</span>
-              <span className="rounded-full bg-lime-pale px-2 py-0.5 font-semibold text-lime-deep">Public</span>
-            </div>
-            <div className="flex items-center gap-2">
+            <span className="pointer-events-none absolute -bottom-16 left-[36%] h-36 w-36 rounded-full bg-lime/10" />
+            <div className="relative flex items-center justify-between">
+              <Link
+                href="/communities"
+                aria-label="Back to all communities"
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-ink/60 text-white transition hover:bg-ink/80"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
               <button
                 type="button"
                 onClick={copyInvite}
                 aria-label="Copy community link"
-                className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-cream text-inksoft hover:bg-lime-pale"
+                className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-ink/60 text-white transition hover:bg-ink/80"
               >
-                <Clipboard className="h-4 w-4" />
+                <Clipboard className="h-5 w-5" />
               </button>
+            </div>
+          </div>
+          <div className="px-4 pb-4 sm:px-7">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="relative z-10 -mt-8 flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-full border-4 border-white bg-lime-pale text-lime-deep">
+                  <CommunityTopicIcon topic={community.topic} className="h-8 w-8" />
+                </span>
+                <div className="min-w-0 pb-1">
+                  <h1 className="truncate text-[20px] font-bold tracking-tight text-ink sm:text-[24px]">
+                    {community.name}
+                  </h1>
+                  <p className="truncate text-[10px] text-muted">onWard/{community.slug}</p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={toggleMembership}
                 disabled={joining || community.isOwner}
-                className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full px-4 text-[10px] font-bold transition disabled:cursor-default disabled:opacity-70 ${
+                className={`inline-flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-4 text-[11px] font-bold transition disabled:cursor-default disabled:opacity-70 ${
                   community.isMember
                     ? "bg-cream text-ink hover:bg-lime-pale"
                     : "bg-lime-deep text-white hover:bg-ink"
                 }`}
               >
                 {joining ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : community.isMember ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
-                {community.isOwner ? "Owner" : community.isMember ? "Joined" : "Join community"}
+                {community.isOwner ? "Owner" : community.isMember ? "Joined" : "Join"}
               </button>
             </div>
+
+            {editing && community.isOwner ? (
+              <div className="mt-4">
+                <label htmlFor="edit-community-description" className="sr-only">Community description</label>
+                <textarea
+                  id="edit-community-description"
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  maxLength={500}
+                  rows={3}
+                  className="w-full rounded-xl border border-line bg-cream px-3 py-2 text-[12px] leading-[1.5] text-ink outline-none focus:border-lime-deep"
+                />
+                <div className="mt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDescription(community.description);
+                      setEditing(false);
+                    }}
+                    className="cursor-pointer rounded-full px-3 py-1.5 text-[10px] font-semibold text-muted hover:bg-cream"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveDescription}
+                    disabled={savingDescription}
+                    className="cursor-pointer rounded-full bg-lime-deep px-3 py-1.5 text-[10px] font-bold text-white disabled:opacity-60"
+                  >
+                    {savingDescription ? "Saving…" : "Save"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="max-w-[720px] whitespace-pre-wrap text-[13px] leading-[1.6] text-inksoft">
+                    {community.description}
+                  </p>
+                  {community.isOwner ? (
+                    <button
+                      type="button"
+                      onClick={() => setEditing(true)}
+                      aria-label="Edit community description"
+                      className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted hover:bg-paper hover:text-ink"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                  ) : null}
+                </div>
+                <div className="mt-4 rounded-[20px] bg-[#f1f3f5] px-4 py-3.5">
+                  <div className="flex items-center gap-2 text-[13px]">
+                    <span className="font-bold text-ink">Insights</span>
+                    <span className="text-muted">All time</span>
+                  </div>
+                  <p className="mt-2 text-[13px] text-muted">
+                    {community.memberCount} {community.memberCount === 1 ? "member" : "members"} ·{" "}
+                    {community.postCount} contributions
+                  </p>
+                </div>
+              </div>
+            )}
+            {actionError ? <p role="alert" className="mt-3 text-[10px] text-danger">{actionError}</p> : null}
           </div>
-          {actionError ? <p role="alert" className="px-5 pb-3 text-[10px] text-danger sm:px-7">{actionError}</p> : null}
         </header>
+
+        {community.isOwner ? (
+          <section className="mb-5 rounded-[28px] bg-[#edf0f2] p-4 sm:p-6">
+            <button
+              type="button"
+              aria-expanded={setupOpen}
+              onClick={() => setSetupOpen((open) => !open)}
+              className="flex w-full items-center justify-between gap-3 text-left"
+            >
+              <span className="flex items-center gap-3">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-lime-deep">
+                  <CommunityTopicIcon topic={community.topic} className="h-7 w-7" />
+                </span>
+                <span className="text-[17px] font-bold text-ink">Get ready for visitors</span>
+              </span>
+              {setupOpen ? <ChevronUp className="h-5 w-5 text-ink" /> : <ChevronDown className="h-5 w-5 text-ink" />}
+            </button>
+            {setupOpen ? (
+              <div className="mt-4 space-y-3">
+                <div className="flex items-center gap-3 rounded-[24px] bg-[#e4e9ed] p-4">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-lime-deep">
+                    <CommunityTopicIcon topic={community.topic} className="h-6 w-6" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[13px] font-bold text-ink">Community logo</span>
+                    <span className="mt-1 block text-[10.5px] text-muted">Your topic icon is ready to represent this space.</span>
+                  </span>
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#159447] text-white">
+                    <Check className="h-4 w-4" strokeWidth={3} />
+                  </span>
+                </div>
+                <div className="rounded-[24px] bg-[#e4e9ed] p-4 sm:p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-[15px] font-bold text-ink">Make 3 posts</h2>
+                      <p className="mt-1 text-[11px] leading-[1.6] text-muted">
+                        A few posts help new visitors see what your community is about.
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-bold tabular-nums text-ink">
+                      {Math.min(posts.length, 3)}/3
+                    </span>
+                  </div>
+                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white">
+                    <div
+                      className="h-full rounded-full bg-lime-deep transition-all"
+                      style={{ width: `${Math.min(posts.length, 3) * 33.333}%` }}
+                    />
+                  </div>
+                  {posts.length < 3 ? (
+                    <>
+                      <p className="mt-4 text-[10.5px] italic text-muted">Try these ideas</p>
+                      <div className="wheel mt-2 flex gap-3 overflow-x-auto pb-1">
+                        {STARTER_PROMPTS.map((prompt) => (
+                          <button
+                            key={prompt}
+                            type="button"
+                            onClick={() => {
+                              setBody(prompt);
+                              setComposerOpen(true);
+                              document.getElementById("community-feed")?.scrollIntoView({
+                                behavior: "smooth",
+                                block: "start",
+                              });
+                            }}
+                            className="min-w-[220px] max-w-[280px] cursor-pointer rounded-[20px] bg-white p-4 text-left text-[12px] font-semibold leading-[1.5] text-ink hover:bg-lime-pale"
+                          >
+                            <span className="mb-2 flex items-center gap-2 text-[10px] font-bold text-muted">
+                              <Lightbulb className="h-4 w-4 text-lime-deep" /> Prompt
+                            </span>
+                            {prompt}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="mt-3 text-[10px] font-semibold text-lime-deep">Starter posts complete</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setComposerOpen(true);
+                      document.getElementById("community-feed")?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                      });
+                    }}
+                    className="mt-3 cursor-pointer text-[10px] font-bold text-lime-deep hover:underline"
+                  >
+                    Write a welcome post
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </section>
+        ) : null}
 
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
           <main className="min-w-0">
-            <section className="card mb-4 p-4 sm:p-5">
+            <section id="community-feed" className="mb-4 border-t border-line pt-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-lime-deep">Community feed</p>
@@ -375,101 +536,7 @@ export default function CommunityHomePage() {
           </main>
 
           <aside className="space-y-4">
-            <section className="card p-4">
-              <h2 className="text-[11px] font-bold text-ink">About this community</h2>
-              {editing && community.isOwner ? (
-                <div className="mt-3">
-                  <label htmlFor="edit-community-description" className="sr-only">Community description</label>
-                  <textarea
-                    id="edit-community-description"
-                    value={description}
-                    onChange={(event) => setDescription(event.target.value)}
-                    maxLength={500}
-                    rows={4}
-                    className="w-full rounded-lg border border-line bg-cream px-3 py-2 text-[10px] leading-[1.5] text-ink outline-none focus:border-lime-deep"
-                  />
-                  <div className="mt-2 flex justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDescription(community.description);
-                        setEditing(false);
-                      }}
-                      className="cursor-pointer rounded-full px-3 py-1.5 text-[9px] font-semibold text-muted hover:bg-cream"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={saveDescription}
-                      disabled={savingDescription}
-                      className="cursor-pointer rounded-full bg-lime-deep px-3 py-1.5 text-[9px] font-bold text-white disabled:opacity-60"
-                    >
-                      {savingDescription ? "Saving…" : "Save"}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <p className="mt-2 whitespace-pre-wrap text-[10px] leading-[1.65] text-inksoft">
-                  {community.description}
-                </p>
-              )}
-              {community.isOwner && !editing ? (
-                <button
-                  type="button"
-                  onClick={() => setEditing(true)}
-                  className="mt-3 inline-flex cursor-pointer items-center gap-1.5 text-[9px] font-bold text-lime-deep hover:underline"
-                >
-                  <Pencil className="h-3.5 w-3.5" /> Edit description
-                </button>
-              ) : null}
-            </section>
-
-            {community.isOwner ? (
-              <section className="card p-4">
-                <div className="flex items-center gap-2">
-                  <Settings2 className="h-4 w-4 text-lime-deep" />
-                  <h2 className="text-[11px] font-bold text-ink">Community setup</h2>
-                </div>
-                <p className="mt-2 text-[9px] leading-[1.5] text-muted">
-                  Help new members understand the space and feel welcome.
-                </p>
-                <div className="mt-3 rounded-xl bg-lime-pale/70 p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[9.5px] font-bold text-ink">Make 3 starter posts</span>
-                    <span className="text-[9px] font-semibold tabular-nums text-lime-deep">
-                      {Math.min(posts.length, 3)}/3
-                    </span>
-                  </div>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-paper">
-                    <div
-                      className="h-full rounded-full bg-lime-deep transition-all"
-                      style={{ width: `${Math.min(posts.length, 3) * 33.333}%` }}
-                    />
-                  </div>
-                  {posts.length < 3 ? (
-                    <button
-                      type="button"
-                      onClick={() => setComposerOpen(true)}
-                      className="mt-3 cursor-pointer text-[9px] font-bold text-lime-deep hover:underline"
-                    >
-                      Write a welcome post
-                    </button>
-                  ) : (
-                    <p className="mt-3 text-[9px] font-semibold text-lime-deep">Starter posts complete</p>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={copyInvite}
-                  className="mt-3 inline-flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-full bg-cream text-[9.5px] font-bold text-ink hover:bg-lime-pale"
-                >
-                  <UsersRound className="h-3.5 w-3.5" /> Invite members
-                </button>
-              </section>
-            ) : null}
-
-            <section className="card p-4">
+            <section className="border-t border-line py-4 lg:border-0">
               <h2 className="text-[11px] font-bold text-ink">Community details</h2>
               <div className="mt-3 space-y-2 text-[9.5px] text-muted">
                 <div className="flex justify-between gap-3">
@@ -480,8 +547,12 @@ export default function CommunityHomePage() {
                   </span>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span>Visibility</span>
-                  <span className="font-semibold text-ink">Public</span>
+                  <span>Community type</span>
+                  <span className="font-semibold text-ink">
+                    {COMMUNITY_TYPE_OPTIONS.find((option) => option.value === community.communityType)?.label ??
+                      "Public"}
+                    {community.isMature ? " · 18+" : ""}
+                  </span>
                 </div>
                 <div className="flex justify-between gap-3">
                   <span>Posts</span>

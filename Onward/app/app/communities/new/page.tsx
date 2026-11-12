@@ -1,13 +1,32 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, Hash, Lightbulb, LockKeyhole, Plus, UsersRound } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  ChevronRight,
+  Eye,
+  Globe,
+  Hash,
+  Lightbulb,
+  LockKeyhole,
+  UsersRound,
+  X,
+} from "lucide-react";
 import { useAuth } from "@/components/auth";
 import { CommunityIcon, CommunityTopicIcon } from "@/components/community-card";
 import { PhoneShell } from "@/components/phone-shell";
-import { COMMUNITY_TOPICS, createCommunity, type CommunityTopic } from "@/lib/db";
+import { Toggle } from "@/components/ui";
+import { Wordmark } from "@/components/wordmark";
+import {
+  COMMUNITY_TOPICS,
+  COMMUNITY_TYPE_OPTIONS,
+  createCommunity,
+  type CommunityTopic,
+  type CommunityType,
+} from "@/lib/db";
 
 const STEPS = ["Idea", "Topic", "Name", "Description"];
 
@@ -28,11 +47,28 @@ export default function NewCommunityPage() {
   const [step, setStep] = useState(0);
   const [idea, setIdea] = useState("");
   const [topic, setTopic] = useState<CommunityTopic>("Technology");
+  const [communityType, setCommunityType] = useState<CommunityType>("public");
+  const [isMature, setIsMature] = useState(false);
+  const [typeSheetOpen, setTypeSheetOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const slug = useMemo(() => communitySlug(name), [name]);
+
+  useEffect(() => {
+    if (!typeSheetOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setTypeSheetOpen(false);
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [typeSheetOpen]);
 
   const stepProblem = () => {
     if (step === 0 && idea.trim().length < 15) return "Write at least 15 characters to describe the idea.";
@@ -41,6 +77,9 @@ export default function NewCommunityPage() {
     if (step === 3 && description.trim().length < 15) return "Write at least 15 characters for the description.";
     return "";
   };
+
+  const canContinue = !stepProblem() && !busy;
+  const selectedType = COMMUNITY_TYPE_OPTIONS.find((option) => option.value === communityType);
 
   const continueStep = () => {
     const problem = stepProblem();
@@ -69,6 +108,8 @@ export default function NewCommunityPage() {
         name: name.trim(),
         slug,
         topic,
+        communityType,
+        isMature,
         description: description.trim(),
         idea: idea.trim(),
       });
@@ -82,7 +123,7 @@ export default function NewCommunityPage() {
 
   if (!ready) {
     return (
-      <PhoneShell whiteBackground>
+      <PhoneShell whiteBackground indicator={false}>
         <div className="card animate-pulse p-8 text-center text-[11px] text-muted">Loading…</div>
       </PhoneShell>
     );
@@ -90,7 +131,7 @@ export default function NewCommunityPage() {
 
   if (!user) {
     return (
-      <PhoneShell whiteBackground>
+      <PhoneShell whiteBackground indicator={false}>
         <div className="card px-5 py-10 text-center">
           <UsersRound className="mx-auto h-7 w-7 text-lime-deep" />
           <h1 className="mt-2 text-[15px] font-bold text-ink">Sign in to create a community</h1>
@@ -103,18 +144,38 @@ export default function NewCommunityPage() {
   }
 
   return (
-    <PhoneShell whiteBackground>
-      <main className="-mx-5 w-[calc(100%+2.5rem)] max-w-[620px] md:mx-auto md:w-full">
-        <header className="mb-5 flex items-center justify-between gap-3 px-4">
-          <Link
-            href="/communities"
-            className="flex h-9 items-center gap-1.5 rounded-full px-3 text-[10px] font-semibold text-muted hover:bg-paper hover:text-ink"
+    <PhoneShell whiteBackground indicator={false}>
+      <main className="-mx-5 -mt-5 w-[calc(100%+2.5rem)] max-w-[620px] pb-28 md:mx-auto md:mt-0 md:w-full md:pb-0">
+        <header className="border-b border-line px-4 pb-3 pt-2 md:mb-5 md:border-0 md:px-0 md:pb-0 md:pt-0">
+          <div className="relative flex h-8 items-center justify-between">
+            <button
+              type="button"
+              aria-label={step === 0 ? "Back to communities" : "Previous step"}
+              onClick={() => {
+                setError("");
+                if (step === 0) router.push("/communities");
+                else setStep((current) => current - 1);
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-ink hover:bg-paper"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <Wordmark className="absolute left-1/2 -translate-x-1/2 text-[16px]" />
+            <span className="h-8 w-8" aria-hidden="true" />
+          </div>
+          <div
+            className="mt-3 h-[3px] w-full overflow-hidden rounded-full bg-[#e4e8eb]"
+            role="progressbar"
+            aria-label={`Step ${step + 1} of ${STEPS.length}`}
+            aria-valuemin={1}
+            aria-valuemax={STEPS.length}
+            aria-valuenow={step + 1}
           >
-            <ArrowLeft className="h-4 w-4" /> Communities
-          </Link>
-          <span className="inline-flex items-center gap-1.5 text-[9px] font-semibold text-muted">
-            <LockKeyhole className="h-3.5 w-3.5" /> Your idea stays private
-          </span>
+            <div
+              className="h-full rounded-full bg-lime-deep transition-[width] duration-300"
+              style={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
+            />
+          </div>
         </header>
 
         <section>
@@ -128,16 +189,6 @@ export default function NewCommunityPage() {
             <p className="mt-1 text-[10.5px] leading-[1.6] text-muted">
               A few details help the right people find their way in.
             </p>
-            <div className="mt-5 grid grid-cols-4 gap-2" aria-label={`Step ${step + 1} of ${STEPS.length}`}>
-              {STEPS.map((label, index) => (
-                <div key={label}>
-                  <div className={`h-1 rounded-full ${index <= step ? "bg-lime-deep" : "bg-line"}`} />
-                  <span className={`mt-1.5 block text-[8.5px] font-semibold ${index === step ? "text-ink" : "text-muted"}`}>
-                    {label}
-                  </span>
-                </div>
-              ))}
-            </div>
           </div>
 
           <div className="min-h-[320px] px-5 py-6 sm:px-7">
@@ -167,9 +218,32 @@ export default function NewCommunityPage() {
                   className="mt-2 w-full resize-y rounded-xl border border-line bg-cream px-3 py-3 text-[11px] leading-[1.6] text-ink outline-none placeholder:text-faint focus:border-lime-deep"
                 />
                 <div className="mt-1 flex justify-between text-[9px] text-muted">
-                  <span>Only you can see this note.</span>
+                  <span>Only you can see this note. At least 15 characters.</span>
                   <span>{idea.trim().length}/1000</span>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setTypeSheetOpen(true)}
+                  className="mt-6 flex w-full items-center gap-3 border-t border-line pt-4 text-left"
+                  aria-haspopup="dialog"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-lime-pale text-lime-deep">
+                    {communityType === "public" ? (
+                      <Globe className="h-5 w-5" />
+                    ) : communityType === "restricted" ? (
+                      <Eye className="h-5 w-5" />
+                    ) : (
+                      <LockKeyhole className="h-5 w-5" />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[11px] font-bold text-ink">Community Type</span>
+                    <span className="mt-0.5 block text-[10px] text-muted">
+                      {selectedType?.label ?? "Public"} and {isMature ? "Mature 18+" : "Safe for Everyone"}
+                    </span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
+                </button>
               </div>
             ) : null}
 
@@ -269,7 +343,7 @@ export default function NewCommunityPage() {
                       <p className="truncate text-[11px] font-bold text-ink">{name || "Your community"}</p>
                       <p className="inline-flex items-center gap-1 text-[9px] text-muted">
                         <CommunityTopicIcon topic={topic} className="h-3 w-3" />
-                        {topic} · Public
+                        {topic} · {selectedType?.label ?? "Public"}{isMature ? " · 18+" : ""}
                       </p>
                     </div>
                   </div>
@@ -286,40 +360,129 @@ export default function NewCommunityPage() {
               </p>
             ) : null}
 
-            <div className="mt-6 flex items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setError("");
-                  setStep((current) => Math.max(0, current - 1));
-                }}
-                disabled={step === 0 || busy}
-                className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full px-3 text-[10px] font-semibold text-muted hover:bg-paper hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <ArrowLeft className="h-4 w-4" /> Back
-              </button>
-              {step === STEPS.length - 1 ? (
-                <button
-                  type="button"
-                  onClick={submit}
-                  disabled={busy}
-                  className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full bg-lime px-5 text-[10px] font-bold text-dark hover:bg-lime-deep disabled:cursor-wait disabled:opacity-60"
-                >
-                  <Plus className="h-4 w-4" /> {busy ? "Creating…" : "Create community"}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={continueStep}
-                  className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full bg-lime px-5 text-[10px] font-bold text-dark hover:bg-lime-deep"
-                >
-                  Continue <ArrowRight className="h-4 w-4" />
-                </button>
-              )}
-            </div>
           </div>
         </section>
       </main>
+      <footer
+        className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[400px] bg-white px-5 pt-3 shadow-[0_-8px_24px_rgba(0,0,0,0.06)] md:static md:max-w-[620px] md:px-0 md:pt-4 md:shadow-none"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1rem)" }}
+      >
+        <button
+          type="button"
+          onClick={step === STEPS.length - 1 ? submit : continueStep}
+          disabled={!canContinue}
+          className={`h-14 w-full rounded-full text-[13px] font-bold transition ${
+            canContinue
+              ? "bg-lime text-dark hover:bg-lime-deep"
+              : "cursor-not-allowed bg-[#f1f1f1] text-[#aaa]"
+          }`}
+        >
+          {step === STEPS.length - 1
+            ? busy
+              ? "Creating…"
+              : "Create community"
+            : "Continue"}
+        </button>
+      </footer>
+      {typeSheetOpen ? (
+        <div
+          className="fixed inset-0 z-[70] flex items-end justify-center bg-ink/50 md:items-center md:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="community-type-title"
+        >
+          <button
+            type="button"
+            aria-label="Close community type settings"
+            className="absolute inset-0 cursor-default"
+            onClick={() => setTypeSheetOpen(false)}
+          />
+          <section className="relative max-h-[92dvh] w-full max-w-[560px] overflow-y-auto rounded-t-[28px] bg-white px-5 pb-6 pt-3 shadow-lift md:rounded-3xl md:px-7">
+            <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-line" />
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="community-type-title" className="text-[22px] font-bold tracking-tight text-ink">
+                  Community Type
+                </h2>
+                <p className="mt-1 text-[10.5px] leading-[1.6] text-muted">
+                  Choose who your community is intended for.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTypeSheetOpen(false)}
+                aria-label="Close"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted hover:bg-paper"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="mt-5 divide-y divide-line">
+              {COMMUNITY_TYPE_OPTIONS.map((option) => {
+                const selected = communityType === option.value;
+                const Icon =
+                  option.value === "public" ? Globe : option.value === "restricted" ? Eye : LockKeyhole;
+                const description =
+                  option.value === "public"
+                    ? "Anyone can find and view this community."
+                    : option.value === "restricted"
+                      ? "Intended for anyone to view, with contributions limited to approved members."
+                      : "Intended for approved members only.";
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setCommunityType(option.value)}
+                    className="flex w-full items-center gap-3 py-4 text-left"
+                  >
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-lime-pale text-lime-deep">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13px] font-bold text-ink">{option.label}</span>
+                      <span className="mt-0.5 block text-[10px] leading-[1.5] text-muted">{description}</span>
+                    </span>
+                    <span
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                        selected ? "border-lime-deep" : "border-line"
+                      }`}
+                    >
+                      {selected ? <span className="h-2.5 w-2.5 rounded-full bg-lime-deep" /> : null}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-1 flex items-center gap-3 border-t border-line py-4">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-lime-pale text-lime-deep">
+                <LockKeyhole className="h-5 w-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13px] font-bold text-ink">Mature 18+</span>
+                <span className="mt-0.5 block text-[10px] leading-[1.5] text-muted">
+                  Mark this community as intended for adults 18 and over.
+                </span>
+              </span>
+              <Toggle
+                checked={isMature}
+                onChange={setIsMature}
+                label="Mark this community as mature, for adults 18 and over"
+              />
+            </div>
+            <p className="mb-4 text-[9.5px] leading-[1.5] text-muted">
+              These settings are saved with your community. Access and age restrictions are not enforced yet.
+            </p>
+            <button
+              type="button"
+              onClick={() => setTypeSheetOpen(false)}
+              className="h-12 w-full rounded-full bg-ink text-[12px] font-bold text-white transition hover:bg-ink/90"
+            >
+              Save
+            </button>
+          </section>
+        </div>
+      ) : null}
     </PhoneShell>
   );
 }

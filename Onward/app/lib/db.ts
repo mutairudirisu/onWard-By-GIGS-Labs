@@ -1762,11 +1762,21 @@ export const COMMUNITY_TOPICS = [
 
 export type CommunityTopic = (typeof COMMUNITY_TOPICS)[number];
 
+export const COMMUNITY_TYPE_OPTIONS = [
+  { value: "public", label: "Public" },
+  { value: "restricted", label: "Restricted" },
+  { value: "private", label: "Private" },
+] as const;
+
+export type CommunityType = (typeof COMMUNITY_TYPE_OPTIONS)[number]["value"];
+
 export type Community = {
   id: string;
   slug: string;
   name: string;
   topic: CommunityTopic;
+  communityType: CommunityType;
+  isMature: boolean;
   description: string;
   createdAt: string;
   memberCount: number;
@@ -1792,6 +1802,8 @@ type CommunityRow = {
   slug: string;
   name: string;
   topic: CommunityTopic;
+  community_type: CommunityType;
+  is_mature: boolean;
   description: string;
   created_at: string;
   member_count: number;
@@ -1806,6 +1818,8 @@ function communityFromRow(row: CommunityRow): Community {
     slug: row.slug,
     name: row.name,
     topic: row.topic,
+    communityType: row.community_type,
+    isMature: row.is_mature,
     description: row.description,
     createdAt: row.created_at,
     memberCount: row.member_count,
@@ -1840,6 +1854,8 @@ export async function createCommunity(input: {
   name: string;
   slug: string;
   topic: CommunityTopic;
+  communityType: CommunityType;
+  isMature: boolean;
   description: string;
   idea: string;
 }): Promise<{ id: string; slug: string }> {
@@ -1849,6 +1865,8 @@ export async function createCommunity(input: {
     p_topic: input.topic,
     p_description: input.description,
     p_idea: input.idea,
+    p_community_type: input.communityType,
+    p_is_mature: input.isMature,
   });
   if (error) {
     if (error.code === "23505") throw new Error("That community name is already in use.");
