@@ -68,43 +68,41 @@ export function CommunityCard({
   joining?: boolean;
 }) {
   return (
-    <article className="card flex min-w-0 flex-col gap-3 p-4">
+    <article className="relative min-h-[158px] min-w-0 rounded-[24px] border border-line bg-paper p-4">
       <Link
         href={`/communities/${community.slug}`}
-        className="group min-w-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-lime-deep"
+        aria-label={`View ${community.name}`}
+        className="absolute inset-0 z-0 rounded-[24px] outline-none focus-visible:ring-2 focus-visible:ring-lime-deep"
       >
-        <div className="flex items-center gap-3">
-          <CommunityIcon />
+        <span className="sr-only">Open community</span>
+      </Link>
+      <div className="pointer-events-none relative z-10">
+        <div className="flex items-start gap-3 pr-20">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-lime-pale text-lime-deep">
+            <CommunityTopicIcon topic={community.topic} className="h-6 w-6" />
+          </span>
           <div className="min-w-0">
-            <h3 className="truncate text-[13px] font-bold text-ink group-hover:text-lime-deep">
+            <h3 className="truncate text-[16px] font-bold leading-tight text-ink">
               {community.name}
             </h3>
-            <p className="mt-0.5 flex items-center gap-1 text-[10px] font-medium text-muted">
-              <CommunityTopicIcon topic={community.topic} className="h-3 w-3" />
-              {community.topic}
+            <p className="mt-1 text-[13px] leading-tight text-muted">
+              {community.memberCount} {community.memberCount === 1 ? "member" : "members"}
             </p>
           </div>
         </div>
-        <p className="mt-3 line-clamp-2 min-h-[32px] text-[10.5px] leading-[1.55] text-inksoft">
+        <p className="mt-3 line-clamp-2 text-[13px] leading-[1.45] text-inksoft">
           {community.description}
         </p>
-      </Link>
-      <div className="flex items-center justify-between gap-2 border-t border-line pt-3">
-        <p className="text-[9.5px] text-muted">
-          <span className="font-semibold tabular-nums text-ink">{community.memberCount}</span>{" "}
-          {community.memberCount === 1 ? "member" : "members"}
-          <span className="mx-1.5 text-line">·</span>
-          <span className="font-semibold tabular-nums text-ink">{community.postCount}</span>{" "}
-          posts
-        </p>
+      </div>
+      <div className="absolute right-4 top-4 z-20">
         {community.isOwner ? (
-          <span className="rounded-full bg-lime-pale px-2.5 py-1 text-[9px] font-bold text-lime-deep">
+          <span className="rounded-full bg-lime-pale px-4 py-2.5 text-[13px] font-semibold text-lime-deep">
             Owner
           </span>
         ) : community.isMember ? (
           <Link
             href={`/communities/${community.slug}`}
-            className="rounded-full bg-cream px-3 py-1.5 text-[9px] font-bold text-ink hover:bg-lime-pale"
+            className="rounded-full bg-[#e9eef2] px-4 py-2.5 text-[13px] font-semibold text-ink hover:bg-lime-soft"
           >
             Open
           </Link>
@@ -113,14 +111,14 @@ export function CommunityCard({
             type="button"
             disabled={joining}
             onClick={() => onJoin(community)}
-            className="cursor-pointer rounded-full bg-lime-deep px-3 py-1.5 text-[9px] font-bold text-white transition hover:bg-ink disabled:cursor-wait disabled:opacity-60"
+            className="cursor-pointer rounded-full bg-[#e9eef2] px-4 py-2.5 text-[13px] font-semibold text-ink transition hover:bg-lime-soft disabled:cursor-wait disabled:opacity-60"
           >
             {joining ? "Joining…" : "Join"}
           </button>
         ) : (
           <Link
             href={`/communities/${community.slug}`}
-            className="rounded-full bg-cream px-3 py-1.5 text-[9px] font-bold text-ink hover:bg-lime-pale"
+            className="rounded-full bg-[#e9eef2] px-4 py-2.5 text-[13px] font-semibold text-ink hover:bg-lime-soft"
           >
             Explore
           </Link>

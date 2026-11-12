@@ -17,29 +17,23 @@ export function PhoneShell({
   tab,
   indicator = true,
   wide = false,
-  primaryAction,
+  whiteBackground = false,
 }: {
   children: ReactNode;
-  tab?: TabId | "none";
+  tab?: TabId;
   indicator?: boolean;
   wide?: boolean;
-  primaryAction?: {
-    label: string;
-    onClick: () => void;
-    disabled?: boolean;
-    icon: ReactNode;
-  };
+  whiteBackground?: boolean;
 }) {
-  const showNav = tab !== undefined;
-  const activeTab = tab === "none" ? null : tab;
+  const showNav = Boolean(tab);
   const hasFooter = showNav || indicator;
 
   return (
-    <div className="flex flex-col min-h-dvh">
+    <div className={`flex min-h-dvh flex-col ${whiteBackground ? "bg-white" : ""}`}>
       <main
         className={`flex-1 px-5 pt-5 md:px-8 md:pt-8 lg:px-10 lg:pt-10 xl:px-14 ${
           showNav ? "pb-36 md:pb-12" : indicator ? "pb-16 md:pb-12" : "pb-6"
-        }`}
+        } ${whiteBackground ? "bg-white" : ""}`}
       >
         <div
           className={`mx-auto w-full max-w-none md:max-w-[680px] lg:max-w-[820px] ${
@@ -51,10 +45,16 @@ export function PhoneShell({
       </main>
       {hasFooter ? (
         <div
-          className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[400px] bg-cream md:hidden"
+          className={`fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[400px] md:hidden ${
+            whiteBackground ? "bg-white" : "bg-cream"
+          }`}
         >
-          <div className="pointer-events-none absolute inset-x-0 -top-8 h-8 bg-gradient-to-t from-cream via-cream/70 to-transparent" />
-          {showNav ? <BottomNav active={activeTab ?? null} primaryAction={primaryAction} /> : null}
+          <div
+            className={`pointer-events-none absolute inset-x-0 -top-8 h-8 bg-gradient-to-t ${
+              whiteBackground ? "from-white via-white/70" : "from-cream via-cream/70"
+            } to-transparent`}
+          />
+          {showNav ? <BottomNav active={tab!} /> : null}
           {indicator ? <HomeIndicator /> : null}
         </div>
       ) : null}

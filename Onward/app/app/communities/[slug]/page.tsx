@@ -169,7 +169,7 @@ export default function CommunityHomePage() {
 
   if (loading) {
     return (
-      <PhoneShell tab="none" wide>
+      <PhoneShell wide whiteBackground>
         <div className="card animate-pulse p-8 text-center text-[11px] text-muted">Loading community…</div>
       </PhoneShell>
     );
@@ -177,7 +177,7 @@ export default function CommunityHomePage() {
 
   if (error || !community) {
     return (
-      <PhoneShell tab="none" wide>
+      <PhoneShell wide whiteBackground>
         <div className="card mx-auto max-w-[540px] px-5 py-9 text-center">
           <UsersRound className="mx-auto h-7 w-7 text-lime-deep" />
           <h1 className="mt-2 text-[15px] font-bold text-ink">
@@ -204,7 +204,7 @@ export default function CommunityHomePage() {
   }
 
   return (
-    <PhoneShell tab="none" wide>
+    <PhoneShell wide whiteBackground>
       <div className="mx-auto w-full max-w-[1080px]">
         <Link
           href="/communities"

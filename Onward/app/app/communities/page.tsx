@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Compass, Plus, Search, UsersRound } from "lucide-react";
+import { ArrowLeft, ChevronRight, Compass, Plus, Search, UsersRound } from "lucide-react";
 import { useAuth } from "@/components/auth";
 import { CommunityCard, CommunityTopicIcon } from "@/components/community-card";
 import { PhoneShell } from "@/components/phone-shell";
@@ -14,6 +14,58 @@ import {
   joinCommunity,
   type Community,
 } from "@/lib/db";
+
+function CommunityRail({
+  title,
+  communities,
+  joiningId,
+  onJoin,
+  showNext = false,
+}: {
+  title: string;
+  communities: Community[];
+  joiningId: string | null;
+  onJoin: (community: Community) => void;
+  showNext?: boolean;
+}) {
+  const railRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <section className="mt-7 min-w-0">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-[17px] font-bold text-ink">{title}</h2>
+        {showNext && communities.length > 1 ? (
+          <button
+            type="button"
+            aria-label={`Show more ${title} communities`}
+            onClick={() => {
+              const rail = railRef.current;
+              if (!rail) return;
+              rail.scrollBy({ left: rail.clientWidth * 0.8, behavior: "smooth" });
+            }}
+            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-ink hover:bg-cream"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        ) : null}
+      </div>
+      <div
+        ref={railRef}
+        className="wheel -mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2 md:mx-0 md:px-0"
+      >
+        {communities.map((community) => (
+          <div key={community.id} className="w-[min(84vw,520px)] shrink-0 snap-start">
+            <CommunityCard
+              community={community}
+              joining={joiningId === community.id}
+              onJoin={onJoin}
+            />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 export default function CommunitiesPage() {
   const router = useRouter();
@@ -81,7 +133,7 @@ export default function CommunitiesPage() {
   };
 
   return (
-    <PhoneShell tab="none" wide>
+    <PhoneShell wide whiteBackground>
       <div className="mx-auto grid w-full max-w-[1080px] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_270px]">
         <main className="min-w-0">
           <header className="mb-5">
@@ -97,26 +149,41 @@ export default function CommunitiesPage() {
                 Discover communities
               </h1>
             </div>
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-[15px] font-bold text-ink">Explore communities by topic</h2>
-                <p className="mt-1 max-w-[55ch] text-[11px] leading-[1.6] text-inksoft">
-                  A place to learn together, share progress, and make good things happen.
-                </p>
-              </div>
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-[17px] font-bold text-ink">Explore communities by topic</h2>
               <Link
                 href="/communities/new"
                 className="inline-flex h-9 items-center gap-1.5 rounded-full bg-lime-deep px-4 text-[10px] font-bold text-white transition hover:bg-ink"
               >
                 <Plus className="h-4 w-4" /> Start a community
               </Link>
-              <span className="inline-flex h-9 items-center gap-1.5 rounded-full bg-paper/75 px-3 text-[10px] font-semibold text-inksoft">
-                <UsersRound className="h-3.5 w-3.5" /> Public communities
-              </span>
             </div>
           </header>
 
-          <label className="mb-4 flex h-11 items-center gap-2 rounded-full border border-line bg-paper px-4 focus-within:border-lime-deep">
+          <nav className="flex flex-wrap gap-2" aria-label="Community topics">
+            {(["All", ...COMMUNITY_TOPICS] as const).map((item) => (
+              <button
+                key={item}
+                type="button"
+                aria-pressed={topic === item}
+                onClick={() => setTopic(item)}
+                className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-3.5 py-2.5 text-[12px] font-medium transition ${
+                  topic === item
+                    ? "border-lime-deep bg-lime-soft text-ink"
+                    : "border-line bg-white text-ink hover:bg-cream"
+                }`}
+              >
+                {item === "All" ? (
+                  <Compass className="h-3.5 w-3.5" aria-hidden="true" />
+                ) : (
+                  <CommunityTopicIcon topic={item} />
+                )}
+                {item}
+              </button>
+            ))}
+          </nav>
+
+          <label className="mt-5 flex h-11 items-center gap-2 rounded-full border border-line bg-white px-4 focus-within:border-lime-deep">
             <Search className="h-4 w-4 shrink-0 text-muted" />
             <input
               type="search"
@@ -124,34 +191,9 @@ export default function CommunitiesPage() {
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search communities"
               aria-label="Search communities"
-              className="min-w-0 flex-1 bg-transparent text-[11px] text-ink outline-none placeholder:text-faint"
+              className="min-w-0 flex-1 bg-transparent text-[12px] text-ink outline-none placeholder:text-faint"
             />
           </label>
-
-          <div className="mb-5 wheel overflow-x-auto">
-            <nav className="flex min-w-max gap-2" aria-label="Community topics">
-              {(["All", ...COMMUNITY_TOPICS] as const).map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  aria-pressed={topic === item}
-                  onClick={() => setTopic(item)}
-                  className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3.5 py-2 text-[9.5px] font-semibold transition ${
-                    topic === item
-                      ? "bg-ink text-white"
-                      : "bg-paper text-muted hover:bg-lime-pale hover:text-ink"
-                  }`}
-                >
-                  {item === "All" ? (
-                    <Compass className="h-3.5 w-3.5" aria-hidden="true" />
-                  ) : (
-                    <CommunityTopicIcon topic={item} />
-                  )}
-                  {item}
-                </button>
-              ))}
-            </nav>
-          </div>
 
           {error ? (
             <div className="card px-5 py-8 text-center">
@@ -170,49 +212,58 @@ export default function CommunitiesPage() {
                 <div key={item} className="card h-40 animate-pulse bg-paper" />
               ))}
             </div>
-          ) : matching.length ? (
+          ) : query.trim() || topic !== "All" ? (
+            matching.length ? (
+              <CommunityRail
+                title={query.trim() ? "Search results" : `${topic} communities`}
+                communities={matching}
+                joiningId={joiningId}
+                onJoin={join}
+              />
+            ) : (
+              <div className="mt-7 rounded-[24px] border border-line px-5 py-10 text-center">
+                <UsersRound className="mx-auto h-7 w-7 text-lime-deep" />
+                <h2 className="mt-2 text-[15px] font-bold text-ink">No communities match that search</h2>
+                <p className="mx-auto mt-1 max-w-[38ch] text-[12px] leading-[1.6] text-muted">
+                  Try another name or topic, or clear your filters.
+                </p>
+              </div>
+            )
+          ) : communities.length ? (
             <>
-              <div className="mb-3 flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-lime-deep">
-                    {topic === "All" ? "Made for shared progress" : topic}
-                  </p>
-                  <h2 className="mt-1 text-[16px] font-bold text-ink">
-                    {query.trim() ? "Search results" : topic === "All" ? "Explore communities" : `${topic} communities`}
-                  </h2>
-                </div>
-                <span className="text-[9.5px] text-muted">{matching.length} found</span>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {matching.map((community) => (
-                  <CommunityCard
-                    key={community.id}
-                    community={community}
-                    joining={joiningId === community.id}
+              <CommunityRail
+                title="Recommended for you"
+                communities={communities.slice(0, 2)}
+                joiningId={joiningId}
+                onJoin={join}
+              />
+              {COMMUNITY_TOPICS.map((communityTopic) => {
+                const topicCommunities = communities.filter((community) => community.topic === communityTopic);
+                return topicCommunities.length ? (
+                  <CommunityRail
+                    key={communityTopic}
+                    title={communityTopic}
+                    communities={topicCommunities}
+                    joiningId={joiningId}
                     onJoin={join}
+                    showNext
                   />
-                ))}
-              </div>
+                ) : null;
+              })}
             </>
           ) : (
-            <div className="card px-5 py-10 text-center">
+            <div className="mt-7 rounded-[24px] border border-line px-5 py-10 text-center">
               <UsersRound className="mx-auto h-7 w-7 text-lime-deep" />
-              <h2 className="mt-2 text-[13px] font-bold text-ink">
-                {communities.length ? "No communities match that search" : "Be the first to start one"}
-              </h2>
+              <h2 className="mt-2 text-[15px] font-bold text-ink">Be the first to start one</h2>
               <p className="mx-auto mt-1 max-w-[38ch] text-[10px] leading-[1.6] text-muted">
-                {communities.length
-                  ? "Try another name or topic, or clear your filters."
-                  : "Create a space for people to share ideas and move forward together."}
+                Create a space for people to share ideas and move forward together.
               </p>
-              {!communities.length ? (
-                <Link
-                  href="/communities/new"
-                  className="mt-4 inline-flex h-9 items-center gap-1.5 rounded-full bg-lime-deep px-4 text-[10px] font-bold text-white hover:bg-ink"
-                >
-                  <Plus className="h-4 w-4" /> Create a community
-                </Link>
-              ) : null}
+              <Link
+                href="/communities/new"
+                className="mt-4 inline-flex h-10 items-center gap-1.5 rounded-full bg-lime px-4 text-[12px] font-bold text-dark hover:bg-lime-deep"
+              >
+                <Plus className="h-4 w-4" /> Create a community
+              </Link>
             </div>
           )}
         </main>

@@ -82,7 +82,7 @@ export default function NewCommunityPage() {
 
   if (!ready) {
     return (
-      <PhoneShell tab="none">
+      <PhoneShell whiteBackground>
         <div className="card animate-pulse p-8 text-center text-[11px] text-muted">Loading…</div>
       </PhoneShell>
     );
@@ -90,7 +90,7 @@ export default function NewCommunityPage() {
 
   if (!user) {
     return (
-      <PhoneShell tab="none">
+      <PhoneShell whiteBackground>
         <div className="card px-5 py-10 text-center">
           <UsersRound className="mx-auto h-7 w-7 text-lime-deep" />
           <h1 className="mt-2 text-[15px] font-bold text-ink">Sign in to create a community</h1>
@@ -103,18 +103,7 @@ export default function NewCommunityPage() {
   }
 
   return (
-    <PhoneShell
-      tab="none"
-      primaryAction={{
-        label: step === STEPS.length - 1 ? "Create community" : `Continue to ${STEPS[step + 1]}`,
-        onClick: step === STEPS.length - 1 ? submit : continueStep,
-        disabled: busy,
-        icon:
-          step === STEPS.length - 1
-            ? <Plus className="h-[22px] w-[22px]" strokeWidth={2.4} />
-            : <ArrowRight className="h-[22px] w-[22px]" strokeWidth={2.4} />,
-      }}
-    >
+    <PhoneShell whiteBackground>
       <main className="-mx-5 w-[calc(100%+2.5rem)] max-w-[620px] md:mx-auto md:w-full">
         <header className="mb-5 flex items-center justify-between gap-3 px-4">
           <Link
@@ -314,7 +303,7 @@ export default function NewCommunityPage() {
                   type="button"
                   onClick={submit}
                   disabled={busy}
-                  className="hidden h-10 cursor-pointer items-center gap-1.5 rounded-full bg-lime px-5 text-[10px] font-bold text-dark hover:bg-lime-deep md:inline-flex disabled:cursor-wait disabled:opacity-60"
+                  className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full bg-lime px-5 text-[10px] font-bold text-dark hover:bg-lime-deep disabled:cursor-wait disabled:opacity-60"
                 >
                   <Plus className="h-4 w-4" /> {busy ? "Creating…" : "Create community"}
                 </button>
@@ -322,7 +311,7 @@ export default function NewCommunityPage() {
                 <button
                   type="button"
                   onClick={continueStep}
-                  className="hidden h-10 cursor-pointer items-center gap-1.5 rounded-full bg-lime px-5 text-[10px] font-bold text-dark hover:bg-lime-deep md:inline-flex"
+                  className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full bg-lime px-5 text-[10px] font-bold text-dark hover:bg-lime-deep"
                 >
                   Continue <ArrowRight className="h-4 w-4" />
                 </button>
