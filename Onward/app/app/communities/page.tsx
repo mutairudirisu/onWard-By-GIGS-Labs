@@ -139,10 +139,10 @@ export default function CommunitiesPage() {
                   type="button"
                   aria-pressed={topic === item}
                   onClick={() => setTopic(item)}
-                  className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3.5 py-2 text-[10px] font-semibold transition ${
+                  className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3.5 py-2 text-[10px] font-semibold transition ${
                     topic === item
-                      ? "bg-ink text-white"
-                      : "bg-paper text-muted hover:bg-lime-pale hover:text-ink"
+                      ? "border-lime-deep bg-lime-deep text-white"
+                      : "border-line/70 bg-paper text-muted hover:border-lime-deep/50 hover:bg-lime-pale hover:text-ink"
                   }`}
                 >
                   {item === "All" ? (
