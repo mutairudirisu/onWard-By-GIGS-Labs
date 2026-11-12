@@ -975,7 +975,7 @@ export default function FeedPage() {
           <button
             type="button"
             onClick={() => pending && void removePost(pending)}
-            className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-btn bg-ink px-4 py-3 text-[13px] font-semibold text-paper transition hover:brightness-125"
+            className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-btn bg-lime px-4 py-3 text-[13px] font-semibold text-dark transition hover:bg-lime-deep"
           >
             <Trash2 className="h-4 w-4" /> Delete
           </button>
