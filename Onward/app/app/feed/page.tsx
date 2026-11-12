@@ -3,9 +3,26 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Plus, Search, Trash2, UsersRound, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Bell,
+  Bookmark,
+  BriefcaseBusiness,
+  Clock3,
+  Compass,
+  Home,
+  Menu,
+  MessagesSquare,
+  Search,
+  Settings,
+  Sprout,
+  Trash2,
+  TrendingUp,
+  UserRound,
+  UsersRound,
+  X,
+} from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
-import { CreateMenu, EXCHANGE_CREATES } from "@/components/create-menu";
 import { FeedSkeleton } from "@/components/skeleton";
 import { Modal } from "@/components/modal";
 import { CommentsSheet } from "@/components/comments-sheet";
@@ -20,6 +37,7 @@ import { UnreadDot, useNotifications } from "@/components/notifications";
 import { Wordmark } from "@/components/wordmark";
 import { toastError, toastSuccess, toastUndoable } from "@/components/toast";
 import { askAfterUpvote } from "@/lib/feedback";
+import { timeAgo } from "@/lib/dates";
 import {
   deletePost,
   fetchFeed,
@@ -40,7 +58,6 @@ import {
   type PostPoll,
   type SharedPost,
 } from "@/lib/db";
-import { timeAgo } from "@/lib/dates";
 
 /**
  * The key the author strip filters on. The name shown is always the one the author
@@ -55,11 +72,79 @@ function authorKey(post: FeedPost) {
 /** How often the Exchange looks for anything written since you arrived. */
 const REFRESH_MS = 20_000;
 
+type FeedTab = "for-you" | "following" | "popular";
+
+const FEED_TABS: { id: FeedTab; label: string }[] = [
+  { id: "for-you", label: "For You" },
+  { id: "following", label: "Following" },
+  { id: "popular", label: "Popular" },
+];
+
 function interactionLine(item: FeedInteraction, post: FeedPost) {
   const who = post.mine ? "your" : `${post.fullName || "someone"}'s`;
   const target = post.media.length ? `${who} photo` : `${who} post`;
   if (item.kind === "like") return `You upvoted ${target}`;
   return item.body ? `You said: ${item.body}` : `You commented on ${target}`;
+}
+
+function MenuSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="border-t border-line px-3 py-3">
+      <h2 className="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.08em] text-muted">
+        {title}
+      </h2>
+      <div className="space-y-0.5">{children}</div>
+    </section>
+  );
+}
+
+function MenuLink({
+  href,
+  icon,
+  label,
+  onClick,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-3 text-[12px] font-medium text-ink transition hover:bg-cream"
+    >
+      <span className="text-muted">{icon}</span>
+      {label}
+    </Link>
+  );
+}
+
+function MenuFilter({
+  icon,
+  label,
+  active,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-xl px-3 text-left text-[12px] font-medium transition ${
+        active ? "bg-lime-pale text-ink" : "text-ink hover:bg-cream"
+      }`}
+    >
+      <span className={active ? "text-lime-deep" : "text-muted"}>{icon}</span>
+      {label}
+    </button>
+  );
 }
 
 export default function FeedPage() {
@@ -77,6 +162,7 @@ export default function FeedPage() {
   const [followStatusReady, setFollowStatusReady] = useState(false);
   const [followBusyIds, setFollowBusyIds] = useState<Set<string>>(new Set());
   const [author, setAuthor] = useState<string | null>(null);
+  const [feedTab, setFeedTab] = useState<FeedTab>("for-you");
   const [options, setOptions] = useState<FeedPost | null>(null);
   const [pending, setPending] = useState<FeedPost | null>(null);
   const [thread, setThread] = useState<string | null>(null);
@@ -87,16 +173,21 @@ export default function FeedPage() {
   const [handed, setHanded] = useState<SharedPost[]>([]);
   const [polls, setPolls] = useState<Record<string, PostPoll>>({});
   const [searchOpen, setSearchOpen] = useState(false);
-  const [choosing, setChoosing] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    if (!choosing) return;
+    if (!menuOpen) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setChoosing(false);
+      if (event.key === "Escape") setMenuOpen(false);
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [choosing]);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previous;
+    };
+  }, [menuOpen]);
 
   // Every read of the Exchange carries a token, so a slow answer cannot land on top
   // of a newer one.
@@ -399,10 +490,19 @@ export default function FeedPage() {
     return [...byAuthor.values()];
   }, [posts]);
 
-  const shown = useMemo(
-    () => (author ? posts.filter((post) => authorKey(post) === author) : posts),
-    [author, posts],
-  );
+  const shown = useMemo(() => {
+    let rows = posts;
+    if (feedTab === "following") {
+      rows = rows.filter((post) => post.authorId && followedIds.has(post.authorId));
+    } else if (feedTab === "popular") {
+      rows = [...rows].sort((a, b) => {
+        const scoreA = (counts[a.id] ?? a.likes) + a.comments * 2 + a.reshares * 3;
+        const scoreB = (counts[b.id] ?? b.likes) + b.comments * 2 + b.reshares * 3;
+        return scoreB - scoreA || Date.parse(b.createdAt) - Date.parse(a.createdAt);
+      });
+    }
+    return author ? rows.filter((post) => authorKey(post) === author) : rows;
+  }, [author, counts, feedTab, followedIds, posts]);
 
   // Only the things still on the feed: a row whose post has gone has no name to show
   // and nothing left to open.
@@ -431,68 +531,134 @@ export default function FeedPage() {
 
   return (
     <PhoneShell tab="feed" wide>
+      <div className="-mx-5 md:mx-0">
       <div className="mx-auto w-full max-w-[840px] xl:grid xl:grid-cols-[minmax(0,560px)_minmax(220px,240px)] xl:items-start xl:gap-6">
       <div className="mx-auto min-w-0 lg:max-w-[560px] xl:mx-0">
-      <div className="relative mb-3.5 flex items-center">
+      <div className="relative mb-2 flex items-center px-4 md:px-0">
         <button
           type="button"
-          aria-label="Create"
-          aria-expanded={choosing}
+          aria-label="Open Exchange menu"
+          aria-expanded={menuOpen}
           onClick={() => {
-            if (!user) return router.push("/sign-in");
-            setChoosing((open) => !open);
+            setMenuOpen(true);
           }}
-          className="-ml-2 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-ink transition hover:bg-cream"
+          className="-ml-2 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-ink transition hover:bg-cream"
         >
-          {choosing ? (
-            <X className="h-[22px] w-[22px]" strokeWidth={2.2} />
-          ) : (
-            <Plus className="h-[22px] w-[22px]" strokeWidth={2.2} />
-          )}
+          <Menu className="h-[22px] w-[22px]" strokeWidth={2.1} />
         </button>
-        {choosing ? (
-          <CreateMenu
-            choices={EXCHANGE_CREATES}
-            className="left-0 top-11 items-start"
-            onClose={() => setChoosing(false)}
-            onPick={(href) => {
-              setChoosing(false);
-              router.push(href);
-            }}
-          />
-        ) : null}
-        {/* Centred on the phone, not on the space left over, so the two icons on the
-            right cannot push the brand off its axis. */}
-        <Wordmark className="pointer-events-none absolute inset-x-0 text-center text-[17px]" />
-        <div className="ml-auto flex items-center">
-          <button
-            type="button"
-            aria-label="Search the Exchange"
-            onClick={() => setSearchOpen(true)}
-            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-ink transition hover:bg-cream"
-          >
-            <Search className="h-[20px] w-[20px]" strokeWidth={2} />
-          </button>
-          <Link
-            href="/notifications"
-            aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}
-            className="relative -mr-2 flex h-9 w-9 items-center justify-center rounded-full text-ink transition hover:bg-cream"
-          >
-            <Bell className="h-[21px] w-[21px]" strokeWidth={2} />
-            <UnreadDot />
-          </Link>
-        </div>
-      </div>
-
-      <div className="mb-3 flex flex-wrap items-center gap-2 border-t border-line pt-2">
-        <Link
-          href="/network"
-          className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-paper py-1.5 pl-3 pr-3 text-[10.5px] font-semibold text-inksoft transition hover:border-dash hover:text-ink"
+        <button
+          type="button"
+          aria-label="Search the Exchange"
+          onClick={() => setSearchOpen(true)}
+          className="flex h-9 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-full border border-line bg-cream px-3 text-left text-[11px] text-muted transition hover:border-dash hover:text-ink"
         >
-          <UsersRound className="h-3.5 w-3.5 text-lime-deep" strokeWidth={2.2} />
-          My Network
+          <Search className="h-4 w-4 shrink-0" strokeWidth={2} />
+          <span className="truncate">Search the Exchange</span>
+        </button>
+        <Link
+          href="/notifications"
+          aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}
+          className="relative -mr-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink transition hover:bg-cream"
+        >
+          <Bell className="h-[21px] w-[21px]" strokeWidth={2} />
+          <UnreadDot />
         </Link>
       </div>
+
+      <nav className="mb-2 grid grid-cols-3 border-b border-line px-3" aria-label="Exchange feed">
+        {FEED_TABS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            aria-current={feedTab === item.id ? "page" : undefined}
+            onClick={() => {
+              setFeedTab(item.id);
+              setAuthor(null);
+            }}
+            className={`cursor-pointer border-b-2 px-2 py-2.5 text-[11px] font-semibold transition ${
+              feedTab === item.id
+                ? "border-lime-deep text-ink"
+                : "border-transparent text-muted hover:text-ink"
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </nav>
+
+      {menuOpen ? (
+        <div className="fixed inset-0 z-[80]">
+          <button
+            type="button"
+            aria-label="Close Exchange menu"
+            onClick={() => setMenuOpen(false)}
+            className="absolute inset-0 bg-ink/45"
+          />
+          <aside
+            aria-label="Exchange navigation"
+            className="absolute inset-y-0 left-0 flex w-[min(84vw,340px)] flex-col overflow-y-auto rounded-r-3xl bg-paper pb-8 shadow-lift"
+            style={{ paddingTop: "env(safe-area-inset-top)" }}
+          >
+            <header className="flex items-center justify-between border-b border-line px-5 py-4">
+              <Wordmark className="text-[17px]" />
+              <button
+                type="button"
+                aria-label="Close menu"
+                onClick={() => setMenuOpen(false)}
+                className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-muted hover:bg-cream hover:text-ink"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </header>
+            <nav className="px-3 py-3" aria-label="Main">
+              <MenuFilter
+                icon={<Home className="h-5 w-5" />}
+                label="For You"
+                active={feedTab === "for-you"}
+                onClick={() => {
+                  setFeedTab("for-you");
+                  setMenuOpen(false);
+                }}
+              />
+              <MenuFilter
+                icon={<UsersRound className="h-5 w-5" />}
+                label="Following"
+                active={feedTab === "following"}
+                onClick={() => {
+                  setFeedTab("following");
+                  setMenuOpen(false);
+                }}
+              />
+              <MenuFilter
+                icon={<TrendingUp className="h-5 w-5" />}
+                label="Popular"
+                active={feedTab === "popular"}
+                onClick={() => {
+                  setFeedTab("popular");
+                  setMenuOpen(false);
+                }}
+              />
+            </nav>
+            <MenuSection title="Create">
+              <MenuLink href={user ? "/feed/new" : "/sign-in"} icon={<MessagesSquare className="h-5 w-5" />} label="New post" onClick={() => setMenuOpen(false)} />
+              <MenuLink href={user ? "/feed/new?mode=poll" : "/sign-in"} icon={<TrendingUp className="h-5 w-5" />} label="New poll" onClick={() => setMenuOpen(false)} />
+              <MenuLink href={user ? "/onwards/new" : "/sign-in"} icon={<Sprout className="h-5 w-5" />} label="Log an onWard" onClick={() => setMenuOpen(false)} />
+            </MenuSection>
+            <MenuSection title="Your onWard">
+              <MenuLink href="/network" icon={<UsersRound className="h-5 w-5" />} label="My Network" onClick={() => setMenuOpen(false)} />
+              <MenuLink href="/onwards" icon={<Clock3 className="h-5 w-5" />} label="My onWards" onClick={() => setMenuOpen(false)} />
+              <MenuLink href="/profile" icon={<UserRound className="h-5 w-5" />} label="Profile" onClick={() => setMenuOpen(false)} />
+              <MenuLink href="/notifications" icon={<Bell className="h-5 w-5" />} label="Notifications" onClick={() => setMenuOpen(false)} />
+            </MenuSection>
+            <MenuSection title="Explore">
+              <MenuLink href="/network" icon={<Compass className="h-5 w-5" />} label="Discover people" onClick={() => setMenuOpen(false)} />
+              <MenuLink href="/portfolio" icon={<BriefcaseBusiness className="h-5 w-5" />} label="Portfolio" onClick={() => setMenuOpen(false)} />
+              <MenuLink href="/settings" icon={<Settings className="h-5 w-5" />} label="Settings" onClick={() => setMenuOpen(false)} />
+              <MenuLink href="/insights" icon={<Bookmark className="h-5 w-5" />} label="Insights" onClick={() => setMenuOpen(false)} />
+            </MenuSection>
+          </aside>
+        </div>
+      ) : null}
 
       <div className="card mb-3.5 hidden items-center gap-3 p-3 xl:flex">
         <Avatar
@@ -514,47 +680,30 @@ export default function FeedPage() {
         </Link>
       </div>
 
-      {recent.length ? (
-        <div
-          aria-label="What you have been part of"
-          className="wheel -mx-5 mb-3 flex gap-2 overflow-x-auto px-5 md:mx-0 md:px-0 xl:hidden"
-        >
-          {recent.map(({ item, post }) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setThread(post.id)}
-              className="flex h-9 w-max shrink-0 cursor-pointer items-center gap-2 rounded-full border border-line bg-paper pl-1.5 pr-3.5 text-left transition hover:border-dash"
-            >
-              <Avatar initials={post.initials} src={post.avatarUrl} />
-              <span className="max-w-[190px] truncate text-[10.5px] leading-none text-inksoft">
-                {interactionLine(item, post)}
-              </span>
-              <span className="text-[9.5px] leading-none text-faint">{timeAgo(item.createdAt)}</span>
-            </button>
-          ))}
-        </div>
-      ) : null}
-
       {state === "loading" ? (
         <FeedSkeleton />
       ) : state === "error" ? (
-        <div className="card px-4 py-8 text-center">
+        <div className="card mx-4 px-4 py-8 text-center">
           <p className="text-[12px] font-semibold text-ink">
             The Exchange is out of reach right now.
           </p>
           <p className="tiny mt-1">Check your connection and try again.</p>
         </div>
-      ) : posts.length === 0 ? (
-        <div className="card px-4 py-8 text-center">
+      ) : shown.length === 0 ? (
+        <div className="card mx-4 px-4 py-8 text-center">
           <p className="text-[12px] font-semibold text-ink">
-            Nothing has been shared here yet.
+            {posts.length === 0
+              ? "Nothing has been shared here yet."
+              : feedTab === "following"
+                ? "No posts from people you follow yet."
+                : "No popular posts to show yet."}
           </p>
           <p className="tiny mt-1 mx-auto max-w-[36ch]">
-            The Exchange is where people hand on what they know, say what went well and point each
-            other at useful things. What you log as an onWard stays private until you write it up.
+            {feedTab === "following"
+              ? "Follow people in My Network and their posts will show up here."
+              : "The Exchange is where people share useful ideas, work wins and lessons."}
           </p>
-          {user ? (
+          {user && posts.length === 0 ? (
             <p className="mt-4">
               <Link
                 href="/feed/new"
@@ -568,7 +717,7 @@ export default function FeedPage() {
       ) : (
         <>
           {people.length > 1 ? (
-            <div className="wheel -mx-5 mb-3 flex gap-3.5 overflow-x-auto px-5 md:mx-0 md:px-0">
+            <div className="wheel mb-3 flex gap-3.5 overflow-x-auto px-4 md:px-0">
               {people.map((person) => (
                 <button
                   key={person.key}
@@ -592,7 +741,7 @@ export default function FeedPage() {
           ) : null}
 
           {author ? (
-            <div className="mb-2.5 flex items-center justify-between rounded-lg bg-lime-pale px-3 py-1.5">
+            <div className="mx-4 mb-2.5 flex items-center justify-between rounded-lg bg-lime-pale px-3 py-1.5 md:mx-0">
               <span className="text-[10.5px] font-semibold text-ink">
                 Posts from {people.find((p) => p.key === author)?.name}
               </span>
@@ -607,7 +756,7 @@ export default function FeedPage() {
           ) : null}
 
           {handed.length ? (
-            <section aria-label="Shared with you" className="mb-3.5 xl:hidden">
+            <section aria-label="Shared with you" className="mb-3.5 px-4 xl:hidden">
               <p className="mb-1 text-[9.5px] uppercase tracking-[0.08em] text-faint">
                 Shared with you
               </p>
@@ -635,7 +784,7 @@ export default function FeedPage() {
             </section>
           ) : null}
 
-          <div className="divide-y divide-line">
+          <div className="divide-y-2 divide-line">
             {shown.map((post) => (
               <PostBlock
                 key={post.id}
@@ -657,6 +806,7 @@ export default function FeedPage() {
                 onShare={openShare}
                 onOpen={setThread}
                 onManage={setOptions}
+                edgeToEdge
               />
             ))}
           </div>
@@ -765,6 +915,7 @@ export default function FeedPage() {
           Posts are public on the Exchange. Your email, settings and onWards stay private.
         </p>
       </aside>
+      </div>
       </div>
 
       <CommentsSheet

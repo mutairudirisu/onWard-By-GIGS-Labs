@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Loader2, Search, X } from "lucide-react";
+import { ArrowLeft, Loader2, Search, TrendingUp } from "lucide-react";
 import { Avatar } from "@/components/feed-post";
-import { useSheetDrag } from "@/components/sheet-drag";
 import { PeopleSkeleton } from "@/components/skeleton";
-import { useKeyboardInset } from "@/lib/keyboard";
 import { searchExchange, type SearchHits } from "@/lib/db";
 import { timeAgo } from "@/lib/dates";
+
+const SEARCH_HISTORY_KEY = "onward.exchange.search-history";
 
 /**
  * One box over the whole Exchange. Nothing is filtered on the way in: an empty sheet
@@ -20,8 +20,22 @@ export function ExchangeSearchSheet({ open, onClose }: { open: boolean; onClose:
   const [hits, setHits] = useState<SearchHits | undefined>(undefined);
   const [searching, setSearching] = useState(false);
   const [refused, setRefused] = useState(false);
-  const keyboard = useKeyboardInset(open);
-  const { gripProps, shellStyle } = useSheetDrag(open, onClose);
+  const [recentQueries, setRecentQueries] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    try {
+      const saved = window.localStorage.getItem(SEARCH_HISTORY_KEY);
+      const parsed: unknown = saved ? JSON.parse(saved) : [];
+      setRecentQueries(
+        Array.isArray(parsed)
+          ? parsed.filter((item): item is string => typeof item === "string").slice(0, 8)
+          : [],
+      );
+    } catch {
+      setRecentQueries([]);
+    }
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -73,62 +87,68 @@ export function ExchangeSearchSheet({ open, onClose }: { open: boolean; onClose:
   const empty = Boolean(
     found && !found.people.length && !found.posts.length,
   );
+  const rememberQuery = (value: string) => {
+    const term = value.trim();
+    if (!term) return;
+    setRecentQueries((current) => {
+      const next = [term, ...current.filter((item) => item.toLowerCase() !== term.toLowerCase())].slice(0, 8);
+      try {
+        window.localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(next));
+      } catch {
+        // Search still works when local storage is unavailable.
+      }
+      return next;
+    });
+  };
 
   return (
     <div
-      className="fixed inset-0 z-[75] flex justify-center"
-      style={{ paddingBottom: keyboard }}
+      className="fixed inset-0 z-[75] flex flex-col bg-paper"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
       role="dialog"
       aria-modal="true"
       aria-label="Search the Exchange"
     >
-      <div
-        className="absolute inset-0 bg-ink/45"
-        style={{ animation: "onward-fade 0.15s ease-out" }}
-        onClick={onClose}
-      />
-      <div
-        className="relative mt-auto flex w-full max-w-[420px] flex-col overflow-hidden rounded-t-3xl bg-paper shadow-lift"
-        style={shellStyle}
-      >
-        <div
-          {...gripProps()}
-          className="shrink-0 cursor-grab touch-none px-4 pb-1 pt-2.5 active:cursor-grabbing"
-          aria-label="Drag to make this bigger"
-        >
-          <span className="mx-auto block h-1 w-10 rounded-full bg-line" />
-        </div>
-
-        <div className="flex shrink-0 items-center gap-3 px-4 pb-2.5">
-          <h2 className="flex-1 text-[13px] font-bold tracking-tight text-ink">
-            Search the Exchange
-          </h2>
+      <header className="shrink-0 px-4 pb-4 pt-3">
+        <div className="rounded-[26px] bg-cream px-4 pb-3 pt-3">
+          <div className="flex items-center gap-3">
           <button
             type="button"
-            aria-label="Close search"
+            aria-label="Back to the Exchange"
             onClick={onClose}
-            className="-mr-1.5 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-muted transition hover:text-ink"
+            className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-ink transition hover:bg-paper"
           >
-            <X className="h-[18px] w-[18px]" />
+              <ArrowLeft className="h-6 w-6" />
           </button>
-        </div>
-
-        <div className="shrink-0 px-4 pb-2.5">
-          <label className="flex items-center gap-2 rounded-full border border-line bg-paper px-3.5 py-2 focus-within:border-dash">
-            <Search className="h-[15px] w-[15px] shrink-0 text-faint" />
             <input
               autoFocus
               value={query}
-              onChange={(event) => setQuery(event.target.value.slice(0, 60))}
-              placeholder="People, posts, anything shared here"
+                onChange={(event) => setQuery(event.target.value.slice(0, 80))}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") rememberQuery(query);
+                }}
+              placeholder="Search the Exchange"
               aria-label="Search people and posts"
-              className="wheel min-w-0 flex-1 bg-transparent text-[12px] text-ink outline-none placeholder:text-faint"
+                className="min-w-0 flex-1 bg-transparent text-[16px] text-ink outline-none placeholder:text-muted"
             />
-            {searching ? <Loader2 className="h-[15px] w-[15px] animate-spin text-faint" /> : null}
-          </label>
+              {searching ? <Loader2 className="h-4 w-4 animate-spin text-muted" /> : null}
+          </div>
+          <div className="mt-5 flex items-center justify-between">
+            <p className="text-[10px] text-muted">Search posts and people across onWard</p>
+            <button
+              type="button"
+              onClick={() => rememberQuery(query)}
+              disabled={!query.trim()}
+              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-lime-pale text-ink transition hover:bg-lime-soft disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Save search"
+            >
+              <Search className="h-[18px] w-[18px]" />
+            </button>
+          </div>
         </div>
+      </header>
 
-        <div className="wheel min-h-0 flex-1 overflow-y-auto border-t border-line px-4">
+      <div className="wheel min-h-0 flex-1 overflow-y-auto px-5 pb-8">
           {hits === undefined ? (
             refused ? (
               <p className="py-10 text-center text-[11.5px] text-muted">
@@ -137,11 +157,11 @@ export function ExchangeSearchSheet({ open, onClose }: { open: boolean; onClose:
             ) : (
               <PeopleSkeleton />
             )
-          ) : empty ? (
+          ) : query.trim() && empty ? (
             <p className="py-10 text-center text-[11.5px] text-muted">
               Nothing here matches &ldquo;{query.trim()}&rdquo; yet.
             </p>
-          ) : (
+          ) : query.trim() ? (
             <>
               {found?.people.length ? (
                 <section>
@@ -149,7 +169,10 @@ export function ExchangeSearchSheet({ open, onClose }: { open: boolean; onClose:
                   <ul>
                     {found.people.map((person) => (
                       <li key={person.id} className="border-b border-line last:border-0">
-                        <Row href={`/people/${person.id}`} onClose={onClose}>
+                        <Row href={`/people/${person.id}`} onClose={() => {
+                          rememberQuery(query);
+                          onClose();
+                        }}>
                           <Avatar
                             initials={person.initials || person.name.slice(0, 1).toUpperCase()}
                             src={person.avatarUrl}
@@ -171,7 +194,10 @@ export function ExchangeSearchSheet({ open, onClose }: { open: boolean; onClose:
                   <ul>
                     {found.posts.map((post) => (
                       <li key={post.id} className="border-b border-line last:border-0">
-                        <Row href={`/feed/${post.id}`} onClose={onClose}>
+                        <Row href={`/feed/${post.id}`} onClose={() => {
+                          rememberQuery(query);
+                          onClose();
+                        }}>
                           <Avatar
                             initials={post.initials || post.fullName.slice(0, 1).toUpperCase()}
                             src={post.avatarUrl}
@@ -192,8 +218,83 @@ export function ExchangeSearchSheet({ open, onClose }: { open: boolean; onClose:
                 Everything found here is public to onWard.
               </p>
             </>
+          ) : (
+            <>
+              <SectionLabel>For You</SectionLabel>
+              {recentQueries.length ? (
+                <section>
+                  <div className="mb-1 flex items-center justify-between">
+                    <p className="py-2 text-[10px] font-semibold text-muted">Recent searches</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRecentQueries([]);
+                        try {
+                          window.localStorage.removeItem(SEARCH_HISTORY_KEY);
+                        } catch {
+                          // History is optional.
+                        }
+                      }}
+                      className="cursor-pointer py-2 text-[10px] font-semibold text-muted hover:text-ink"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <ul>
+                    {recentQueries.map((term) => (
+                      <li key={term} className="border-b border-line last:border-0">
+                        <button
+                          type="button"
+                          onClick={() => setQuery(term)}
+                          className="flex w-full cursor-pointer items-center gap-3 py-3 text-left text-[13px] text-ink hover:text-lime-deep"
+                        >
+                          <Search className="h-5 w-5 shrink-0 text-muted" />
+                          <span className="truncate">{term}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
+              {found?.posts.length ? (
+                <section className="mt-4">
+                  <SectionLabel>Popular in the Exchange</SectionLabel>
+                  <ul>
+                    {found.posts.map((post) => (
+                      <li key={post.id} className="border-b border-line last:border-0">
+                        <Row href={`/feed/${post.id}`} onClose={onClose}>
+                          <TrendingUp className="h-5 w-5 shrink-0 text-muted" />
+                          <Words
+                            top={post.title || post.body || "A post"}
+                            under={`${post.fullName || "Someone"} · ${timeAgo(post.createdAt)}`}
+                            clamp
+                          />
+                        </Row>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
+              {found?.people.length ? (
+                <section className="mt-4">
+                  <SectionLabel>People to discover</SectionLabel>
+                  <ul>
+                    {found.people.map((person) => (
+                      <li key={person.id} className="border-b border-line last:border-0">
+                        <Row href={`/people/${person.id}`} onClose={onClose}>
+                          <Avatar
+                            initials={person.initials || person.name.slice(0, 1).toUpperCase()}
+                            src={person.avatarUrl}
+                          />
+                          <Words top={person.name || "Someone"} under={person.role ?? undefined} />
+                        </Row>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
+            </>
           )}
-        </div>
       </div>
     </div>
   );
