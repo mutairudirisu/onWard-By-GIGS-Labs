@@ -74,7 +74,7 @@ export function CommunityCard({
         className="group min-w-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-lime-deep"
       >
         <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-lime-pale text-lime-deep">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-lime bg-lime-pale text-lime-deep">
             {community.avatarPath ? (
               <img
                 src={communityMediaUrl(community.avatarPath) ?? undefined}

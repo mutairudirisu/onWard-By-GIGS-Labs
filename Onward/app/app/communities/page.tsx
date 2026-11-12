@@ -129,7 +129,10 @@ export default function CommunitiesPage() {
           </label>
 
           <div className="mb-5 wheel overflow-x-auto">
-            <nav className="flex min-w-max gap-2" aria-label="Community topics">
+            <nav
+              className="grid w-max grid-flow-row grid-cols-[repeat(6,max-content)] grid-rows-2 gap-2"
+              aria-label="Community topics"
+            >
               {(["All", ...COMMUNITY_TOPICS] as const).map((item) => (
                 <button
                   key={item}
