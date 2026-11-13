@@ -62,44 +62,56 @@ export function CommunityCard({
   community,
   onJoin,
   joining = false,
+  previewOnly = false,
 }: {
   community: Community;
   onJoin?: (community: Community) => void;
   joining?: boolean;
+  previewOnly?: boolean;
 }) {
-  return (
-    <article className="card flex min-w-0 flex-col gap-3 p-4">
-      <Link
-        href={`/communities/${community.slug}`}
-        className="group min-w-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-lime-deep"
-      >
-        <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-lime bg-lime-pale text-lime-deep">
-            {community.avatarPath ? (
-              <img
-                src={communityMediaUrl(community.avatarPath) ?? undefined}
-                alt=""
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <CommunityTopicIcon topic={community.topic} className="h-5 w-5" />
-            )}
-          </span>
-          <div className="min-w-0">
-            <h3 className="truncate text-[13px] font-bold text-ink group-hover:text-lime-deep">
-              {community.name}
-            </h3>
-            <p className="mt-0.5 flex items-center gap-1 text-[10px] font-medium text-muted">
-              <CommunityTopicIcon topic={community.topic} className="h-3 w-3" />
-              {community.topic}
-            </p>
-          </div>
+  const content = (
+    <>
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-lime bg-lime-pale text-lime-deep">
+          {community.avatarPath ? (
+            <img
+              src={communityMediaUrl(community.avatarPath) ?? undefined}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <CommunityTopicIcon topic={community.topic} className="h-4 w-4" />
+          )}
+        </span>
+        <div className="min-w-0">
+          <h3 className="truncate text-[13px] font-bold text-ink group-hover:text-lime-deep">
+            {community.name}
+          </h3>
+          <p className="mt-0.5 flex items-center gap-1 text-[10px] font-medium text-muted">
+            <CommunityTopicIcon topic={community.topic} className="h-3 w-3" />
+            {community.topic}
+          </p>
         </div>
-        <p className="mt-3 line-clamp-2 min-h-[34px] text-[11px] leading-[1.55] text-inksoft">
-          {community.description}
-        </p>
-      </Link>
-      <div className="flex items-center justify-between gap-2 border-t border-line pt-3">
+      </div>
+      <p className="mt-2 line-clamp-2 min-h-[30px] text-[10px] leading-[1.5] text-inksoft">
+        {community.description}
+      </p>
+    </>
+  );
+
+  return (
+    <article className="card flex min-w-0 flex-col gap-2 p-3">
+      {previewOnly ? (
+        <div className="group min-w-0 rounded-xl">{content}</div>
+      ) : (
+        <Link
+          href={`/communities/${community.slug}`}
+          className="group min-w-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-lime-deep"
+        >
+          {content}
+        </Link>
+      )}
+      <div className="flex items-center justify-between gap-2 border-t border-line pt-2">
         <p className="text-[10px] text-muted">
           <span className="font-semibold tabular-nums text-ink">{community.memberCount}</span>{" "}
           {community.memberCount === 1 ? "member" : "members"}
@@ -107,7 +119,11 @@ export function CommunityCard({
           <span className="font-semibold tabular-nums text-ink">{community.postCount}</span>{" "}
           posts
         </p>
-        {community.isOwner ? (
+        {previewOnly ? (
+          <span className="rounded-full bg-lime-pale px-2.5 py-1 text-[9px] font-bold text-lime-deep">
+            Sample
+          </span>
+        ) : community.isOwner ? (
           <span className="rounded-full bg-lime-pale px-3 py-1.5 text-[9px] font-bold text-lime-deep">
             Owner
           </span>
