@@ -21,9 +21,11 @@ import { PhoneShell } from "@/components/phone-shell";
 import { Toggle } from "@/components/ui";
 import { Wordmark } from "@/components/wordmark";
 import {
+  COMMUNITY_SUBCATEGORIES,
   COMMUNITY_TOPICS,
   COMMUNITY_TYPE_OPTIONS,
   createCommunity,
+  type CommunitySubcategory,
   type CommunityTopic,
   type CommunityType,
 } from "@/lib/db";
@@ -47,6 +49,7 @@ export default function NewCommunityPage() {
   const [step, setStep] = useState(0);
   const [idea, setIdea] = useState("");
   const [topic, setTopic] = useState<CommunityTopic>("Technology");
+  const [subcategory, setSubcategory] = useState<CommunitySubcategory>("General");
   const [communityType, setCommunityType] = useState<CommunityType>("public");
   const [isMature, setIsMature] = useState(false);
   const [typeSheetOpen, setTypeSheetOpen] = useState(false);
@@ -108,6 +111,7 @@ export default function NewCommunityPage() {
         name: name.trim(),
         slug,
         topic,
+        subcategory,
         communityType,
         isMature,
         description: description.trim(),
@@ -259,7 +263,10 @@ export default function NewCommunityPage() {
                       key={item}
                       type="button"
                       aria-pressed={topic === item}
-                      onClick={() => setTopic(item)}
+                      onClick={() => {
+                        setTopic(item);
+                        setSubcategory("General");
+                      }}
                       className={`flex min-h-[58px] cursor-pointer items-center justify-between rounded-xl border px-3 text-left text-[10px] font-semibold transition ${
                         topic === item
                           ? "border-lime-deep bg-lime-pale text-ink"
@@ -276,6 +283,29 @@ export default function NewCommunityPage() {
                       {topic === item ? <Check className="h-4 w-4 text-lime-deep" /> : null}
                     </button>
                   ))}
+                </div>
+                <div className="mt-5">
+                  <h3 className="text-[11px] font-bold text-ink">Choose a subcategory</h3>
+                  <p className="mt-1 text-[9px] text-muted">
+                    This helps members find the right communities.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {COMMUNITY_SUBCATEGORIES[topic].map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        aria-pressed={subcategory === item}
+                        onClick={() => setSubcategory(item)}
+                        className={`cursor-pointer rounded-full border px-3 py-2 text-[9px] font-semibold transition ${
+                          subcategory === item
+                            ? "border-lime-deep bg-lime-pale text-ink"
+                            : "border-line bg-paper text-muted hover:border-lime-deep/50 hover:text-ink"
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             ) : null}
@@ -343,7 +373,7 @@ export default function NewCommunityPage() {
                       <p className="truncate text-[11px] font-bold text-ink">{name || "Your community"}</p>
                       <p className="inline-flex items-center gap-1 text-[9px] text-muted">
                         <CommunityTopicIcon topic={topic} className="h-3 w-3" />
-                        {topic} · {selectedType?.label ?? "Public"}{isMature ? " · 18+" : ""}
+                        {topic} · {subcategory} · {selectedType?.label ?? "Public"}{isMature ? " · 18+" : ""}
                       </p>
                     </div>
                   </div>

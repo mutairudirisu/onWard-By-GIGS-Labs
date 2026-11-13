@@ -84,7 +84,7 @@ function NetworkSuggestionSection({
                     type="button"
                     onClick={() => onHide(person.id)}
                     aria-label={`Hide ${person.name || "person"} suggestion`}
-                    className="absolute right-1.5 top-1.5 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-ink/70 text-white transition hover:bg-ink"
+                    className="absolute right-1.5 top-1.5 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-dark/70 text-on-panel transition hover:bg-dark"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -407,7 +407,7 @@ export default function NetworkPage() {
       <div className="-mx-1.5 grid w-[calc(100%+0.75rem)] max-w-[1080px] items-start gap-6 md:-mx-2 md:w-[calc(100%+1rem)] lg:-mx-3 lg:w-[calc(100%+1.5rem)] lg:grid-cols-[minmax(0,1fr)_260px]">
         <main className="min-w-0">
           <header className="mb-5 -mx-3.5 -mt-5 w-[calc(100%+1.75rem)] overflow-hidden bg-paper md:mx-0 md:mt-0 md:w-auto">
-            <div className="relative min-h-[190px] overflow-hidden bg-ink px-4 pb-7 pt-4 sm:px-7">
+            <div className="relative min-h-[190px] overflow-hidden bg-dark px-4 pb-7 pt-4 sm:px-7">
               <span className="pointer-events-none absolute -right-7 -top-16 h-48 w-48 rounded-full border-[22px] border-lime/20" />
               <span className="pointer-events-none absolute right-40 top-12 h-12 w-12 rounded-full bg-lime/15" />
               <span className="pointer-events-none absolute -bottom-16 left-[36%] h-36 w-36 rounded-full bg-lime/10" />
@@ -417,10 +417,10 @@ export default function NetworkPage() {
                 </span>
                 Your people
               </div>
-              <h1 className="relative mt-3 text-[24px] font-bold tracking-tight text-white sm:text-[28px]">
+              <h1 className="relative mt-3 text-[24px] font-bold tracking-tight text-on-panel sm:text-[28px]">
                 My Network
               </h1>
-              <p className="relative mt-1 max-w-[54ch] text-[11px] leading-[1.6] text-white/75">
+              <p className="relative mt-1 max-w-[54ch] text-[11px] leading-[1.6] text-on-panel/75">
                 Find people sharing what they know and doing work worth learning from. Following is
                 one-way, so you choose whose updates to keep up with.
               </p>

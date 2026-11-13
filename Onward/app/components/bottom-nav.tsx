@@ -67,7 +67,7 @@ export function BottomNav({ active }: { active: TabId }) {
   };
 
   return (
-    <nav className="relative z-40 bg-cream px-5 pb-3 pt-3">
+    <nav className="relative z-40 border-t border-line/50 bg-cream/85 px-5 pb-3 pt-3 backdrop-blur-xl">
       {choosing ? (
         <CreateMenu
           choices={creates}
@@ -79,7 +79,7 @@ export function BottomNav({ active }: { active: TabId }) {
 
       <div className="relative z-40 flex items-center justify-center gap-2">
         {/* One fixed width, so swapping which label is open moves nothing else. */}
-        <div className="flex w-full min-w-0 max-w-[280px] items-center justify-between rounded-full bg-paper px-1.5 py-2 shadow-[0_10px_30px_rgba(16,17,8,0.08)]">
+        <div className="flex w-full min-w-0 max-w-[280px] items-center justify-between rounded-full border border-line/60 bg-paper/80 px-1.5 py-2 shadow-[0_10px_30px_rgba(16,17,8,0.12)] backdrop-blur-xl">
           {TABS.map(({ id, label, href, Icon }) =>
             id === active ? (
               <Link
@@ -87,14 +87,18 @@ export function BottomNav({ active }: { active: TabId }) {
                 href={href}
                 aria-current="page"
                 onClick={() => buzz("tap")}
-                className="flex h-9 items-center gap-1 rounded-full bg-lime-soft px-2 ring-1 ring-inset ring-lime/40"
+                className="relative isolate flex h-9 items-center gap-1 overflow-hidden rounded-full border border-lime/60 bg-lime/10 px-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_0_14px_rgba(201,242,78,0.12)] backdrop-blur-md transition"
               >
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-px rounded-full bg-gradient-to-b from-white/20 via-white/5 to-transparent"
+                />
                 <span className="relative flex">
                   <Icon className="h-[18px] w-[18px] text-lime-deep" strokeWidth={2.2} />
                   {id === "you" ? <UnreadDot /> : null}
                   {id === "feed" ? <ExchangeBadge count={newPosts} /> : null}
                 </span>
-                <span className="text-[9.5px] font-bold text-ink">{label}</span>
+                <span className="relative text-[9.5px] font-bold text-ink">{label}</span>
               </Link>
             ) : (
               <Link
@@ -102,7 +106,7 @@ export function BottomNav({ active }: { active: TabId }) {
                 href={href}
                 aria-label={label}
                 onClick={() => buzz("tap")}
-                className="flex h-9 w-7 items-center justify-center rounded-full text-faint transition hover:text-lime-deep"
+                className="flex h-9 w-7 items-center justify-center rounded-full text-muted transition hover:bg-lime-pale/50 hover:text-lime-deep"
               >
                 <span className="relative flex">
                   <Icon className="h-[18px] w-[18px]" strokeWidth={2} />

@@ -3,122 +3,21 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronDown, Compass, Plus, Search, UsersRound } from "lucide-react";
+import { ArrowLeft, ChevronRight, Compass, Plus, Search, UsersRound } from "lucide-react";
 import { useAuth } from "@/components/auth";
-import { CommunityCard, CommunityTopicIcon } from "@/components/community-card";
+import { CommunityTopicIcon } from "@/components/community-card";
+import { CommunityCarousel } from "@/components/community-carousel";
 import { PhoneShell } from "@/components/phone-shell";
 import { toastError, toastSuccess } from "@/components/toast";
 import {
   COMMUNITY_TOPICS,
+  communityTopicSlug,
   fetchCommunities,
   joinCommunity,
   type Community,
   type CommunityTopic,
 } from "@/lib/db";
-
-const COMMUNITIES_VISIBLE_BY_DEFAULT = 4;
-
-const COMMUNITY_PREVIEW_GROUPS = [
-  {
-    topic: "Technology",
-    names: [
-      "Frontend Builders",
-      "AI Study Circle",
-      "Data Explorers",
-      "Cloud Native Crew",
-      "Design Systems Lab",
-      "Open Source Makers",
-      "Mobile Dev Meetup",
-      "Robotics & IoT",
-      "Cyber Safety Circle",
-      "Indie Hackers",
-    ],
-  },
-  {
-    topic: "Business",
-    names: [
-      "Startup Founders",
-      "Small Business Circle",
-      "Brand Builders",
-      "Product People",
-      "Freelancers Network",
-      "Growth & Marketing",
-      "Women in Business",
-      "Finance for Creators",
-      "E-commerce Operators",
-      "Career to Founder",
-    ],
-  },
-  {
-    topic: "Education & Career",
-    names: [
-      "Study Together",
-      "Career Switchers",
-      "Job Search Support",
-      "Scholarship Hunters",
-      "Academic Writing",
-      "Interview Practice",
-      "Early Career Circle",
-      "Learning Spanish",
-      "Remote Work Skills",
-      "Graduate Mentors",
-    ],
-  },
-  {
-    topic: "Wellness",
-    names: [
-      "Mindful Mornings",
-      "Walking Club",
-      "Healthy Habits",
-      "Sleep Better Circle",
-      "Stress Less",
-      "Nutrition Notes",
-      "Yoga at Home",
-      "Mental Wellness",
-      "Fitness Beginners",
-      "Balance & Boundaries",
-    ],
-  },
-  {
-    topic: "Arts & Design",
-    names: [
-      "Sketchbook Society",
-      "Graphic Design Circle",
-      "Creative Writers",
-      "Photo Walks",
-      "Illustrators Corner",
-      "DIY Makers",
-      "Motion Design",
-      "Music Makers",
-      "Interior Ideas",
-      "Craft & Crochet",
-    ],
-  },
-] satisfies { topic: CommunityTopic; names: string[] }[];
-
-function createPreviewCommunities(): Community[] {
-  return COMMUNITY_PREVIEW_GROUPS.flatMap(({ topic, names }, topicIndex) =>
-    names.map((name, index) => {
-      const slug = `preview-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
-      return {
-        id: slug,
-        slug,
-        name,
-        avatarPath: null,
-        bannerPath: null,
-        topic,
-        communityType: "public",
-        isMature: false,
-        description: `A friendly place to share ideas and progress in ${name.toLowerCase()}.`,
-        createdAt: "2026-01-01T00:00:00.000Z",
-        memberCount: 18 + topicIndex * 5 + index * 7,
-        postCount: 2 + topicIndex + index * 3,
-        isMember: false,
-        isOwner: false,
-      };
-    }),
-  );
-}
+import { createPreviewCommunities, isCommunityPreviewEnabled } from "@/lib/community-preview";
 
 export default function CommunitiesPage() {
   const router = useRouter();
@@ -132,17 +31,13 @@ export default function CommunitiesPage() {
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [previewAvailable, setPreviewAvailable] = useState(false);
   const [previewMode, setPreviewMode] = useState<boolean | null>(null);
-  const [expandedTopics, setExpandedTopics] = useState<CommunityTopic[]>([]);
 
   useEffect(() => {
     const isLocalDevelopment =
       process.env.NODE_ENV === "development" &&
       (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-    const enablePreview =
-      isLocalDevelopment &&
-      new URLSearchParams(window.location.search).get("previewCommunities") === "1";
     setPreviewAvailable(isLocalDevelopment);
-    setPreviewMode(enablePreview);
+    setPreviewMode(isCommunityPreviewEnabled(window.location.search, window.location.hostname));
   }, []);
 
   const load = useCallback(async () => {
@@ -182,6 +77,18 @@ export default function CommunitiesPage() {
       }))
       .filter((group) => group.communities.length > 0);
   }, [matching, topic]);
+
+  const recommendedCommunities = useMemo(() => {
+    if (topic !== "All" || query.trim()) return [];
+    return COMMUNITY_TOPICS.flatMap((communityTopic) => {
+      const community = matching
+        .filter((item) => item.topic === communityTopic && !item.isMember && !item.isOwner)
+        .sort((left, right) => right.memberCount - left.memberCount)[0];
+      return community ? [community] : [];
+    })
+      .sort((left, right) => right.memberCount - left.memberCount)
+      .slice(0, 5);
+  }, [matching, query, topic]);
 
   const join = async (community: Community) => {
     if (!user) {
@@ -315,75 +222,45 @@ export default function CommunitiesPage() {
             </div>
           ) : matching.length ? (
             <>
-              <div className="mb-3 flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-lime-deep">
-                    {topic === "All" ? "Browse by category" : topic}
-                  </p>
-                  <h2 className="mt-1 text-[16px] font-bold text-ink">
-                    {query.trim()
-                      ? "Search results"
-                      : topic === "All"
-                        ? "Explore communities"
-                        : `${topic} communities`}
-                  </h2>
+              {query.trim() || topic !== "All" ? (
+                <div className="mb-4 flex items-end justify-between gap-3">
+                  <div>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-lime-deep">
+                      {topic === "All" ? "Browse by category" : topic}
+                    </p>
+                    <h2 className="mt-1 text-[16px] font-bold text-ink">
+                      {query.trim() ? "Search results" : `${topic} communities`}
+                    </h2>
+                  </div>
+                  <span className="text-[10px] text-muted">{matching.length} found</span>
                 </div>
-                <span className="text-[10px] text-muted">{matching.length} found</span>
-              </div>
-              <div className="space-y-4">
+              ) : null}
+              {recommendedCommunities.length ? (
+                <div className="mb-5">
+                  <CommunityCarousel
+                    id="recommended-communities"
+                    title="Recommended for you"
+                    communities={recommendedCommunities}
+                    joiningId={joiningId}
+                    onJoin={join}
+                    previewOnly={previewMode === true}
+                  />
+                </div>
+              ) : null}
+              <div className="space-y-5">
                 {groupedCommunities.map(({ topic: groupTopic, communities: group }) => (
-                  <section key={groupTopic} aria-label={`${groupTopic} communities`}>
-                    <div className="mb-2 flex items-center justify-between gap-3">
-                      <h3 className="flex items-center gap-2 text-[12px] font-bold text-ink">
-                        <CommunityTopicIcon topic={groupTopic} className="h-4 w-4 text-lime-deep" />
-                        {groupTopic}
-                      </h3>
-                      <span className="text-[10px] text-muted">
-                        {group.length} {group.length === 1 ? "community" : "communities"}
-                      </span>
-                    </div>
-                    <div
-                      id={`communities-${groupTopic.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
-                      className="grid gap-2 sm:grid-cols-2"
-                    >
-                      {(expandedTopics.includes(groupTopic)
-                        ? group
-                        : group.slice(0, COMMUNITIES_VISIBLE_BY_DEFAULT)
-                      ).map((community) => (
-                        <CommunityCard
-                          key={community.id}
-                          community={community}
-                          joining={joiningId === community.id}
-                          onJoin={join}
-                          previewOnly={previewMode === true}
-                        />
-                      ))}
-                    </div>
-                    {group.length > COMMUNITIES_VISIBLE_BY_DEFAULT ? (
-                      <button
-                        type="button"
-                        aria-expanded={expandedTopics.includes(groupTopic)}
-                        aria-controls={`communities-${groupTopic.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
-                        onClick={() =>
-                          setExpandedTopics((current) =>
-                            current.includes(groupTopic)
-                              ? current.filter((item) => item !== groupTopic)
-                              : [...current, groupTopic],
-                          )
-                        }
-                        className="mt-2 inline-flex cursor-pointer items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold text-lime-deep transition hover:bg-lime-pale"
-                      >
-                        {expandedTopics.includes(groupTopic)
-                          ? "Show less"
-                          : `Show ${group.length - COMMUNITIES_VISIBLE_BY_DEFAULT} more`}
-                        <ChevronDown
-                          className={`h-3.5 w-3.5 transition-transform ${
-                            expandedTopics.includes(groupTopic) ? "rotate-180" : ""
-                          }`}
-                        />
-                      </button>
-                    ) : null}
-                  </section>
+                  <CommunityCarousel
+                    key={groupTopic}
+                    id={`topic-${communityTopicSlug(groupTopic)}`}
+                    title={groupTopic}
+                    communities={group}
+                    moreHref={`/communities/category/${communityTopicSlug(groupTopic)}${
+                      previewMode ? "?previewCommunities=1" : ""
+                    }`}
+                    joiningId={joiningId}
+                    onJoin={join}
+                    previewOnly={previewMode === true}
+                  />
                 ))}
               </div>
             </>

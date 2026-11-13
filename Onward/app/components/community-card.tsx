@@ -69,89 +69,92 @@ export function CommunityCard({
   joining?: boolean;
   previewOnly?: boolean;
 }) {
-  const content = (
+  const identity = (
     <>
-      <div className="flex items-center gap-2.5">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-lime bg-lime-pale text-lime-deep">
-          {community.avatarPath ? (
-            <img
-              src={communityMediaUrl(community.avatarPath) ?? undefined}
-              alt=""
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <CommunityTopicIcon topic={community.topic} className="h-4 w-4" />
-          )}
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-lime bg-lime-pale text-lime-deep sm:h-10 sm:w-10">
+        {community.avatarPath ? (
+          <img
+            src={communityMediaUrl(community.avatarPath) ?? undefined}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <CommunityTopicIcon topic={community.topic} className="h-4 w-4" />
+        )}
+      </span>
+      <span className="min-w-0 flex-1">
+        <h3 className="truncate text-[11px] font-bold text-ink group-hover:text-lime-deep">
+          {community.name}
+        </h3>
+        <span className="mt-0.5 block truncate text-[9px] text-muted">
+          {community.memberCount} {community.memberCount === 1 ? "member" : "members"}
+          <span className="mx-1 text-line">·</span>
+          {community.postCount} posts
         </span>
-        <div className="min-w-0">
-          <h3 className="truncate text-[13px] font-bold text-ink group-hover:text-lime-deep">
-            {community.name}
-          </h3>
-          <p className="mt-0.5 flex items-center gap-1 text-[10px] font-medium text-muted">
-            <CommunityTopicIcon topic={community.topic} className="h-3 w-3" />
-            {community.topic}
-          </p>
-        </div>
-      </div>
-      <p className="mt-2 line-clamp-2 min-h-[30px] text-[10px] leading-[1.5] text-inksoft">
-        {community.description}
-      </p>
+      </span>
     </>
   );
 
+  const action = previewOnly ? (
+    <span className="shrink-0 rounded-full bg-lime-pale px-2.5 py-1.5 text-[9px] font-bold text-lime-deep">
+      Sample
+    </span>
+  ) : community.isOwner ? (
+    <span className="shrink-0 rounded-full bg-lime-pale px-2.5 py-1.5 text-[9px] font-bold text-lime-deep">
+      Owner
+    </span>
+  ) : community.isMember ? (
+    <Link
+      href={`/communities/${community.slug}`}
+      className="shrink-0 rounded-full bg-cream px-2.5 py-1.5 text-[9px] font-bold text-ink hover:bg-lime-pale"
+    >
+      Open
+    </Link>
+  ) : onJoin ? (
+    <button
+      type="button"
+      disabled={joining}
+      onClick={() => onJoin(community)}
+      className="shrink-0 cursor-pointer rounded-full bg-cream px-2.5 py-1.5 text-[9px] font-bold text-ink transition hover:bg-lime-pale disabled:cursor-wait disabled:opacity-60"
+    >
+      {joining ? "Joining…" : "Join"}
+    </button>
+  ) : (
+    <Link
+      href={`/communities/${community.slug}`}
+      className="shrink-0 rounded-full bg-cream px-2.5 py-1.5 text-[9px] font-bold text-ink hover:bg-lime-pale"
+    >
+      Explore
+    </Link>
+  );
+
   return (
-    <article className="card flex min-w-0 flex-col gap-2 p-3">
-      {previewOnly ? (
-        <div className="group min-w-0 rounded-xl">{content}</div>
-      ) : (
-        <Link
-          href={`/communities/${community.slug}`}
-          className="group min-w-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-lime-deep"
-        >
-          {content}
-        </Link>
-      )}
-      <div className="flex items-center justify-between gap-2 border-t border-line pt-2">
-        <p className="text-[10px] text-muted">
-          <span className="font-semibold tabular-nums text-ink">{community.memberCount}</span>{" "}
-          {community.memberCount === 1 ? "member" : "members"}
-          <span className="mx-1.5 text-line">·</span>
-          <span className="font-semibold tabular-nums text-ink">{community.postCount}</span>{" "}
-          posts
-        </p>
+    <article className="card flex min-w-0 flex-col gap-1.5 p-2.5 sm:p-3">
+      <div className="flex min-w-0 items-center gap-2">
         {previewOnly ? (
-          <span className="rounded-full bg-lime-pale px-2.5 py-1 text-[9px] font-bold text-lime-deep">
-            Sample
-          </span>
-        ) : community.isOwner ? (
-          <span className="rounded-full bg-lime-pale px-3 py-1.5 text-[9px] font-bold text-lime-deep">
-            Owner
-          </span>
-        ) : community.isMember ? (
-          <Link
-            href={`/communities/${community.slug}`}
-            className="rounded-full bg-cream px-3 py-1.5 text-[9px] font-bold text-ink hover:bg-lime-pale"
-          >
-            Open
-          </Link>
-        ) : onJoin ? (
-          <button
-            type="button"
-            disabled={joining}
-            onClick={() => onJoin(community)}
-            className="cursor-pointer rounded-full bg-lime-deep px-3 py-1.5 text-[9px] font-bold text-dark transition hover:bg-dark hover:text-on-panel disabled:cursor-wait disabled:opacity-60"
-          >
-            {joining ? "Joining…" : "Join"}
-          </button>
+          <div className="group flex min-w-0 flex-1 items-center gap-2">{identity}</div>
         ) : (
           <Link
             href={`/communities/${community.slug}`}
-            className="rounded-full bg-cream px-3 py-1.5 text-[9px] font-bold text-ink hover:bg-lime-pale"
+            className="group flex min-w-0 flex-1 items-center gap-2 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-lime-deep"
           >
-            Explore
+            {identity}
           </Link>
         )}
+        {action}
       </div>
+      {previewOnly ? (
+        <p className="line-clamp-2 min-h-[30px] text-[10px] leading-[1.5] text-inksoft">
+          {community.description}
+        </p>
+      ) : (
+        <Link
+          href={`/communities/${community.slug}`}
+          className="line-clamp-2 min-h-[30px] rounded-lg text-[10px] leading-[1.5] text-inksoft outline-none focus-visible:ring-2 focus-visible:ring-lime-deep"
+        >
+          {community.description}
+        </Link>
+      )}
     </article>
   );
 }

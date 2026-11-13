@@ -1792,6 +1792,85 @@ export const COMMUNITY_TOPICS = [
 
 export type CommunityTopic = (typeof COMMUNITY_TOPICS)[number];
 
+export const COMMUNITY_SUBCATEGORIES = {
+  Technology: [
+    "AI & Machine Learning",
+    "Software Development",
+    "Data & Analytics",
+    "Product & Design",
+    "Hardware & Robotics",
+    "General",
+  ],
+  Business: [
+    "Entrepreneurship",
+    "Finance & Investing",
+    "Marketing",
+    "Small Business",
+    "Careers",
+    "General",
+  ],
+  "Education & Career": [
+    "Study Groups",
+    "Scholarships",
+    "Job Search",
+    "Skills & Training",
+    "Mentorship",
+    "General",
+  ],
+  Wellness: [
+    "Fitness",
+    "Mental Health",
+    "Nutrition",
+    "Mindfulness",
+    "Healthy Habits",
+    "General",
+  ],
+  "Arts & Design": [
+    "Visual Arts",
+    "Photography",
+    "Writing",
+    "Music",
+    "Crafts",
+    "General",
+  ],
+  "Food & Drink": [
+    "Cooking",
+    "Baking",
+    "Restaurants",
+    "Coffee & Tea",
+    "Food Culture",
+    "General",
+  ],
+  Sports: ["Football", "Basketball", "Running", "Cycling", "Fitness", "General"],
+  Travel: ["Destinations", "Solo Travel", "Backpacking", "Travel Tips", "Local Guides", "General"],
+  Lifestyle: ["Fashion", "Home & Living", "Parenting", "Gaming", "Personal Growth", "General"],
+  Other: ["Events", "Local Communities", "Questions", "Recommendations", "General"],
+} as const satisfies Record<CommunityTopic, readonly string[]>;
+
+export type CommunitySubcategory =
+  (typeof COMMUNITY_SUBCATEGORIES)[CommunityTopic][number];
+
+export function communityTopicSlug(topic: CommunityTopic): string {
+  return topic.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+export function communityTopicFromSlug(slug: string): CommunityTopic | null {
+  return COMMUNITY_TOPICS.find((topic) => communityTopicSlug(topic) === slug) ?? null;
+}
+
+export function communitySubcategorySlug(subcategory: string): string {
+  return subcategory.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+export function communitySubcategoryFromSlug(
+  topic: CommunityTopic,
+  slug: string,
+): CommunitySubcategory | null {
+  return COMMUNITY_SUBCATEGORIES[topic].find(
+    (subcategory) => communitySubcategorySlug(subcategory) === slug,
+  ) ?? null;
+}
+
 export const COMMUNITY_TYPE_OPTIONS = [
   { value: "public", label: "Public" },
   { value: "restricted", label: "Restricted" },
@@ -1807,6 +1886,7 @@ export type Community = {
   avatarPath: string | null;
   bannerPath: string | null;
   topic: CommunityTopic;
+  subcategory: CommunitySubcategory;
   communityType: CommunityType;
   isMature: boolean;
   description: string;
@@ -1824,6 +1904,7 @@ type CommunityRow = {
   avatar_path: string | null;
   banner_path: string | null;
   topic: CommunityTopic;
+  subcategory: CommunitySubcategory;
   community_type: CommunityType;
   is_mature: boolean;
   description: string;
@@ -1842,6 +1923,7 @@ function communityFromRow(row: CommunityRow): Community {
     avatarPath: row.avatar_path,
     bannerPath: row.banner_path,
     topic: row.topic,
+    subcategory: row.subcategory,
     communityType: row.community_type,
     isMature: row.is_mature,
     description: row.description,
@@ -1937,6 +2019,7 @@ export async function createCommunity(input: {
   name: string;
   slug: string;
   topic: CommunityTopic;
+  subcategory: CommunitySubcategory;
   communityType: CommunityType;
   isMature: boolean;
   description: string;
@@ -1946,6 +2029,7 @@ export async function createCommunity(input: {
     p_name: input.name,
     p_slug: input.slug,
     p_topic: input.topic,
+    p_subcategory: input.subcategory,
     p_description: input.description,
     p_idea: input.idea,
     p_community_type: input.communityType,
