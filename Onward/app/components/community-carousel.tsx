@@ -11,16 +11,18 @@ export function CommunityCarousel({
   title,
   communities,
   moreHref,
-  joiningId,
+  membershipBusyId,
   onJoin,
+  onLeave,
   previewOnly,
 }: {
   id: string;
   title: string;
   communities: Community[];
   moreHref?: string;
-  joiningId: string | null;
+  membershipBusyId: string | null;
   onJoin: (community: Community) => void;
+  onLeave: (community: Community) => void;
   previewOnly: boolean;
 }) {
   const rowRef = useRef<HTMLDivElement>(null);
@@ -74,8 +76,9 @@ export function CommunityCarousel({
           <div key={community.id} className="w-[86%] shrink-0 snap-start sm:w-[250px]">
             <CommunityCard
               community={community}
-              joining={joiningId === community.id}
+              membershipBusy={membershipBusyId === community.id}
               onJoin={onJoin}
+              onLeave={onLeave}
               previewOnly={previewOnly}
             />
           </div>

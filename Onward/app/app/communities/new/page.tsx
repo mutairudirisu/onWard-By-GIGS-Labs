@@ -201,7 +201,7 @@ export default function NewCommunityPage() {
 
   if (!ready) {
     return (
-      <PhoneShell paperBackground indicator={false}>
+      <PhoneShell indicator={false}>
         <div className="card animate-pulse p-8 text-center text-[11px] text-muted">Loading…</div>
       </PhoneShell>
     );
@@ -209,7 +209,7 @@ export default function NewCommunityPage() {
 
   if (!user) {
     return (
-      <PhoneShell paperBackground indicator={false}>
+      <PhoneShell indicator={false}>
         <div className="card px-5 py-10 text-center">
           <UsersRound className="mx-auto h-7 w-7 text-lime-deep" />
           <h1 className="mt-2 text-[15px] font-bold text-ink">Sign in to create a community</h1>
@@ -222,7 +222,7 @@ export default function NewCommunityPage() {
   }
 
   return (
-    <PhoneShell paperBackground indicator={false}>
+    <PhoneShell indicator={false}>
       <main className="-mx-5 -mt-5 w-[calc(100%+2.5rem)] max-w-[620px] pb-28 md:mx-auto md:mt-0 md:w-full md:pb-0">
         <header className="border-b border-line px-4 pb-3 pt-2 md:mb-5 md:border-0 md:px-0 md:pb-0 md:pt-0">
           <div className="relative flex h-8 items-center justify-between">
@@ -296,7 +296,7 @@ export default function NewCommunityPage() {
                   className="mt-2 w-full resize-y rounded-xl border border-line bg-cream px-3 py-3 text-[11px] leading-[1.6] text-ink outline-none placeholder:text-faint focus:border-lime-deep"
                 />
                 <div className="mt-1 flex justify-between text-[9px] text-muted">
-                  <span>Only you can see this note. At least 15 characters.</span>
+                  <span>Visible to everyone on the Learn about page. At least 15 characters.</span>
                   <span>{idea.trim().length}/1000</span>
                 </div>
                 <button

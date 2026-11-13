@@ -2077,6 +2077,14 @@ export async function fetchCommunity(slug: string): Promise<Community | null> {
   return data ? communityFromRow(data as CommunityRow) : null;
 }
 
+export async function fetchPublicCommunityIdea(communityId: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc("get_public_community_idea", {
+    p_community_id: communityId,
+  });
+  if (error) throw new Error(error.message);
+  return typeof data === "string" ? data : null;
+}
+
 export async function createCommunity(input: {
   name: string;
   slug: string;

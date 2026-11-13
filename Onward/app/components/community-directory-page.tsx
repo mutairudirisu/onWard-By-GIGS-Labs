@@ -18,6 +18,7 @@ import {
   fetchCommunityTaxonomy,
   fetchCommunities,
   joinCommunity,
+  leaveCommunity,
   type Community,
   type CommunityTaxonomy,
 } from "@/lib/db";
@@ -38,7 +39,7 @@ export function CommunityDirectoryPage({
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [query, setQuery] = useState("");
-  const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [membershipBusyId, setMembershipBusyId] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState<boolean | null>(null);
 
   const topic = communityTopicFromSlug(topicSlug, taxonomy.topics);
@@ -107,7 +108,7 @@ export function CommunityDirectoryPage({
       router.push("/sign-in");
       return;
     }
-    setJoiningId(community.id);
+    setMembershipBusyId(community.id);
     try {
       await joinCommunity(community.id);
       setCommunities((current) =>
@@ -125,7 +126,34 @@ export function CommunityDirectoryPage({
     } catch (reason) {
       toastError(reason instanceof Error ? reason.message : "Could not join this community.");
     } finally {
-      setJoiningId(null);
+      setMembershipBusyId(null);
+    }
+  };
+
+  const leave = async (community: Community) => {
+    if (!user) {
+      router.push("/sign-in");
+      return;
+    }
+    setMembershipBusyId(community.id);
+    try {
+      await leaveCommunity(community.id);
+      setCommunities((current) =>
+        current.map((item) =>
+          item.id === community.id
+            ? {
+                ...item,
+                isMember: false,
+                memberCount: Math.max(0, item.memberCount - 1),
+              }
+            : item,
+        ),
+      );
+      toastSuccess(`You left ${community.name}.`);
+    } catch (reason) {
+      toastError(reason instanceof Error ? reason.message : "Could not leave this community.");
+    } finally {
+      setMembershipBusyId(null);
     }
   };
 
@@ -271,8 +299,9 @@ export function CommunityDirectoryPage({
                   <li key={community.id} className="min-w-0">
                     <CommunityCard
                       community={community}
-                      joining={joiningId === community.id}
+                      membershipBusy={membershipBusyId === community.id}
                       onJoin={join}
+                      onLeave={leave}
                       previewOnly={previewMode === true}
                     />
                   </li>
@@ -307,8 +336,9 @@ export function CommunityDirectoryPage({
                 title={item}
                 communities={group}
                 moreHref={`/communities/category/${communityTopicSlug(topic)}/${communitySubcategorySlug(item)}${previewQuery}`}
-                joiningId={joiningId}
+                membershipBusyId={membershipBusyId}
                 onJoin={join}
+                onLeave={leave}
                 previewOnly={previewMode === true}
               />
             ))}

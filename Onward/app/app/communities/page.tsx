@@ -15,6 +15,7 @@ import {
   fetchCommunityTaxonomy,
   fetchCommunities,
   joinCommunity,
+  leaveCommunity,
   type Community,
   type CommunityTaxonomy,
   type CommunityTopic,
@@ -31,7 +32,7 @@ export default function CommunitiesPage() {
   const [attempt, setAttempt] = useState(0);
   const [query, setQuery] = useState("");
   const [topic, setTopic] = useState<CommunityTopic | "All">("All");
-  const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [membershipBusyId, setMembershipBusyId] = useState<string | null>(null);
   const [previewAvailable, setPreviewAvailable] = useState(false);
   const [previewMode, setPreviewMode] = useState<boolean | null>(null);
 
@@ -105,7 +106,7 @@ export default function CommunitiesPage() {
       router.push("/sign-in");
       return;
     }
-    setJoiningId(community.id);
+    setMembershipBusyId(community.id);
     try {
       await joinCommunity(community.id);
       setCommunities((current) =>
@@ -123,7 +124,34 @@ export default function CommunitiesPage() {
     } catch (reason) {
       toastError(reason instanceof Error ? reason.message : "Could not join this community.");
     } finally {
-      setJoiningId(null);
+      setMembershipBusyId(null);
+    }
+  };
+
+  const leave = async (community: Community) => {
+    if (!user) {
+      router.push("/sign-in");
+      return;
+    }
+    setMembershipBusyId(community.id);
+    try {
+      await leaveCommunity(community.id);
+      setCommunities((current) =>
+        current.map((item) =>
+          item.id === community.id
+            ? {
+                ...item,
+                isMember: false,
+                memberCount: Math.max(0, item.memberCount - 1),
+              }
+            : item,
+        ),
+      );
+      toastSuccess(`You left ${community.name}.`);
+    } catch (reason) {
+      toastError(reason instanceof Error ? reason.message : "Could not leave this community.");
+    } finally {
+      setMembershipBusyId(null);
     }
   };
 
@@ -251,8 +279,9 @@ export default function CommunitiesPage() {
                     id="recommended-communities"
                     title="Recommended for you"
                     communities={recommendedCommunities}
-                    joiningId={joiningId}
+                    membershipBusyId={membershipBusyId}
                     onJoin={join}
+                    onLeave={leave}
                     previewOnly={previewMode === true}
                   />
                 </div>
@@ -267,8 +296,9 @@ export default function CommunitiesPage() {
                     moreHref={`/communities/category/${communityTopicSlug(groupTopic)}${
                       previewMode ? "?previewCommunities=1" : ""
                     }`}
-                    joiningId={joiningId}
+                    membershipBusyId={membershipBusyId}
                     onJoin={join}
+                    onLeave={leave}
                     previewOnly={previewMode === true}
                   />
                 ))}

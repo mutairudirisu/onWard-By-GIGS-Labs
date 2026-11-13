@@ -21,7 +21,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { useAuth } from "@/components/auth";
-import { CommunityTopicIcon } from "@/components/community-card";
+import { CommunityTopicIcon, LeaveCommunityDialog } from "@/components/community-card";
 import { PostBlock } from "@/components/feed-post";
 import { Modal } from "@/components/modal";
 import { PhoneShell } from "@/components/phone-shell";
@@ -79,6 +79,7 @@ export default function CommunityHomePage() {
   const [actionError, setActionError] = useState("");
   const [setupOpen, setSetupOpen] = useState(true);
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState("");
   const [imageBusy, setImageBusy] = useState<"avatar" | "banner" | null>(null);
@@ -127,37 +128,50 @@ export default function CommunityHomePage() {
     void load();
   }, [load, attempt]);
 
-  const toggleMembership = async () => {
-    if (!community) return;
+  const updateMembership = async (isMember: boolean): Promise<boolean> => {
+    if (!community) return false;
     if (!user) {
       router.push("/sign-in");
-      return;
+      return false;
     }
+    if (community.isOwner || community.isMember === isMember || joining) return false;
     setJoining(true);
     setActionError("");
-    const wasMember = community.isMember;
     try {
-      if (wasMember && !community.isOwner) {
-        await leaveCommunity(community.id);
-      } else if (!wasMember) {
-        await joinCommunity(community.id);
-      }
-      if (!community.isOwner) {
-        const isMember = !wasMember;
-        setCommunity({
-          ...community,
-          isMember,
-          memberCount: Math.max(0, community.memberCount + (wasMember ? -1 : 1)),
-        });
-        setPosts((current) =>
-          current.map((post) => ({ ...post, communityIsMember: isMember })),
-        );
-      }
+      if (isMember) await joinCommunity(community.id);
+      else await leaveCommunity(community.id);
+      setCommunity((current) =>
+        current
+          ? {
+              ...current,
+              isMember,
+              memberCount: Math.max(0, current.memberCount + (isMember ? 1 : -1)),
+            }
+          : current,
+      );
+      setPosts((current) =>
+        current.map((post) => ({ ...post, communityIsMember: isMember })),
+      );
+      return true;
     } catch (reason) {
       setActionError(reason instanceof Error ? reason.message : "Could not update your membership.");
+      return false;
     } finally {
       setJoining(false);
     }
+  };
+
+  const toggleMembership = () => {
+    if (!community) return;
+    if (community.isMember) {
+      setLeaveDialogOpen(true);
+      return;
+    }
+    void updateMembership(true);
+  };
+
+  const confirmLeave = async () => {
+    if (await updateMembership(false)) setLeaveDialogOpen(false);
   };
 
   const toggleLike = (postId: string) => {
@@ -329,7 +343,7 @@ export default function CommunityHomePage() {
 
   if (loading) {
     return (
-      <PhoneShell wide paperBackground>
+      <PhoneShell wide>
         <div className="card animate-pulse p-8 text-center text-[11px] text-muted">Loading community…</div>
       </PhoneShell>
     );
@@ -337,7 +351,7 @@ export default function CommunityHomePage() {
 
   if (error || !community) {
     return (
-      <PhoneShell wide paperBackground>
+      <PhoneShell wide>
         <div className="card mx-auto max-w-[540px] px-5 py-9 text-center">
           <UsersRound className="mx-auto h-7 w-7 text-lime-deep" />
           <h1 className="mt-2 text-[15px] font-bold text-ink">
@@ -364,7 +378,7 @@ export default function CommunityHomePage() {
   }
 
   return (
-    <PhoneShell wide paperBackground>
+    <PhoneShell wide>
       <div className="-mx-5 -mt-5 w-[calc(100%+2.5rem)] md:mx-auto md:mt-0 md:w-full md:max-w-[1080px]">
         <header className="mb-5">
           <div className="relative min-h-[190px] overflow-hidden bg-panel px-4 pb-7 pt-4 sm:px-7">
@@ -405,6 +419,15 @@ export default function CommunityHomePage() {
                     )}
                   </button>
                 ) : null}
+                <button
+                  type="button"
+                  onClick={shareCommunity}
+                  aria-label="Share community"
+                  aria-haspopup="dialog"
+                  className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-dark/60 text-on-panel transition hover:bg-dark/80"
+                >
+                  <Share2 className="h-5 w-5" />
+                </button>
                 <button
                   type="button"
                   onClick={() => setOptionsOpen(true)}
@@ -753,14 +776,14 @@ export default function CommunityHomePage() {
             <Share2 className="h-5 w-5 text-inksoft" />
             Share community
           </button>
-          <a
-            href="#community-details"
+          <Link
+            href={`/communities/${slug}/about`}
             onClick={() => setOptionsOpen(false)}
             className="flex w-full cursor-pointer items-center gap-3 border-b border-line px-5 py-3.5 text-left text-[12px] font-semibold text-ink transition hover:bg-cream"
           >
             <Info className="h-5 w-5 text-inksoft" />
             Learn about this community
-          </a>
+          </Link>
           {community.isOwner ? (
             <>
               <button
@@ -802,7 +825,7 @@ export default function CommunityHomePage() {
               type="button"
               onClick={() => {
                 setOptionsOpen(false);
-                void toggleMembership();
+                toggleMembership();
               }}
               disabled={joining}
               className="flex w-full cursor-pointer items-center gap-3 px-5 py-3.5 text-left text-[12px] font-semibold text-ink transition hover:bg-cream disabled:cursor-wait disabled:opacity-60"
@@ -813,6 +836,14 @@ export default function CommunityHomePage() {
           )}
         </div>
       </Modal>
+      <LeaveCommunityDialog
+        communityName={community.name}
+        open={leaveDialogOpen}
+        busy={joining}
+        error={actionError}
+        onClose={() => setLeaveDialogOpen(false)}
+        onConfirm={() => void confirmLeave()}
+      />
       <ShareSheet
         open={shareOpen}
         onClose={() => setShareOpen(false)}
