@@ -81,7 +81,7 @@ export default function CommunitiesPage() {
   };
 
   return (
-    <PhoneShell wide whiteBackground>
+    <PhoneShell wide paperBackground>
       <div className="mx-auto grid w-full max-w-[1080px] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_270px]">
         <main className="min-w-0">
           <header className="mb-5">
@@ -106,7 +106,7 @@ export default function CommunitiesPage() {
               </div>
               <Link
                 href="/communities/new"
-                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-lime-deep px-4 text-[10px] font-bold text-white transition hover:bg-ink"
+                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-lime-deep px-4 text-[10px] font-bold text-dark transition hover:bg-dark hover:text-on-panel"
               >
                 <Plus className="h-4 w-4" /> Start a community
               </Link>
@@ -141,7 +141,7 @@ export default function CommunitiesPage() {
                   onClick={() => setTopic(item)}
                   className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3.5 py-2 text-[10px] font-semibold transition ${
                     topic === item
-                      ? "border-lime-deep bg-lime-deep text-white"
+                      ? "border-lime-deep bg-lime-deep text-dark"
                       : "border-line/70 bg-paper text-muted hover:border-lime-deep/50 hover:bg-lime-pale hover:text-ink"
                   }`}
                 >
@@ -215,7 +215,7 @@ export default function CommunitiesPage() {
               {!communities.length ? (
                 <Link
                   href="/communities/new"
-                  className="mt-4 inline-flex h-9 items-center gap-1.5 rounded-full bg-lime-deep px-4 text-[10px] font-bold text-white hover:bg-ink"
+                  className="mt-4 inline-flex h-9 items-center gap-1.5 rounded-full bg-lime-deep px-4 text-[10px] font-bold text-dark hover:bg-dark hover:text-on-panel"
                 >
                   <Plus className="h-4 w-4" /> Create a community
                 </Link>

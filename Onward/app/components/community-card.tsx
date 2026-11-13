@@ -123,7 +123,7 @@ export function CommunityCard({
             type="button"
             disabled={joining}
             onClick={() => onJoin(community)}
-            className="cursor-pointer rounded-full bg-lime-deep px-3 py-1.5 text-[9px] font-bold text-white transition hover:bg-ink disabled:cursor-wait disabled:opacity-60"
+            className="cursor-pointer rounded-full bg-lime-deep px-3 py-1.5 text-[9px] font-bold text-dark transition hover:bg-dark hover:text-on-panel disabled:cursor-wait disabled:opacity-60"
           >
             {joining ? "Joining…" : "Join"}
           </button>

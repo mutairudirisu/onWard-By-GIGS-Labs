@@ -329,7 +329,7 @@ export default function CommunityHomePage() {
 
   if (loading) {
     return (
-      <PhoneShell wide whiteBackground>
+      <PhoneShell wide paperBackground>
         <div className="card animate-pulse p-8 text-center text-[11px] text-muted">Loading community…</div>
       </PhoneShell>
     );
@@ -337,7 +337,7 @@ export default function CommunityHomePage() {
 
   if (error || !community) {
     return (
-      <PhoneShell wide whiteBackground>
+      <PhoneShell wide paperBackground>
         <div className="card mx-auto max-w-[540px] px-5 py-9 text-center">
           <UsersRound className="mx-auto h-7 w-7 text-lime-deep" />
           <h1 className="mt-2 text-[15px] font-bold text-ink">
@@ -349,7 +349,7 @@ export default function CommunityHomePage() {
               <button
                 type="button"
                 onClick={() => setAttempt((value) => value + 1)}
-                className="cursor-pointer rounded-full bg-lime-deep px-4 py-2 text-[10px] font-bold text-white"
+                className="cursor-pointer rounded-full bg-lime-deep px-4 py-2 text-[10px] font-bold text-dark"
               >
                 Try again
               </button>
@@ -364,10 +364,10 @@ export default function CommunityHomePage() {
   }
 
   return (
-    <PhoneShell wide whiteBackground>
+    <PhoneShell wide paperBackground>
       <div className="-mx-5 -mt-5 w-[calc(100%+2.5rem)] md:mx-auto md:mt-0 md:w-full md:max-w-[1080px]">
         <header className="mb-5">
-          <div className="relative min-h-[190px] overflow-hidden bg-ink px-4 pb-7 pt-4 sm:px-7">
+          <div className="relative min-h-[190px] overflow-hidden bg-panel px-4 pb-7 pt-4 sm:px-7">
             {community.bannerPath ? (
               <>
                 <img
@@ -375,7 +375,7 @@ export default function CommunityHomePage() {
                   alt=""
                   className="absolute inset-0 h-full w-full object-cover"
                 />
-                <span className="absolute inset-0 bg-ink/45" />
+                <span className="absolute inset-0 bg-dark/45" />
               </>
             ) : null}
             <span className="pointer-events-none absolute -right-7 -top-16 h-48 w-48 rounded-full border-[22px] border-lime/20" />
@@ -385,7 +385,7 @@ export default function CommunityHomePage() {
               <Link
                 href="/communities"
                 aria-label="Back to all communities"
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-ink/60 text-white transition hover:bg-ink/80"
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-dark/60 text-on-panel transition hover:bg-dark/80"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Link>
@@ -396,7 +396,7 @@ export default function CommunityHomePage() {
                     onClick={() => bannerInputRef.current?.click()}
                     disabled={imageBusy !== null}
                     aria-label="Change community banner photo"
-                    className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-ink/60 text-white transition hover:bg-ink/80 disabled:cursor-wait disabled:opacity-70"
+                    className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-dark/60 text-on-panel transition hover:bg-dark/80 disabled:cursor-wait disabled:opacity-70"
                   >
                     {imageBusy === "banner" ? (
                       <Loader2 className="h-5 w-5 animate-spin" />
@@ -410,7 +410,7 @@ export default function CommunityHomePage() {
                   onClick={() => setOptionsOpen(true)}
                   aria-label="Community options"
                   aria-haspopup="dialog"
-                  className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-ink/60 text-white transition hover:bg-ink/80"
+                  className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-dark/60 text-on-panel transition hover:bg-dark/80"
                 >
                   <MoreHorizontal className="h-5 w-5" />
                 </button>
@@ -437,7 +437,7 @@ export default function CommunityHomePage() {
                     <CommunityTopicIcon topic={community.topic} className="h-8 w-8" />
                   )}
                   {community.isOwner ? (
-                    <span className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-lime text-ink">
+                    <span className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-paper bg-lime text-ink">
                       {imageBusy === "avatar" ? (
                         <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
@@ -460,7 +460,7 @@ export default function CommunityHomePage() {
                 className={`inline-flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-4 text-[11px] font-bold transition disabled:cursor-default disabled:opacity-70 ${
                   community.isMember
                     ? "bg-cream text-ink hover:bg-lime-pale"
-                    : "bg-lime-deep text-white hover:bg-ink"
+                    : "bg-lime-deep text-dark hover:bg-dark hover:text-on-panel"
                 }`}
               >
                 {joining ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : community.isMember ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
@@ -519,7 +519,7 @@ export default function CommunityHomePage() {
                     type="button"
                     onClick={saveDescription}
                     disabled={savingDescription}
-                    className="cursor-pointer rounded-full bg-lime-deep px-3 py-1.5 text-[10px] font-bold text-white disabled:opacity-60"
+                    className="cursor-pointer rounded-full bg-lime-deep px-3 py-1.5 text-[10px] font-bold text-dark disabled:opacity-60"
                   >
                     {savingDescription ? "Saving…" : "Save"}
                   </button>
@@ -542,7 +542,7 @@ export default function CommunityHomePage() {
                     </button>
                   ) : null}
                 </div>
-                <div className="mt-4 rounded-[20px] bg-[#f1f3f5] px-4 py-3.5">
+                <div className="mt-4 rounded-[20px] bg-cream px-4 py-3.5">
                   <div className="flex items-center gap-2 text-[13px]">
                     <span className="font-bold text-ink">Insights</span>
                     <span className="text-muted">All time</span>
@@ -568,7 +568,7 @@ export default function CommunityHomePage() {
               className="flex w-full items-center justify-between gap-3 text-left"
             >
               <span className="flex items-center gap-3">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-lime-deep">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-paper text-lime-deep">
                   <CommunityTopicIcon topic={community.topic} className="h-7 w-7" />
                 </span>
                 <span className="text-[15px] font-bold text-ink">Get ready for visitors</span>
@@ -578,7 +578,7 @@ export default function CommunityHomePage() {
             {setupOpen ? (
               <div className="mt-4 space-y-3">
                 <div className="flex items-center gap-3 rounded-xl bg-paper p-3.5">
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-lime-deep">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-paper text-lime-deep">
                     <CommunityTopicIcon topic={community.topic} className="h-6 w-6" />
                   </span>
                   <span className="min-w-0 flex-1">
@@ -597,11 +597,11 @@ export default function CommunityHomePage() {
                         A few posts help new visitors see what your community is about.
                       </p>
                     </div>
-                    <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-bold tabular-nums text-ink">
+                    <span className="shrink-0 rounded-full bg-cream px-3 py-1.5 text-[11px] font-bold tabular-nums text-ink">
                       {Math.min(posts.length, 3)}/3
                     </span>
                   </div>
-                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white">
+                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-line">
                     <div
                       className="h-full rounded-full bg-lime-deep transition-all"
                       style={{ width: `${Math.min(posts.length, 3) * 33.333}%` }}
@@ -659,7 +659,7 @@ export default function CommunityHomePage() {
                 {community.isMember ? (
                   <Link
                     href={`/feed/new?community=${community.id}`}
-                    className="inline-flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-full bg-lime-deep px-4 text-[11px] font-bold text-white hover:bg-ink"
+                    className="inline-flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-full bg-lime-deep px-4 text-[11px] font-bold text-dark hover:bg-dark hover:text-on-panel"
                   >
                     <Plus className="h-4 w-4" /> Create post
                   </Link>
