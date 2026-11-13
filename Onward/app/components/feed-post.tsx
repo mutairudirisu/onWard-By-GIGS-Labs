@@ -563,7 +563,7 @@ export function PostBlock({
             onClick={() => onOpen(post.id)}
             className="flex cursor-pointer items-center gap-1.5 text-ink transition hover:text-lime-deep"
           >
-            <MessageCircle className="h-[22px] w-[22px]" strokeWidth={1.9} />
+            <MessageCircle className="h-[22px] w-[22px] -scale-x-100" strokeWidth={1.9} />
             {post.comments > 0 ? (
               <span className="text-[11px] font-bold tabular-nums">{post.comments}</span>
             ) : null}
