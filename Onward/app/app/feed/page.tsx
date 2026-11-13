@@ -171,6 +171,8 @@ export default function FeedPage() {
   const [polls, setPolls] = useState<Record<string, PostPoll>>({});
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [feedHeaderVisible, setFeedHeaderVisible] = useState(true);
+  const feedHeaderVisibleRef = useRef(true);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -185,6 +187,48 @@ export default function FeedPage() {
       document.body.style.overflow = previous;
     };
   }, [menuOpen]);
+
+  useEffect(() => {
+    let previousY = window.scrollY;
+    let direction: "up" | "down" | null = null;
+    let directionDistance = 0;
+
+    const onScroll = () => {
+      const currentY = window.scrollY;
+      const delta = currentY - previousY;
+      previousY = currentY;
+
+      if (currentY < 80) {
+        direction = null;
+        directionDistance = 0;
+        if (!feedHeaderVisibleRef.current) {
+          feedHeaderVisibleRef.current = true;
+          setFeedHeaderVisible(true);
+        }
+        return;
+      }
+
+      if (!delta) return;
+      const nextDirection = delta > 0 ? "down" : "up";
+      directionDistance =
+        direction === nextDirection ? directionDistance + Math.abs(delta) : Math.abs(delta);
+      direction = nextDirection;
+
+      const shouldShow =
+        nextDirection === "up" && directionDistance >= 6
+          ? true
+          : nextDirection === "down" && directionDistance >= 24
+            ? false
+            : null;
+      if (shouldShow !== null && feedHeaderVisibleRef.current !== shouldShow) {
+        feedHeaderVisibleRef.current = shouldShow;
+        setFeedHeaderVisible(shouldShow);
+      }
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   // Every read of the Exchange carries a token, so a slow answer cannot land on top
   // of a newer one.
@@ -595,6 +639,15 @@ export default function FeedPage() {
       <div className="-mx-5 md:mx-0">
       <div className="mx-auto w-full max-w-[840px] xl:grid xl:grid-cols-[minmax(0,560px)_minmax(220px,240px)] xl:items-start xl:gap-6">
       <div className="mx-auto min-w-0 lg:max-w-[560px] xl:mx-0">
+      <div
+        className={`sticky top-0 z-30 bg-cream/95 backdrop-blur-xl transition-transform duration-200 motion-reduce:transition-none ${
+          feedHeaderVisible ? "translate-y-0" : "-translate-y-full"
+        }`}
+        onFocusCapture={() => {
+          feedHeaderVisibleRef.current = true;
+          setFeedHeaderVisible(true);
+        }}
+      >
       <div className="relative mb-2 flex items-center px-4 md:px-0">
         <button
           type="button"
@@ -654,6 +707,7 @@ export default function FeedPage() {
           </button>
         ))}
       </nav>
+      </div>
 
       {pendingToShow.length ? (
         <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-[35] flex justify-center px-4 lg:bottom-6">
