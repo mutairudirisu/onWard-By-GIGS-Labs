@@ -551,7 +551,7 @@ export function PostBlock({
           className="flex cursor-pointer items-center gap-1.5 text-ink transition hover:text-lime-deep"
         >
           <ThumbsUp
-            className={`h-[18px] w-[18px] ${liked ? "fill-current text-lime-deep" : ""}`}
+            className={`h-[22px] w-[22px] ${liked ? "fill-current text-lime-deep" : ""}`}
             strokeWidth={liked ? 2.2 : 1.9}
           />
           {likes > 0 ? <span className="text-[11px] font-bold tabular-nums">{likes}</span> : null}
@@ -563,7 +563,7 @@ export function PostBlock({
             onClick={() => onOpen(post.id)}
             className="flex cursor-pointer items-center gap-1.5 text-ink transition hover:text-lime-deep"
           >
-            <MessageCircle className="h-[19px] w-[19px]" strokeWidth={1.9} />
+            <MessageCircle className="h-[22px] w-[22px]" strokeWidth={1.9} />
             {post.comments > 0 ? (
               <span className="text-[11px] font-bold tabular-nums">{post.comments}</span>
             ) : null}
@@ -581,7 +581,7 @@ export function PostBlock({
               reshared ? "text-lime-deep" : "text-ink hover:text-lime-deep"
             }`}
           >
-            <Repeat2 className="h-[18px] w-[18px]" strokeWidth={reshared ? 2.4 : 1.9} />
+            <Repeat2 className="h-[22px] w-[22px]" strokeWidth={reshared ? 2.4 : 1.9} />
             {reshares > 0 ? (
               <span className="text-[11px] font-bold tabular-nums">{reshares}</span>
             ) : null}
@@ -594,7 +594,7 @@ export function PostBlock({
             onClick={() => onShare(post.id)}
             className="flex cursor-pointer items-center text-ink transition hover:text-lime-deep"
           >
-            <Share2 className="h-[18px] w-[18px]" strokeWidth={1.9} />
+            <Share2 className="h-[22px] w-[22px]" strokeWidth={1.9} />
           </button>
         ) : null}
         <span className="ml-auto text-[9.5px] tracking-[0.06em] text-faint">

@@ -858,7 +858,7 @@ export default function FeedPage() {
             ))}
           </div>
 
-          <div className="mt-5 rounded-xl border border-dash px-3.5 py-3 xl:hidden">
+          <div className="mx-3 mt-5 rounded-xl border border-dash px-3.5 py-3 xl:hidden">
             <p
               className={`text-[9.5px] leading-[1.55] text-muted ${
                 noteOpen ? "" : "line-clamp-2"

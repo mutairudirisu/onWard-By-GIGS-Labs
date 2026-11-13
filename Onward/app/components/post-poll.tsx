@@ -70,7 +70,7 @@ export function PollBlock({
               <span
                 aria-hidden
                 className={`absolute inset-y-0 left-0 rounded-xl transition-[width] duration-500 ${
-                  mine ? "bg-lime-soft" : "bg-lime-pale"
+                  mine ? "bg-lime/35" : "bg-lime/25"
                 }`}
                 style={{ width: results ? `${pct}%` : "0%" }}
               />
@@ -134,7 +134,7 @@ export function CarriedPollBlock({ poll }: { poll: CarriedPoll }) {
             >
               <span
                 aria-hidden
-                className="absolute inset-y-0 left-0 bg-lime-pale"
+                className="absolute inset-y-0 left-0 bg-lime/25"
                 style={{ width: `${pct}%` }}
               />
               <span className="relative min-w-0 flex-1 truncate text-[11.5px] font-semibold text-ink">
