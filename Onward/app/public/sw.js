@@ -48,15 +48,26 @@ self.addEventListener("fetch", (event) => {
 
   if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/")) {
     event.respondWith(
-      caches.match(request).then(
-        (hit) =>
-          hit ||
-          fetch(request).then((response) => {
+      fetch(request)
+        .then(async (response) => {
+          if (response.ok) {
             const copy = response.clone();
-            caches.open(CACHE).then((cache) => cache.put(request, copy));
+            caches
+              .open(CACHE)
+              .then((cache) => cache.put(request, copy))
+              .catch((error) => console.error("Failed to cache app asset", error));
             return response;
-          })
-      )
+          }
+          if (response.status === 404) {
+            return (await caches.match(request)) || response;
+          }
+          return response;
+        })
+        .catch(async (error) => {
+          const hit = await caches.match(request);
+          if (hit) return hit;
+          throw error;
+        })
     );
   }
 });

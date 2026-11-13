@@ -25,6 +25,15 @@ export function subscribeToWaitingWorker(listener: Listener) {
 }
 
 export function reloadWithUpdate() {
-  waitingWorker?.postMessage({ type: "SKIP_WAITING" });
-  window.location.reload();
+  if (!waitingWorker) {
+    window.location.reload();
+    return;
+  }
+
+  const reload = () => {
+    navigator.serviceWorker.removeEventListener("controllerchange", reload);
+    window.location.reload();
+  };
+  navigator.serviceWorker.addEventListener("controllerchange", reload, { once: true });
+  waitingWorker.postMessage({ type: "SKIP_WAITING" });
 }
