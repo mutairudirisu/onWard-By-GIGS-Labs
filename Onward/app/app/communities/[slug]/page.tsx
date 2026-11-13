@@ -669,24 +669,24 @@ export default function CommunityHomePage() {
               {posts.length ? (
                 <div className="mt-3 divide-y-2 divide-line">
                   {posts.map((post) => (
-                    <PostBlock
-                      key={post.id}
-                      post={post}
-                      liked={likedPosts.has(post.id)}
-                      likes={likeCounts[post.id] ?? post.likes}
-                      reshared={resharedPosts.has(post.id)}
-                      reshares={reshareCounts[post.id] ?? post.reshares}
-                      signedIn={Boolean(user)}
-                      poll={polls[post.id] ?? null}
-                      onVote={votePoll}
-                      onLike={toggleLike}
-                      onReshare={toggleReshare}
-                      onShare={sharePost}
-                      onOpen={(id) => router.push(`/feed/${id}`)}
-                      communityBusy={joining}
-                      onJoinCommunity={joinFromPost}
-                      edgeToEdge
-                    />
+                    <div key={post.id} className="px-4">
+                      <PostBlock
+                        post={post}
+                        liked={likedPosts.has(post.id)}
+                        likes={likeCounts[post.id] ?? post.likes}
+                        reshared={resharedPosts.has(post.id)}
+                        reshares={reshareCounts[post.id] ?? post.reshares}
+                        signedIn={Boolean(user)}
+                        poll={polls[post.id] ?? null}
+                        onVote={votePoll}
+                        onLike={toggleLike}
+                        onReshare={toggleReshare}
+                        onShare={sharePost}
+                        onOpen={(id) => router.push(`/feed/${id}`)}
+                        communityBusy={joining}
+                        onJoinCommunity={joinFromPost}
+                      />
+                    </div>
                   ))}
                 </div>
               ) : (

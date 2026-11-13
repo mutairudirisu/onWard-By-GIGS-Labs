@@ -1560,6 +1560,7 @@ export type ProfileCard = {
   following: number;
   posts: number;
   comments: number;
+  longestStreak: number;
   /** Whether the reader already follows them. */
   followed: boolean;
 };
@@ -1603,6 +1604,7 @@ type ProfileCardRow = {
   posts: number | null;
   comments: number | null;
   followed: boolean | null;
+  longest_streak: number | null;
 };
 
 type ProfileCommentRow = {
@@ -1658,6 +1660,7 @@ export async function fetchProfileCard(id: string): Promise<ProfileCard | null> 
     posts: row.posts ?? 0,
     comments: row.comments ?? 0,
     followed: row.followed ?? false,
+    longestStreak: row.longest_streak ?? 0,
   };
 }
 

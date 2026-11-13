@@ -3,7 +3,18 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, X } from "lucide-react";
+import {
+  Award,
+  ArrowLeft,
+  Check,
+  ChevronRight,
+  Flame,
+  MessageCircle,
+  PenLine,
+  Plus,
+  Users,
+  X,
+} from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { Avatar, PostBlock } from "@/components/feed-post";
 import { Modal } from "@/components/modal";
@@ -30,8 +41,16 @@ import {
   type ProfileComment,
 } from "@/lib/db";
 import { timeAgo } from "@/lib/dates";
+import { getExchangeAchievements, type ExchangeAchievement } from "@/lib/exchange-achievements";
 
 type Tab = "posts" | "comments" | "about";
+
+function AchievementIcon({ kind }: { kind: ExchangeAchievement["icon"] }) {
+  if (kind === "post") return <PenLine className="h-4 w-4" aria-hidden="true" />;
+  if (kind === "comment") return <MessageCircle className="h-4 w-4" aria-hidden="true" />;
+  if (kind === "followers") return <Users className="h-4 w-4" aria-hidden="true" />;
+  return <Flame className="h-4 w-4" aria-hidden="true" />;
+}
 
 /**
  * The brand mark, repeated as a quiet field behind the header. It is the same sprout
@@ -193,6 +212,7 @@ export default function PersonPage() {
   const [pendingDelete, setPendingDelete] = useState<FeedPost | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [achievementsOpen, setAchievementsOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -410,6 +430,13 @@ export default function PersonPage() {
     { key: "comments", label: "Comments" },
     { key: "about", label: "About" },
   ];
+  const achievements = getExchangeAchievements({
+    posts: card.posts,
+    comments: card.comments,
+    followers: card.followers,
+    longestStreak: card.longestStreak,
+  });
+  const earnedAchievements = achievements.filter((achievement) => achievement.earned).length;
 
   return (
     <PhoneShell tab="feed">
@@ -470,6 +497,26 @@ export default function PersonPage() {
             <span className="font-bold text-ink">{card.following}</span> following
           </button>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setAchievementsOpen(true)}
+          aria-label={`${earnedAchievements} achievements`}
+          className="mt-3 flex w-full cursor-pointer items-center gap-3 rounded-xl border border-lime-deep/20 bg-paper/70 px-3 py-2.5 text-left transition hover:bg-paper"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-lime-pale text-lime-deep">
+            <Award className="h-[18px] w-[18px]" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[11px] font-bold text-ink">
+              {earnedAchievements} achievements
+            </span>
+            <span className="block truncate text-[9.5px] text-muted">
+              Milestones from your Exchange activity
+            </span>
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
+        </button>
 
         {card.mine ? (
           <Link
@@ -544,7 +591,26 @@ export default function PersonPage() {
               </div>
             ))
           ) : (
-            <p className="py-6 text-[11.5px] text-muted">Nothing written here yet.</p>
+            <div className="mx-4 my-4 rounded-2xl border border-dash bg-cream/60 px-5 py-8 text-center">
+              <MessageCircle className="mx-auto h-6 w-6 text-lime-deep" aria-hidden="true" />
+              <h2 className="mt-2 text-[13px] font-semibold text-ink">
+                {card.mine ? "You don't have any posts yet" : "No posts yet"}
+              </h2>
+              <p className="mt-1 text-[11px] leading-[1.5] text-muted">
+                {card.mine
+                  ? "Your Exchange posts will show up here."
+                  : "When they share a post in the Exchange, it will appear here."}
+              </p>
+              {card.mine ? (
+                <Link
+                  href="/feed/new"
+                  className="mt-4 inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-lime px-4 py-2 text-[11px] font-bold text-dark transition hover:bg-lime-deep"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Create your first post
+                </Link>
+              ) : null}
+            </div>
           )}
         </section>
       ) : null}
@@ -591,6 +657,65 @@ export default function PersonPage() {
           </p>
         </section>
       ) : null}
+
+      <Modal
+        open={achievementsOpen}
+        onClose={() => setAchievementsOpen(false)}
+        title={<span id="exchange-achievements-title">Exchange achievements</span>}
+        labelledBy="exchange-achievements-title"
+      >
+        <p className="mb-2 text-[11px] leading-[1.5] text-muted">
+          {earnedAchievements} of {achievements.length} milestones earned through posts,
+          conversations, followers, and streaks.
+        </p>
+        <ul className="divide-y divide-line">
+          {achievements.map((achievement) => (
+            <li key={achievement.id} className="flex items-start gap-3 py-3">
+              <span
+                className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                  achievement.earned
+                    ? "bg-lime-pale text-lime-deep"
+                    : "bg-cream text-muted"
+                }`}
+              >
+                <AchievementIcon kind={achievement.icon} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-[11.5px] font-semibold text-ink">{achievement.title}</p>
+                  {achievement.earned ? (
+                    <span className="inline-flex shrink-0 items-center gap-1 text-[9.5px] font-semibold text-lime-deep">
+                      <Check className="h-3 w-3" />
+                      Earned
+                    </span>
+                  ) : (
+                    <span className="shrink-0 text-[9.5px] tabular-nums text-muted">
+                      {Math.min(achievement.value, achievement.target)} / {achievement.target}{" "}
+                      {achievement.unit}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-0.5 text-[10px] leading-[1.45] text-muted">
+                  {achievement.description}
+                </p>
+                <div
+                  className="mt-2 h-1.5 overflow-hidden rounded-full bg-cream"
+                  role="progressbar"
+                  aria-label={`${achievement.title} progress`}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={achievement.progressPercent}
+                >
+                  <span
+                    className="block h-full rounded-full bg-lime-deep transition-[width]"
+                    style={{ width: `${achievement.progressPercent}%` }}
+                  />
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Modal>
 
       <PostOptionsSheet
         post={options}
