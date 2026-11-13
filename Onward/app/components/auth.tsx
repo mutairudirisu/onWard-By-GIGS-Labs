@@ -27,7 +27,9 @@ type AuthValue = {
   changeEmail: (email: string) => Promise<AuthResult>;
   signOut: () => Promise<void>;
   updateProfile: (
-    patch: Partial<Pick<Profile, "displayName" | "initials" | "role" | "location" | "bio" | "avatarUrl">>,
+    patch: Partial<
+      Pick<Profile, "displayName" | "username" | "initials" | "role" | "location" | "bio" | "avatarUrl">
+    >,
   ) => Promise<AuthResult>;
 };
 
@@ -71,6 +73,7 @@ function fallbackProfile(user: User): Profile {
   return {
     id: user.id,
     displayName: name,
+    username: null,
     initials: initialsFor(name),
     role: meta.role ?? "",
     location: "",
@@ -298,6 +301,7 @@ export function useCurrentUser() {
   const base = profile ?? (user ? fallbackProfile(user) : null);
   return {
     name: base?.displayName ?? "",
+    username: base?.username ?? null,
     initials: base?.initials ?? "",
     email: user?.email ?? "",
     role: base?.role ?? "",

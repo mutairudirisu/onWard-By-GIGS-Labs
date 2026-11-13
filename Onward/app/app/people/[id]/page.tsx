@@ -434,6 +434,9 @@ export default function PersonPage() {
               {card.fullName || "Someone"}
               {card.mine ? <span className="text-[11px] font-semibold text-muted"> (you)</span> : null}
             </p>
+            {card.username ? (
+              <p className="truncate text-[10.5px] font-medium text-muted">@{card.username}</p>
+            ) : null}
             {card.role ? <p className="truncate text-[11px] text-muted">{card.role}</p> : null}
             {card.location ? <p className="truncate text-[10.5px] text-faint">{card.location}</p> : null}
           </div>

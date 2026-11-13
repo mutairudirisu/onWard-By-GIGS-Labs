@@ -20,6 +20,7 @@ export default function EditProfilePage() {
   const { skills, addSkill } = useStore();
 
   const [name, setName] = useState(profile.name);
+  const [username, setUsername] = useState(profile.username ?? "");
   const [email, setEmail] = useState(profile.email);
   const [location, setLocation] = useState(profile.location);
   const [bio, setBio] = useState(profile.bio);
@@ -48,16 +49,13 @@ export default function EditProfilePage() {
   const editedFields = useRef(new Set<string>());
 
   useEffect(() => {
-    if (
-      !authUser ||
-      !authProfile ||
-      authProfile.id !== authUser.id ||
-      initializedFor.current === authUser.id
-    ) {
-      return;
+    if (!authUser || !authProfile || authProfile.id !== authUser.id) return;
+    if (initializedFor.current && initializedFor.current !== authUser.id) {
+      editedFields.current.clear();
     }
     initializedFor.current = authUser.id;
     if (!editedFields.current.has("name")) setName(authProfile.displayName);
+    if (!editedFields.current.has("username")) setUsername(authProfile.username ?? "");
     if (!editedFields.current.has("email")) setEmail(authUser.email ?? "");
     if (!editedFields.current.has("location")) setLocation(authProfile.location);
     if (!editedFields.current.has("bio")) setBio(authProfile.bio);
@@ -215,10 +213,18 @@ export default function EditProfilePage() {
   }
 
   async function save() {
+    const normalizedUsername = username.trim().replace(/^@/, "").toLowerCase();
+    if (normalizedUsername && !/^[a-z0-9][a-z0-9._]{1,18}[a-z0-9]$/.test(normalizedUsername)) {
+      setError(
+        "Use 3-20 letters, numbers, periods, or underscores. Start and end with a letter or number.",
+      );
+      return;
+    }
     setBusy(true);
     setError("");
     const result = await updateProfile({
       displayName: name.trim() || profile.name,
+      username: normalizedUsername || null,
       location: location.trim(),
       bio: bio.trim(),
     });
@@ -293,6 +299,30 @@ export default function EditProfilePage() {
           />
           <p className="mt-1.5 text-[10px] leading-[1.5] text-muted">
             Use the name you want people to see on your profile.
+          </p>
+        </Field>
+
+        <Field label="Username" uppercase>
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">
+              @
+            </span>
+            <TextInput
+              value={username}
+              onChange={(e) => {
+                editedFields.current.add("username");
+                setUsername(e.target.value.replace(/^@/, "").toLowerCase());
+              }}
+              maxLength={20}
+              autoComplete="username"
+              autoCapitalize="none"
+              placeholder="yourname"
+              className="pl-8"
+              aria-label="Username"
+            />
+          </div>
+          <p className="mt-1.5 text-[10px] leading-[1.5] text-muted">
+            Optional. Choose a unique username to display on your profile.
           </p>
         </Field>
 

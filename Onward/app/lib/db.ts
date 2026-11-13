@@ -13,6 +13,7 @@ import { EMPTY_CV_DOC, normalizeCvDoc, type CvDoc } from "./cv";
 export type Profile = {
   id: string;
   displayName: string;
+  username: string | null;
   initials: string;
   role: string;
   location: string;
@@ -102,6 +103,7 @@ type SettingsRow = {
 type ProfileRow = {
   id: string;
   display_name: string;
+  username: string | null;
   initials: string | null;
   role: string | null;
   location: string | null;
@@ -166,6 +168,7 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
   return {
     id: row.id,
     displayName: row.display_name,
+    username: row.username ?? null,
     initials: row.initials || initialsFor(row.display_name),
     role: row.role ?? "",
     location: row.location ?? "",
@@ -408,6 +411,7 @@ export async function saveCvDoc(userId: string, doc: CvDoc) {
 export async function saveProfile(userId: string, patch: Partial<Omit<Profile, "id" | "plan">>) {
   const row: Record<string, unknown> = {};
   if (patch.displayName !== undefined) row.display_name = patch.displayName;
+  if (patch.username !== undefined) row.username = patch.username;
   if (patch.initials !== undefined) row.initials = patch.initials;
   if (patch.role !== undefined) row.role = patch.role;
   if (patch.location !== undefined) row.location = patch.location;
@@ -417,6 +421,7 @@ export async function saveProfile(userId: string, patch: Partial<Omit<Profile, "
   // Update only: an upsert puts `id` in the ON CONFLICT SET list, and the
   // client role is deliberately not allowed to write that column.
   const { error } = await supabase.from("profiles").update(row).eq("id", userId);
+  if (error?.code === "23505") throw new Error("That username is already taken.");
   if (error) throw new Error(error.message);
 }
 
@@ -1543,6 +1548,7 @@ export async function redeemReferral(code: string): Promise<boolean> {
 export type ProfileCard = {
   id: string;
   fullName: string;
+  username: string | null;
   initials: string;
   avatarUrl: string | null;
   role: string | null;
@@ -1584,6 +1590,7 @@ export type SearchHits = {
 type ProfileCardRow = {
   id: string;
   full_name: string | null;
+  username: string | null;
   initials: string | null;
   avatar_url: string | null;
   role: string | null;
@@ -1638,6 +1645,7 @@ export async function fetchProfileCard(id: string): Promise<ProfileCard | null> 
   return {
     id: row.id,
     fullName: row.full_name ?? "",
+    username: row.username ?? null,
     initials: row.initials ?? "",
     avatarUrl: row.avatar_url ?? null,
     role: row.role ?? null,

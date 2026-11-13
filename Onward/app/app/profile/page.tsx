@@ -76,6 +76,11 @@ export default function ProfilePage() {
                 <h2 className="text-[17px] font-bold tracking-tight text-ink lg:text-[22px]">
                   {user.name}
                 </h2>
+                {user.username ? (
+                  <p className="text-[10px] font-medium text-muted lg:text-[12px]">
+                    @{user.username}
+                  </p>
+                ) : null}
                 <p className="text-[11px] font-medium text-inksoft lg:text-[13px]">{user.role}</p>
                 <p className="mt-0.5 text-[10px] text-muted lg:text-[12px]">{user.location}</p>
               </div>
