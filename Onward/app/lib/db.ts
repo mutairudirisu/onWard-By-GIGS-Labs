@@ -1798,7 +1798,7 @@ export const COMMUNITY_TOPICS = [
   "Other",
 ] as const;
 
-export type CommunityTopic = (typeof COMMUNITY_TOPICS)[number];
+export type CommunityTopic = string;
 
 export const COMMUNITY_SUBCATEGORIES = {
   Technology: [
@@ -1853,17 +1853,35 @@ export const COMMUNITY_SUBCATEGORIES = {
   Travel: ["Destinations", "Solo Travel", "Backpacking", "Travel Tips", "Local Guides", "General"],
   Lifestyle: ["Fashion", "Home & Living", "Parenting", "Gaming", "Personal Growth", "General"],
   Other: ["Events", "Local Communities", "Questions", "Recommendations", "General"],
-} as const satisfies Record<CommunityTopic, readonly string[]>;
+} as const satisfies Record<(typeof COMMUNITY_TOPICS)[number], readonly string[]>;
+const DEFAULT_SUBCATEGORIES: Readonly<Record<string, readonly string[]>> =
+  COMMUNITY_SUBCATEGORIES;
 
-export type CommunitySubcategory =
-  (typeof COMMUNITY_SUBCATEGORIES)[CommunityTopic][number];
+export type CommunitySubcategory = string;
+
+export type CommunityTaxonomy = {
+  topics: CommunityTopic[];
+  subcategories: Record<CommunityTopic, CommunitySubcategory[]>;
+};
+
+export function defaultCommunityTaxonomy(): CommunityTaxonomy {
+  return {
+    topics: [...COMMUNITY_TOPICS],
+    subcategories: Object.fromEntries(
+      COMMUNITY_TOPICS.map((topic) => [topic, [...COMMUNITY_SUBCATEGORIES[topic]]]),
+    ),
+  };
+}
 
 export function communityTopicSlug(topic: CommunityTopic): string {
   return topic.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
-export function communityTopicFromSlug(slug: string): CommunityTopic | null {
-  return COMMUNITY_TOPICS.find((topic) => communityTopicSlug(topic) === slug) ?? null;
+export function communityTopicFromSlug(
+  slug: string,
+  topics: readonly CommunityTopic[] = COMMUNITY_TOPICS,
+): CommunityTopic | null {
+  return topics.find((topic) => communityTopicSlug(topic) === slug) ?? null;
 }
 
 export function communitySubcategorySlug(subcategory: string): string {
@@ -1873,8 +1891,9 @@ export function communitySubcategorySlug(subcategory: string): string {
 export function communitySubcategoryFromSlug(
   topic: CommunityTopic,
   slug: string,
+  subcategories: readonly CommunitySubcategory[] = DEFAULT_SUBCATEGORIES[topic] ?? [],
 ): CommunitySubcategory | null {
-  return COMMUNITY_SUBCATEGORIES[topic].find(
+  return subcategories.find(
     (subcategory) => communitySubcategorySlug(subcategory) === slug,
   ) ?? null;
 }
@@ -2002,6 +2021,38 @@ export async function fetchCommunities(): Promise<Community[]> {
   return ((data ?? []) as CommunityRow[]).map(communityFromRow);
 }
 
+export async function fetchCommunityTaxonomy(): Promise<CommunityTaxonomy> {
+  const [topicsResult, subcategoriesResult] = await Promise.all([
+    supabase.from("community_topics").select("name").order("name"),
+    supabase.from("community_subcategories").select("topic, name").order("name"),
+  ]);
+  if (topicsResult.error) throw new Error(topicsResult.error.message);
+  if (subcategoriesResult.error) throw new Error(subcategoriesResult.error.message);
+
+  const topicNames = (topicsResult.data ?? []).map((row) => row.name as string);
+  const topicSet = new Set(topicNames);
+  const defaultTopicSet = new Set<string>(COMMUNITY_TOPICS);
+  const topics = [
+    ...COMMUNITY_TOPICS.filter((topic) => topicSet.has(topic)),
+    ...topicNames.filter((topic) => !defaultTopicSet.has(topic)),
+  ];
+  const rows = (subcategoriesResult.data ?? []) as { topic: string; name: string }[];
+  const subcategories: Record<string, string[]> = {};
+
+  for (const topic of topics) {
+    const storedNames = rows.filter((row) => row.topic === topic).map((row) => row.name);
+    const storedSet = new Set(storedNames);
+    const defaults = DEFAULT_SUBCATEGORIES[topic] ?? [];
+    const defaultSet = new Set(defaults);
+    subcategories[topic] = [
+      ...defaults.filter((name) => storedSet.has(name)),
+      ...storedNames.filter((name) => !defaultSet.has(name)).sort((a, b) => a.localeCompare(b)),
+    ];
+  }
+
+  return { topics, subcategories };
+}
+
 export async function fetchMyCommunities(): Promise<Community[]> {
   const { data, error } = await supabase
     .from("community_directory")
@@ -2052,6 +2103,36 @@ export async function createCommunity(input: {
     throw new Error("The community was not created. Please try again.");
   }
   return { id: result.id, slug: result.slug };
+}
+
+export async function addCommunityTopic(name: string): Promise<CommunityTopic> {
+  const { data, error } = await supabase.rpc("add_community_topic", { p_name: name });
+  if (error) {
+    if (error.code === "23505") throw new Error("A topic with a similar link already exists.");
+    throw new Error(error.message);
+  }
+  if (typeof data !== "string") throw new Error("Could not add that topic. Please try again.");
+  return data;
+}
+
+export async function addCommunitySubcategory(
+  topic: CommunityTopic,
+  name: CommunitySubcategory,
+): Promise<CommunitySubcategory> {
+  const { data, error } = await supabase.rpc("add_community_subcategory", {
+    p_topic: topic,
+    p_name: name,
+  });
+  if (error) {
+    if (error.code === "23505") {
+      throw new Error("A subcategory with a similar link already exists in this topic.");
+    }
+    throw new Error(error.message);
+  }
+  if (typeof data !== "string") {
+    throw new Error("Could not add that subcategory. Please try again.");
+  }
+  return data;
 }
 
 export async function joinCommunity(communityId: string): Promise<void> {

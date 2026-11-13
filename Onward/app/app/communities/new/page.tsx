@@ -23,9 +23,14 @@ import { Wordmark } from "@/components/wordmark";
 import {
   COMMUNITY_SUBCATEGORIES,
   COMMUNITY_TOPICS,
+  addCommunitySubcategory,
+  addCommunityTopic,
   COMMUNITY_TYPE_OPTIONS,
   createCommunity,
+  defaultCommunityTaxonomy,
+  fetchCommunityTaxonomy,
   type CommunitySubcategory,
+  type CommunityTaxonomy,
   type CommunityTopic,
   type CommunityType,
 } from "@/lib/db";
@@ -50,6 +55,13 @@ export default function NewCommunityPage() {
   const [idea, setIdea] = useState("");
   const [topic, setTopic] = useState<CommunityTopic>("Technology");
   const [subcategory, setSubcategory] = useState<CommunitySubcategory>("General");
+  const [taxonomy, setTaxonomy] = useState<CommunityTaxonomy>(defaultCommunityTaxonomy);
+  const [taxonomyError, setTaxonomyError] = useState("");
+  const [topicDraft, setTopicDraft] = useState("");
+  const [subcategoryDraft, setSubcategoryDraft] = useState("");
+  const [showTopicInput, setShowTopicInput] = useState(false);
+  const [showSubcategoryInput, setShowSubcategoryInput] = useState(false);
+  const [taxonomyBusy, setTaxonomyBusy] = useState<"topic" | "subcategory" | null>(null);
   const [communityType, setCommunityType] = useState<CommunityType>("public");
   const [isMature, setIsMature] = useState(false);
   const [typeSheetOpen, setTypeSheetOpen] = useState(false);
@@ -58,6 +70,25 @@ export default function NewCommunityPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const slug = useMemo(() => communitySlug(name), [name]);
+  const subcategories = taxonomy.subcategories[topic] ?? [];
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchCommunityTaxonomy()
+      .then((next) => {
+        if (!cancelled) setTaxonomy(next);
+      })
+      .catch((reason) => {
+        if (!cancelled) {
+          setTaxonomyError(
+            reason instanceof Error ? reason.message : "Could not load community topics.",
+          );
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!typeSheetOpen) return;
@@ -81,7 +112,7 @@ export default function NewCommunityPage() {
     return "";
   };
 
-  const canContinue = !stepProblem() && !busy;
+  const canContinue = !stepProblem() && !busy && !taxonomyBusy;
   const selectedType = COMMUNITY_TYPE_OPTIONS.find((option) => option.value === communityType);
 
   const continueStep = () => {
@@ -92,6 +123,49 @@ export default function NewCommunityPage() {
     }
     setError("");
     setStep((current) => Math.min(current + 1, STEPS.length - 1));
+  };
+
+  const addTopic = async () => {
+    const value = topicDraft.trim().replace(/\s+/g, " ");
+    if (value.length < 2 || value.length > 50) {
+      setError("Topics must be 2 to 50 characters long.");
+      return;
+    }
+    setTaxonomyBusy("topic");
+    setError("");
+    try {
+      const addedTopic = await addCommunityTopic(value);
+      setTaxonomy(await fetchCommunityTaxonomy());
+      setTopic(addedTopic);
+      setSubcategory("General");
+      setTopicDraft("");
+      setShowTopicInput(false);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not add that topic.");
+    } finally {
+      setTaxonomyBusy(null);
+    }
+  };
+
+  const addSubcategory = async () => {
+    const value = subcategoryDraft.trim().replace(/\s+/g, " ");
+    if (value.length < 3 || value.length > 50) {
+      setError("Subcategories must be 3 to 50 characters long.");
+      return;
+    }
+    setTaxonomyBusy("subcategory");
+    setError("");
+    try {
+      const addedSubcategory = await addCommunitySubcategory(topic, value);
+      setTaxonomy(await fetchCommunityTaxonomy());
+      setSubcategory(addedSubcategory);
+      setSubcategoryDraft("");
+      setShowSubcategoryInput(false);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not add that subcategory.");
+    } finally {
+      setTaxonomyBusy(null);
+    }
   };
 
   const submit = async () => {
@@ -258,7 +332,7 @@ export default function NewCommunityPage() {
                   This helps people discover your community.
                 </p>
                 <div className="mt-4 grid grid-cols-2 gap-2">
-                  {COMMUNITY_TOPICS.map((item) => (
+                  {taxonomy.topics.map((item) => (
                     <button
                       key={item}
                       type="button"
@@ -283,14 +357,54 @@ export default function NewCommunityPage() {
                       {topic === item ? <Check className="h-4 w-4 text-lime-deep" /> : null}
                     </button>
                   ))}
+                  {!showTopicInput ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowTopicInput(true)}
+                      className="flex min-h-[58px] cursor-pointer items-center justify-center rounded-xl border border-dashed border-line px-3 text-[10px] font-semibold text-lime-deep transition hover:border-lime-deep"
+                    >
+                      + Add a topic
+                    </button>
+                  ) : null}
                 </div>
+                {showTopicInput ? (
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      autoFocus
+                      value={topicDraft}
+                      onChange={(event) => setTopicDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") void addTopic();
+                        if (event.key === "Escape") setShowTopicInput(false);
+                      }}
+                      maxLength={50}
+                      placeholder="e.g. Science"
+                      aria-label="New topic"
+                      className="h-10 min-w-0 flex-1 rounded-xl border border-line bg-paper px-3 text-[10px] text-ink outline-none placeholder:text-faint focus:border-lime-deep"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void addTopic()}
+                      disabled={taxonomyBusy !== null}
+                      className="rounded-xl bg-lime-deep px-3 text-[10px] font-bold text-dark disabled:opacity-50"
+                    >
+                      {taxonomyBusy === "topic" ? "Adding…" : "Add"}
+                    </button>
+                  </div>
+                ) : null}
+                <p className="mt-1.5 text-[9px] text-muted">
+                  New topics are shared so other communities can use them too.
+                </p>
+                {taxonomyError ? (
+                  <p role="alert" className="mt-2 text-[9px] text-danger">{taxonomyError}</p>
+                ) : null}
                 <div className="mt-5">
                   <h3 className="text-[11px] font-bold text-ink">Choose a subcategory</h3>
                   <p className="mt-1 text-[9px] text-muted">
                     This helps members find the right communities.
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {COMMUNITY_SUBCATEGORIES[topic].map((item) => (
+                    {subcategories.map((item) => (
                       <button
                         key={item}
                         type="button"
@@ -305,7 +419,39 @@ export default function NewCommunityPage() {
                         {item}
                       </button>
                     ))}
+                    <button
+                      type="button"
+                      onClick={() => setShowSubcategoryInput((current) => !current)}
+                      className="cursor-pointer rounded-full border border-dashed border-line px-3 py-2 text-[9px] font-semibold text-lime-deep transition hover:border-lime-deep"
+                    >
+                      + Add a subcategory
+                    </button>
                   </div>
+                  {showSubcategoryInput ? (
+                    <div className="mt-2 flex gap-2">
+                      <input
+                        autoFocus
+                        value={subcategoryDraft}
+                        onChange={(event) => setSubcategoryDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") void addSubcategory();
+                          if (event.key === "Escape") setShowSubcategoryInput(false);
+                        }}
+                        maxLength={50}
+                        placeholder="e.g. Astronomy"
+                        aria-label="New subcategory"
+                        className="h-10 min-w-0 flex-1 rounded-xl border border-line bg-paper px-3 text-[10px] text-ink outline-none placeholder:text-faint focus:border-lime-deep"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void addSubcategory()}
+                        disabled={taxonomyBusy !== null}
+                        className="rounded-xl bg-lime-deep px-3 text-[10px] font-bold text-dark disabled:opacity-50"
+                      >
+                        {taxonomyBusy === "subcategory" ? "Adding…" : "Add"}
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ) : null}

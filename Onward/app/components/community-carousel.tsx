@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { CommunityCard } from "@/components/community-card";
@@ -22,6 +23,26 @@ export function CommunityCarousel({
   onJoin: (community: Community) => void;
   previewOnly: boolean;
 }) {
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [overflows, setOverflows] = useState(false);
+
+  useEffect(() => {
+    const row = rowRef.current;
+    if (!row) return;
+
+    const measure = () => setOverflows(row.scrollWidth > row.clientWidth + 1);
+    measure();
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", measure);
+      return () => window.removeEventListener("resize", measure);
+    }
+
+    const observer = new ResizeObserver(measure);
+    observer.observe(row);
+    Array.from(row.children).forEach((child) => observer.observe(child));
+    return () => observer.disconnect();
+  }, [communities.length]);
+
   return (
     <section aria-label={`${title} communities`}>
       <div className="mb-2 flex items-center justify-between gap-3">
@@ -32,7 +53,7 @@ export function CommunityCarousel({
           <span className="text-[9px] text-muted">
             {communities.length} {communities.length === 1 ? "community" : "communities"}
           </span>
-          {moreHref ? (
+          {moreHref && overflows ? (
             <Link
               href={moreHref}
               aria-label={`View all ${title} communities`}
@@ -44,6 +65,7 @@ export function CommunityCarousel({
         </div>
       </div>
       <div
+        ref={rowRef}
         id={id}
         aria-labelledby={`${id}-title`}
         className="wheel -mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1"

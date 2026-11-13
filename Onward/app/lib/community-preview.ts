@@ -5,14 +5,14 @@ import {
 } from "@/lib/db";
 
 type CommunityPreviewGroup = {
-  [Topic in CommunityTopic]: {
+  [Topic in keyof typeof COMMUNITY_SUBCATEGORIES]: {
     topic: Topic;
     communities: Array<{
       name: string;
       subcategory: (typeof COMMUNITY_SUBCATEGORIES)[Topic][number];
     }>;
   };
-}[CommunityTopic];
+}[keyof typeof COMMUNITY_SUBCATEGORIES];
 
 const COMMUNITY_PREVIEW_GROUPS = [
   {

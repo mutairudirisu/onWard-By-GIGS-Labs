@@ -10,14 +10,16 @@ import { CommunityCarousel } from "@/components/community-carousel";
 import { PhoneShell } from "@/components/phone-shell";
 import { toastError, toastSuccess } from "@/components/toast";
 import {
-  COMMUNITY_SUBCATEGORIES,
+  defaultCommunityTaxonomy,
   communitySubcategoryFromSlug,
   communitySubcategorySlug,
   communityTopicFromSlug,
   communityTopicSlug,
+  fetchCommunityTaxonomy,
   fetchCommunities,
   joinCommunity,
   type Community,
+  type CommunityTaxonomy,
 } from "@/lib/db";
 import { createPreviewCommunities, isCommunityPreviewEnabled } from "@/lib/community-preview";
 
@@ -30,16 +32,21 @@ export function CommunityDirectoryPage({
 }) {
   const router = useRouter();
   const { user } = useAuth();
-  const topic = communityTopicFromSlug(topicSlug);
-  const subcategory =
-    topic && subcategorySlug ? communitySubcategoryFromSlug(topic, subcategorySlug) : null;
   const [communities, setCommunities] = useState<Community[]>([]);
+  const [taxonomy, setTaxonomy] = useState<CommunityTaxonomy>(defaultCommunityTaxonomy);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [query, setQuery] = useState("");
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState<boolean | null>(null);
+
+  const topic = communityTopicFromSlug(topicSlug, taxonomy.topics);
+  const subcategories = topic ? taxonomy.subcategories[topic] ?? [] : [];
+  const subcategory =
+    topic && subcategorySlug
+      ? communitySubcategoryFromSlug(topic, subcategorySlug, subcategories)
+      : null;
 
   useEffect(() => {
     setPreviewMode(
@@ -48,19 +55,22 @@ export function CommunityDirectoryPage({
   }, []);
 
   const load = useCallback(async () => {
-    if (previewMode === null || !topic) return;
+    if (previewMode === null) return;
     setLoading(true);
     setError("");
     try {
-      setCommunities(
-        previewMode ? createPreviewCommunities() : await fetchCommunities(),
-      );
+      const [nextCommunities, nextTaxonomy] = await Promise.all([
+        previewMode ? Promise.resolve(createPreviewCommunities()) : fetchCommunities(),
+        previewMode ? Promise.resolve(defaultCommunityTaxonomy()) : fetchCommunityTaxonomy(),
+      ]);
+      setCommunities(nextCommunities);
+      setTaxonomy(nextTaxonomy);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not load communities.");
     } finally {
       setLoading(false);
     }
-  }, [previewMode, topic]);
+  }, [previewMode]);
 
   useEffect(() => {
     void load();
@@ -84,13 +94,13 @@ export function CommunityDirectoryPage({
 
   const subcategoryGroups = useMemo(() => {
     if (!topic) return [];
-    return COMMUNITY_SUBCATEGORIES[topic]
+    return subcategories
       .map((item) => ({
         subcategory: item,
         communities: matching.filter((community) => community.subcategory === item),
       }))
       .filter((group) => group.communities.length > 0);
-  }, [matching, topic]);
+  }, [matching, subcategories]);
 
   const join = async (community: Community) => {
     if (!user) {
@@ -118,6 +128,35 @@ export function CommunityDirectoryPage({
       setJoiningId(null);
     }
   };
+
+  if (loading && (!topic || (subcategorySlug && !subcategory))) {
+    return (
+      <PhoneShell wide>
+        <div className="mx-auto w-full max-w-[1080px] space-y-4">
+          {[0, 1, 2].map((item) => (
+            <div key={item} className="card h-28 animate-pulse bg-paper" />
+          ))}
+        </div>
+      </PhoneShell>
+    );
+  }
+
+  if (error && (!topic || (subcategorySlug && !subcategory))) {
+    return (
+      <PhoneShell wide>
+        <div className="card mx-auto max-w-[540px] px-5 py-9 text-center">
+          <p role="alert" className="text-[11px] text-danger">{error}</p>
+          <button
+            type="button"
+            onClick={() => setAttempt((value) => value + 1)}
+            className="mt-3 cursor-pointer text-[10px] font-bold text-lime-deep hover:underline"
+          >
+            Try again
+          </button>
+        </div>
+      </PhoneShell>
+    );
+  }
 
   if (!topic || (subcategorySlug && !subcategory)) {
     return (
@@ -185,7 +224,7 @@ export function CommunityDirectoryPage({
           </label>
         ) : (
           <nav className="mb-5 flex gap-2 overflow-x-auto pb-1 wheel" aria-label={`${topic} subcategories`}>
-            {COMMUNITY_SUBCATEGORIES[topic].map((item) => {
+            {subcategories.map((item) => {
               const count = communities.filter(
                 (community) => community.topic === topic && community.subcategory === item,
               ).length;

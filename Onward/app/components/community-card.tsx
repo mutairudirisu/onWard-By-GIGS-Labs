@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { communityMediaUrl, type Community, type CommunityTopic } from "@/lib/db";
 
-const COMMUNITY_TOPIC_ICONS: Record<CommunityTopic, LucideIcon> = {
+const COMMUNITY_TOPIC_ICONS: Partial<Record<CommunityTopic, LucideIcon>> = {
   Technology: Cpu,
   Business: BriefcaseBusiness,
   "Education & Career": GraduationCap,
@@ -37,7 +37,7 @@ export function CommunityTopicIcon({
   topic: CommunityTopic;
   className?: string;
 }) {
-  const Icon = COMMUNITY_TOPIC_ICONS[topic];
+  const Icon = COMMUNITY_TOPIC_ICONS[topic] ?? CircleHelp;
   return <Icon aria-hidden="true" className={className} />;
 }
 

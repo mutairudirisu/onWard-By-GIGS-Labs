@@ -10,11 +10,13 @@ import { CommunityCarousel } from "@/components/community-carousel";
 import { PhoneShell } from "@/components/phone-shell";
 import { toastError, toastSuccess } from "@/components/toast";
 import {
-  COMMUNITY_TOPICS,
   communityTopicSlug,
+  defaultCommunityTaxonomy,
+  fetchCommunityTaxonomy,
   fetchCommunities,
   joinCommunity,
   type Community,
+  type CommunityTaxonomy,
   type CommunityTopic,
 } from "@/lib/db";
 import { createPreviewCommunities, isCommunityPreviewEnabled } from "@/lib/community-preview";
@@ -23,6 +25,7 @@ export default function CommunitiesPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [communities, setCommunities] = useState<Community[]>([]);
+  const [taxonomy, setTaxonomy] = useState<CommunityTaxonomy>(defaultCommunityTaxonomy);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
@@ -45,7 +48,12 @@ export default function CommunitiesPage() {
     setLoading(true);
     setError("");
     try {
-      setCommunities(previewMode ? createPreviewCommunities() : await fetchCommunities());
+      const [nextCommunities, nextTaxonomy] = await Promise.all([
+        previewMode ? Promise.resolve(createPreviewCommunities()) : fetchCommunities(),
+        previewMode ? Promise.resolve(defaultCommunityTaxonomy()) : fetchCommunityTaxonomy(),
+      ]);
+      setCommunities(nextCommunities);
+      setTaxonomy(nextTaxonomy);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not load communities.");
     } finally {
@@ -63,24 +71,26 @@ export default function CommunitiesPage() {
       const topicMatches = topic === "All" || community.topic === topic;
       const textMatches =
         !text ||
-        `${community.name} ${community.description} ${community.topic}`.toLowerCase().includes(text);
+        `${community.name} ${community.description} ${community.topic} ${community.subcategory}`
+          .toLowerCase()
+          .includes(text);
       return topicMatches && textMatches;
     });
   }, [communities, query, topic]);
 
   const groupedCommunities = useMemo(() => {
-    const topics = topic === "All" ? COMMUNITY_TOPICS : [topic];
+    const topics = topic === "All" ? taxonomy.topics : [topic];
     return topics
       .map((groupTopic) => ({
         topic: groupTopic,
         communities: matching.filter((community) => community.topic === groupTopic),
       }))
       .filter((group) => group.communities.length > 0);
-  }, [matching, topic]);
+  }, [matching, taxonomy.topics, topic]);
 
   const recommendedCommunities = useMemo(() => {
     if (topic !== "All" || query.trim()) return [];
-    return COMMUNITY_TOPICS.flatMap((communityTopic) => {
+    return taxonomy.topics.flatMap((communityTopic) => {
       const community = matching
         .filter((item) => item.topic === communityTopic && !item.isMember && !item.isOwner)
         .sort((left, right) => right.memberCount - left.memberCount)[0];
@@ -88,7 +98,7 @@ export default function CommunitiesPage() {
     })
       .sort((left, right) => right.memberCount - left.memberCount)
       .slice(0, 5);
-  }, [matching, query, topic]);
+  }, [matching, query, taxonomy.topics, topic]);
 
   const join = async (community: Community) => {
     if (!user) {
@@ -180,7 +190,7 @@ export default function CommunitiesPage() {
               className="grid w-max grid-flow-row grid-cols-[repeat(6,max-content)] grid-rows-2 gap-2"
               aria-label="Community topics"
             >
-              {(["All", ...COMMUNITY_TOPICS] as const).map((item) => (
+              {(["All", ...taxonomy.topics] as const).map((item) => (
                 <button
                   key={item}
                   type="button"
