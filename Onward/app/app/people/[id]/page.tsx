@@ -382,7 +382,7 @@ export default function PersonPage() {
 
   if (card === undefined) {
     return (
-      <PhoneShell tab="feed">
+      <PhoneShell>
         <div className="animate-pulse space-y-3">
           <div className="h-4 w-24 rounded bg-cream" />
           <div className="h-[52px] w-[52px] rounded-full bg-cream" />
@@ -396,7 +396,7 @@ export default function PersonPage() {
 
   if (card === null) {
     return (
-      <PhoneShell tab="feed">
+      <PhoneShell>
         <div className="card px-4 py-8 text-center">
           <p className="text-[12px] font-semibold text-ink">This profile is out of reach.</p>
           <p className="tiny mt-1">The person may have left, or the link is not right.</p>
@@ -427,7 +427,7 @@ export default function PersonPage() {
   const earnedAchievements = achievements.filter((achievement) => achievement.earned).length;
 
   return (
-    <PhoneShell tab="feed">
+    <PhoneShell>
       <div className="relative -mx-5 -mt-5 overflow-hidden bg-lime-soft px-5 pb-3 pt-5 md:mx-0 md:mt-0 md:rounded-3xl">
         <SproutField />
         <div className="relative mb-3 flex items-center gap-2">
