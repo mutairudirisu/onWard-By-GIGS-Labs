@@ -8,8 +8,10 @@ and on the server for delivery.
 
 ## Setup
 
-1. Apply `supabase/migrations/20261111130000_web_push.sql` to the production
-   Supabase project.
+1. Apply `supabase/migrations/20261111130000_web_push.sql` and the API rate-limit
+   migrations `20261113150000_api_rate_limits.sql` and
+   `20261113153000_api_ip_rate_limits.sql` to the production Supabase project
+   before deploying the corresponding API code.
 2. Generate a VAPID key pair in `app`:
 
    ```sh
@@ -56,3 +58,6 @@ and on the server for delivery.
   are retried up to five times; expired subscriptions are removed.
 - Never expose `VAPID_PRIVATE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, or `CRON_SECRET`
   in client variables or source control.
+- IP-based API limits trust Vercel's `x-vercel-forwarded-for` header, which
+  Vercel overwrites with the client IP. A different hosting provider needs an
+  equivalent trusted-IP integration before these API routes are deployed.

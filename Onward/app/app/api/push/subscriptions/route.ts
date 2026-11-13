@@ -1,39 +1,49 @@
 import { authenticatePushRequest, isResponse } from "@/lib/push-server";
+import { z } from "zod";
+import {
+  enforceIpRateLimit,
+  enforceUserRateLimit,
+  readJsonWithinLimit,
+} from "@/lib/api-security";
 
 export const runtime = "nodejs";
 
-type PushSubscriptionPayload = {
-  endpoint?: unknown;
-  keys?: { p256dh?: unknown; auth?: unknown };
-};
-
-function validSubscription(value: unknown): value is PushSubscriptionPayload {
-  if (!value || typeof value !== "object") return false;
-  const subscription = value as PushSubscriptionPayload;
-  return (
-    typeof subscription.endpoint === "string" &&
-    subscription.endpoint.startsWith("https://") &&
-    subscription.endpoint.length <= 2048 &&
-    typeof subscription.keys?.p256dh === "string" &&
-    subscription.keys.p256dh.length <= 200 &&
-    typeof subscription.keys.auth === "string" &&
-    subscription.keys.auth.length <= 100
-  );
-}
+const MAX_BODY_BYTES = 16_384;
+const httpsEndpointSchema = z
+  .string()
+  .url()
+  .max(2048)
+  .refine((value) => value.startsWith("https://"));
+const subscriptionSchema = z
+  .object({
+    endpoint: httpsEndpointSchema,
+    keys: z
+      .object({
+        p256dh: z.string().min(1).max(200),
+        auth: z.string().min(1).max(100),
+      })
+      .passthrough(),
+  })
+  .passthrough();
+const deletePayloadSchema = z.object({ endpoint: httpsEndpointSchema }).strict();
 
 export async function POST(request: Request) {
+  const ipLimitResponse = await enforceIpRateLimit(request, "push_subscriptions");
+  if (ipLimitResponse) return ipLimitResponse;
+
   const auth = await authenticatePushRequest(request);
   if (isResponse(auth)) return auth;
 
-  let subscription: unknown;
-  try {
-    subscription = await request.json();
-  } catch {
-    return Response.json({ error: "Send a valid push subscription." }, { status: 400 });
-  }
-  if (!validSubscription(subscription)) {
+  const rateLimitResponse = await enforceUserRateLimit(auth.accessToken, "push_subscriptions");
+  if (rateLimitResponse) return rateLimitResponse;
+
+  const body = await readJsonWithinLimit(request, MAX_BODY_BYTES, "Send a valid push subscription.");
+  if (!body.ok) return body.response;
+  const parsedSubscription = subscriptionSchema.safeParse(body.value);
+  if (!parsedSubscription.success) {
     return Response.json({ error: "The push subscription is invalid." }, { status: 400 });
   }
+  const subscription = parsedSubscription.data;
 
   const { error } = await auth.admin.from("push_subscriptions").upsert(
     {
@@ -52,19 +62,23 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const ipLimitResponse = await enforceIpRateLimit(request, "push_subscriptions");
+  if (ipLimitResponse) return ipLimitResponse;
+
   const auth = await authenticatePushRequest(request);
   if (isResponse(auth)) return auth;
 
-  let endpoint: unknown;
-  try {
-    endpoint = (await request.json()).endpoint;
-  } catch {
-    return Response.json({ error: "Send a valid push endpoint." }, { status: 400 });
-  }
-  if (typeof endpoint !== "string" || !endpoint.startsWith("https://") || endpoint.length > 2048) {
+  const rateLimitResponse = await enforceUserRateLimit(auth.accessToken, "push_subscriptions");
+  if (rateLimitResponse) return rateLimitResponse;
+
+  const body = await readJsonWithinLimit(request, MAX_BODY_BYTES, "Send a valid push endpoint.");
+  if (!body.ok) return body.response;
+  const parsedPayload = deletePayloadSchema.safeParse(body.value);
+  if (!parsedPayload.success) {
     return Response.json({ error: "The push endpoint is invalid." }, { status: 400 });
   }
 
+  const { endpoint } = parsedPayload.data;
   const { error } = await auth.admin
     .from("push_subscriptions")
     .delete()

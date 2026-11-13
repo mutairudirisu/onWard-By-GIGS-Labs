@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { sendNotification, setVapidDetails } from "web-push";
+import { enforceIpRateLimit, logAuthenticationFailure } from "@/lib/api-security";
 import { serverPushConfig } from "@/lib/push-server";
 
 export const runtime = "nodejs";
@@ -27,7 +28,12 @@ function authorized(request: Request) {
 }
 
 export async function GET(request: Request) {
-  if (!authorized(request)) return Response.json({ error: "Unauthorized." }, { status: 401 });
+  const ipLimitResponse = await enforceIpRateLimit(request, "cron_push");
+  if (ipLimitResponse) return ipLimitResponse;
+  if (!authorized(request)) {
+    logAuthenticationFailure(request, "/api/cron/push", "invalid_bearer_token");
+    return Response.json({ error: "Unauthorized." }, { status: 401 });
+  }
 
   const config = serverPushConfig();
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;

@@ -35,6 +35,29 @@ export type AdminOverview = {
   recent: { name: string; title: string; when: string }[];
 };
 
+async function adminRequest(action: "check" | "users" | "overview" | "feedback"): Promise<unknown> {
+  const { data, error } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (error || !token) throw new Error("Sign in to continue.");
+
+  const response = await fetch(`/api/admin?action=${action}`, {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const result: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message =
+      typeof result === "object" &&
+      result !== null &&
+      "error" in result &&
+      typeof result.error === "string"
+        ? result.error
+        : "Could not load admin data.";
+    throw new Error(message);
+  }
+  return result;
+}
+
 type RawUser = {
   id: string;
   email: string | null;
@@ -118,21 +141,23 @@ function mapUser(row: RawUser): AdminUser {
 }
 
 export async function checkAdmin(): Promise<boolean> {
-  const { data, error } = await supabase.rpc("admin_me");
-  if (error) throw new Error(error.message);
-  return data === true;
+  const data = await adminRequest("check");
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "isAdmin" in data &&
+    data.isAdmin === true
+  );
 }
 
 export async function fetchAdminUsers(): Promise<AdminUser[]> {
-  const { data, error } = await supabase.rpc("admin_users");
-  if (error) throw new Error(error.message);
+  const data = await adminRequest("users");
   return ((data ?? []) as RawUser[]).map(mapUser);
 }
 
 export async function fetchAdminOverview(): Promise<AdminOverview> {
-  const { data, error } = await supabase.rpc("admin_overview");
-  if (error) throw new Error(error.message);
-  const raw = (data ?? {}) as Record<string, unknown>;
+  const data = await adminRequest("overview");
+  const raw = (typeof data === "object" && data !== null ? data : {}) as Record<string, unknown>;
   const num = (key: string) => Number(raw[key] ?? 0);
   return {
     totalUsers: num("total_users"),
@@ -197,8 +222,7 @@ function mapFeedback(row: RawFeedback): AdminFeedback {
 }
 
 export async function fetchAdminFeedback(): Promise<AdminFeedback[]> {
-  const { data, error } = await supabase.rpc("admin_feedback");
-  if (error) throw new Error(error.message);
+  const data = await adminRequest("feedback");
   return ((data ?? []) as RawFeedback[]).map(mapFeedback);
 }
 

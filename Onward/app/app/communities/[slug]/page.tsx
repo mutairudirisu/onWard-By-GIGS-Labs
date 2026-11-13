@@ -481,9 +481,11 @@ export default function CommunityHomePage() {
                 onClick={toggleMembership}
                 disabled={joining || community.isOwner}
                 className={`inline-flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-4 text-[11px] font-bold transition disabled:cursor-default disabled:opacity-70 ${
-                  community.isMember
-                    ? "bg-cream text-ink hover:bg-lime-pale"
-                    : "bg-lime-deep text-dark hover:bg-dark hover:text-on-panel"
+                  community.isOwner
+                    ? "bg-lime-pale text-lime-deep"
+                    : community.isMember
+                      ? "bg-cream text-ink hover:bg-lime-pale"
+                      : "bg-lime-deep text-dark hover:bg-dark hover:text-on-panel"
                 }`}
               >
                 {joining ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : community.isMember ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
@@ -559,7 +561,7 @@ export default function CommunityHomePage() {
                       type="button"
                       onClick={() => setEditing(true)}
                       aria-label="Edit community description"
-                      className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted hover:bg-paper hover:text-ink"
+                      className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-paper text-muted transition hover:bg-lime-pale hover:text-ink"
                     >
                       <Pencil className="h-4 w-4" />
                     </button>

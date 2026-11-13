@@ -1,17 +1,34 @@
 import { createClient } from "@supabase/supabase-js";
+import { z } from "zod";
+import {
+  enforceIpRateLimit,
+  enforceUserRateLimit,
+  logAuthenticationFailure,
+  readJsonWithinLimit,
+} from "@/lib/api-security";
 
 export const runtime = "nodejs";
 
 const MAX_TEXT_LENGTH = 2000;
+const MAX_BODY_BYTES = 16_384;
+const proofreadPayloadSchema = z
+  .object({ text: z.string().min(1).max(MAX_TEXT_LENGTH) })
+  .strict();
 
 function jsonError(message: string, status: number) {
   return Response.json({ error: message }, { status });
 }
 
 export async function POST(request: Request) {
+  const ipLimitResponse = await enforceIpRateLimit(request, "proofread");
+  if (ipLimitResponse) return ipLimitResponse;
+
   const authorization = request.headers.get("authorization");
   const token = authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
-  if (!token) return jsonError("Sign in to use Proofread.", 401);
+  if (!token) {
+    logAuthenticationFailure(request, "/api/proofread", "missing_bearer_token");
+    return jsonError("Sign in to use Proofread.", 401);
+  }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -23,24 +40,33 @@ export async function POST(request: Request) {
     auth: { autoRefreshToken: false, persistSession: false },
   });
   const { data: authData, error: authError } = await authClient.auth.getUser(token);
-  if (authError || !authData.user) return jsonError("Your session has expired. Sign in again.", 401);
+  if (authError || !authData.user) {
+    logAuthenticationFailure(request, "/api/proofread", "invalid_bearer_token");
+    return jsonError("Your session has expired. Sign in again.", 401);
+  }
 
-  let payload: unknown;
-  try {
-    payload = await request.json();
-  } catch {
-    return jsonError("Send valid text to proofread.", 400);
-  }
-  if (!payload || typeof payload !== "object" || !("text" in payload)) {
-    return jsonError("Send valid text to proofread.", 400);
-  }
-  const text = (payload as { text?: unknown }).text;
-  if (typeof text !== "string" || !text.trim()) {
+  const rateLimitResponse = await enforceUserRateLimit(token, "proofread");
+  if (rateLimitResponse) return rateLimitResponse;
+
+  const payload = await readJsonWithinLimit(request, MAX_BODY_BYTES, "Send valid text to proofread.");
+  if (!payload.ok) return payload.response;
+  const submittedText =
+    typeof payload.value === "object" &&
+    payload.value !== null &&
+    "text" in payload.value &&
+    typeof payload.value.text === "string"
+      ? payload.value.text
+      : undefined;
+  if (submittedText === undefined) return jsonError("Send valid text to proofread.", 400);
+  if (!submittedText.trim()) {
     return jsonError("Enter some text before proofreading.", 400);
   }
-  if (text.length > MAX_TEXT_LENGTH) {
+  if (submittedText.length > MAX_TEXT_LENGTH) {
     return jsonError(`Proofread supports up to ${MAX_TEXT_LENGTH} characters at a time.`, 400);
   }
+  const parsedPayload = proofreadPayloadSchema.safeParse(payload.value);
+  if (!parsedPayload.success) return jsonError("Send valid text to proofread.", 400);
+  const text = parsedPayload.data.text;
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return jsonError("Proofread is not configured. Add OPENAI_API_KEY on the server.", 503);

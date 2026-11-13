@@ -1,5 +1,5 @@
-const CACHE = "onward-shell-v1";
-const SHELL = ["/", "/today", "/manifest.webmanifest", "/icons/icon.svg"];
+const CACHE = "onward-shell-v2";
+const SHELL = ["/offline.html", "/manifest.webmanifest", "/icons/icon.svg"];
 
 self.addEventListener("install", (event) => {
   // No skipWaiting here: a new bundle stays in the wings until the page asks
@@ -36,12 +36,16 @@ self.addEventListener("fetch", (event) => {
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put(request, copy));
-          return response;
+        .catch(async () => {
+          const offlinePage = await caches.match("/offline.html");
+          return (
+            offlinePage ||
+            new Response("You're offline. Reconnect to continue using onWard.", {
+              status: 503,
+              headers: { "Content-Type": "text/plain; charset=utf-8" },
+            })
+          );
         })
-        .catch(() => caches.match(request).then((hit) => hit || caches.match("/today")))
     );
     return;
   }

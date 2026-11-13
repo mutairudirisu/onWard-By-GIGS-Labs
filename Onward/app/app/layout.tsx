@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import "./globals.css";
 import { AuthGate, AuthProvider } from "@/components/auth";
 import { ChecklistReminderScheduler } from "@/components/checklist-widget";
@@ -39,9 +40,10 @@ export const viewport: Viewport = {
   themeColor: "#F6F6F0",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  await headers();
   return (
     <html lang="en">
       <body>

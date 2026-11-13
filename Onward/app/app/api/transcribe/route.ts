@@ -1,9 +1,16 @@
 import { createClient } from "@supabase/supabase-js";
+import { z } from "zod";
+import {
+  enforceIpRateLimit,
+  enforceUserRateLimit,
+  logAuthenticationFailure,
+  readBodyWithinLimit,
+} from "@/lib/api-security";
 
 export const runtime = "nodejs";
 
-// Vercel serverless functions cap inbound request bodies at roughly 4.5 MB.
 const MAX_AUDIO_BYTES = 4_000_000;
+const MAX_MULTIPART_BYTES = MAX_AUDIO_BYTES + 100_000;
 const AUDIO_TYPES = new Set([
   "audio/webm",
   "audio/mp4",
@@ -12,14 +19,28 @@ const AUDIO_TYPES = new Set([
   "audio/wav",
   "audio/x-wav",
 ]);
+const audioSchema = z
+  .custom<File>((value): value is File => typeof File !== "undefined" && value instanceof File)
+  .refine((file) => file.size > 0, { message: "empty" })
+  .refine((file) => file.size <= MAX_AUDIO_BYTES, { message: "too_large" })
+  .refine((file) => AUDIO_TYPES.has(file.type.toLowerCase().split(";")[0]), {
+    message: "unsupported_type",
+  });
+const languageSchema = z.string().regex(/^[a-z]{2,3}(?:-[a-z]{2,4})?$/i).optional();
 
 function jsonError(message: string, status: number) {
   return Response.json({ error: message }, { status });
 }
 
 export async function POST(request: Request) {
+  const ipLimitResponse = await enforceIpRateLimit(request, "transcribe");
+  if (ipLimitResponse) return ipLimitResponse;
+
   const token = request.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1];
-  if (!token) return jsonError("Sign in to use voice dictation.", 401);
+  if (!token) {
+    logAuthenticationFailure(request, "/api/transcribe", "missing_bearer_token");
+    return jsonError("Sign in to use voice dictation.", 401);
+  }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -30,41 +51,55 @@ export async function POST(request: Request) {
     auth: { autoRefreshToken: false, persistSession: false },
   });
   const { data: authData, error: authError } = await auth.auth.getUser(token);
-  if (authError || !authData.user) return jsonError("Your session has expired. Sign in again.", 401);
+  if (authError || !authData.user) {
+    logAuthenticationFailure(request, "/api/transcribe", "invalid_bearer_token");
+    return jsonError("Your session has expired. Sign in again.", 401);
+  }
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return jsonError("Recorded dictation is not configured on this server.", 503);
 
-  const contentLength = Number(request.headers.get("content-length"));
-  if (Number.isFinite(contentLength) && contentLength > MAX_AUDIO_BYTES + 100_000) {
-    return jsonError("This recording is too large. Keep it under 4 MB and try again.", 413);
-  }
+  const rateLimitResponse = await enforceUserRateLimit(token, "transcribe");
+  if (rateLimitResponse) return rateLimitResponse;
 
-  let audio: FormDataEntryValue | null;
-  let language: FormDataEntryValue | null;
+  const body = await readBodyWithinLimit(request, MAX_MULTIPART_BYTES);
+  if (!body.ok) return body.response;
+
+  const formBody = new ArrayBuffer(body.bytes.byteLength);
+  new Uint8Array(formBody).set(body.bytes);
+  let form: FormData;
   try {
-    const form = await request.formData();
-    audio = form.get("audio");
-    language = form.get("language");
+    form = await new Request(request.url, {
+      method: "POST",
+      headers: request.headers,
+      body: formBody,
+    }).formData();
   } catch {
     return jsonError("Send a recorded audio clip to transcribe.", 400);
   }
 
-  if (!(audio instanceof File) || !audio.size) {
-    return jsonError("The audio recording is empty. Try recording again.", 400);
-  }
-  if (audio.size > MAX_AUDIO_BYTES) {
-    return jsonError("This recording is too large. Keep it under 4 MB and try again.", 413);
-  }
-  const contentType = audio.type.toLowerCase().split(";")[0];
-  if (!AUDIO_TYPES.has(contentType)) {
-    return jsonError("This browser's recording format is not supported. Try another browser.", 415);
+  const audioResult = audioSchema.safeParse(form.get("audio"));
+  if (!audioResult.success) {
+    switch (audioResult.error.issues[0]?.message) {
+      case "empty":
+        return jsonError("The audio recording is empty. Try recording again.", 400);
+      case "too_large":
+        return jsonError("This recording is too large. Keep it under 4 MB and try again.", 413);
+      case "unsupported_type":
+        return jsonError("This browser's recording format is not supported. Try another browser.", 415);
+      default:
+        return jsonError("Send a recorded audio clip to transcribe.", 400);
+    }
   }
 
-  const languageCode =
-    typeof language === "string" && /^[a-z]{2,3}(?:-[a-z]{2,4})?$/i.test(language)
-      ? language.slice(0, 2).toLowerCase()
-      : undefined;
+  const audio = audioResult.data;
+  const rawLanguage = form.get("language");
+  const languageResult = languageSchema.safeParse(
+    typeof rawLanguage === "string" && rawLanguage.length > 0 ? rawLanguage : undefined,
+  );
+  if (!languageResult.success) return jsonError("The language code is invalid.", 400);
+  const languageCode = languageResult.data?.slice(0, 2).toLowerCase();
+
   const payload = new FormData();
   payload.append("file", audio, audio.name);
   payload.append("model", "whisper-1");
