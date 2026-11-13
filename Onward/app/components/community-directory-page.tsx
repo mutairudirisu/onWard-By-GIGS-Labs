@@ -121,7 +121,7 @@ export function CommunityDirectoryPage({
 
   if (!topic || (subcategorySlug && !subcategory)) {
     return (
-      <PhoneShell wide paperBackground>
+      <PhoneShell wide>
         <div className="card mx-auto max-w-[540px] px-5 py-9 text-center">
           <UsersRound className="mx-auto h-7 w-7 text-lime-deep" />
           <h1 className="mt-2 text-[15px] font-bold text-ink">Category not found</h1>
@@ -143,7 +143,7 @@ export function CommunityDirectoryPage({
   const previewQuery = previewMode ? "?previewCommunities=1" : "";
 
   return (
-    <PhoneShell wide paperBackground>
+    <PhoneShell wide>
       <main className="mx-auto w-full max-w-[1080px]">
         <header className="mb-5">
           <div className="flex items-center gap-3">
