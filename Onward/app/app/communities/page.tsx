@@ -13,6 +13,7 @@ import {
   fetchCommunities,
   joinCommunity,
   type Community,
+  type CommunityTopic,
 } from "@/lib/db";
 
 export default function CommunitiesPage() {
@@ -23,7 +24,7 @@ export default function CommunitiesPage() {
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [query, setQuery] = useState("");
-  const [topic, setTopic] = useState<string>("All");
+  const [topic, setTopic] = useState<CommunityTopic | "All">("All");
   const [joiningId, setJoiningId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -52,6 +53,16 @@ export default function CommunitiesPage() {
       return topicMatches && textMatches;
     });
   }, [communities, query, topic]);
+
+  const groupedCommunities = useMemo(() => {
+    const topics = topic === "All" ? COMMUNITY_TOPICS : [topic];
+    return topics
+      .map((groupTopic) => ({
+        topic: groupTopic,
+        communities: matching.filter((community) => community.topic === groupTopic),
+      }))
+      .filter((group) => group.communities.length > 0);
+  }, [matching, topic]);
 
   const join = async (community: Community) => {
     if (!user) {
@@ -178,7 +189,7 @@ export default function CommunitiesPage() {
               <div className="mb-3 flex items-end justify-between gap-3">
                 <div>
                   <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-lime-deep">
-                    {topic === "All" ? "Made for shared progress" : topic}
+                    {topic === "All" ? "Browse by category" : topic}
                   </p>
                   <h2 className="mt-1 text-[16px] font-bold text-ink">
                     {query.trim()
@@ -190,14 +201,29 @@ export default function CommunitiesPage() {
                 </div>
                 <span className="text-[10px] text-muted">{matching.length} found</span>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {matching.map((community) => (
-                  <CommunityCard
-                    key={community.id}
-                    community={community}
-                    joining={joiningId === community.id}
-                    onJoin={join}
-                  />
+              <div className="space-y-5">
+                {groupedCommunities.map(({ topic: groupTopic, communities: group }) => (
+                  <section key={groupTopic} aria-label={`${groupTopic} communities`}>
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <h3 className="flex items-center gap-2 text-[12px] font-bold text-ink">
+                        <CommunityTopicIcon topic={groupTopic} className="h-4 w-4 text-lime-deep" />
+                        {groupTopic}
+                      </h3>
+                      <span className="text-[10px] text-muted">
+                        {group.length} {group.length === 1 ? "community" : "communities"}
+                      </span>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {group.map((community) => (
+                        <CommunityCard
+                          key={community.id}
+                          community={community}
+                          joining={joiningId === community.id}
+                          onJoin={join}
+                        />
+                      ))}
+                    </div>
+                  </section>
                 ))}
               </div>
             </>
