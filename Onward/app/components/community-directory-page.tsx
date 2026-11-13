@@ -227,23 +227,15 @@ export function CommunityDirectoryPage({
                 <h2 className="text-[12px] font-bold text-ink">Popular communities</h2>
                 <span className="text-[10px] text-muted">{matching.length} found</span>
               </div>
-              <ol className="space-y-2">
-                {matching.map((community, index) => (
-                  <li key={community.id} className="flex min-w-0 items-center gap-2">
-                    <span
-                      aria-label={`Rank ${index + 1}`}
-                      className="w-7 shrink-0 text-center text-[11px] font-bold tabular-nums text-muted"
-                    >
-                      {index + 1}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <CommunityCard
-                        community={community}
-                        joining={joiningId === community.id}
-                        onJoin={join}
-                        previewOnly={previewMode === true}
-                      />
-                    </div>
+              <ol className="list-none space-y-2 p-0">
+                {matching.map((community) => (
+                  <li key={community.id} className="min-w-0">
+                    <CommunityCard
+                      community={community}
+                      joining={joiningId === community.id}
+                      onJoin={join}
+                      previewOnly={previewMode === true}
+                    />
                   </li>
                 ))}
               </ol>
