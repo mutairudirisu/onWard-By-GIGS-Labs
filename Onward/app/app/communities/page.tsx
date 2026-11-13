@@ -118,7 +118,7 @@ export default function CommunitiesPage() {
   };
 
   return (
-    <PhoneShell wide paperBackground>
+    <PhoneShell wide>
       <div className="mx-auto grid w-full max-w-[1080px] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_270px]">
         <main className="min-w-0">
           <header className="mb-5">
