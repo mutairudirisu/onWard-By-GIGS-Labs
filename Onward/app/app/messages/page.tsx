@@ -193,10 +193,10 @@ export default function MessagesPage() {
       </section>
 
       <Link
-        href="/network"
+        href="/messages/new"
         aria-label="Start a new conversation"
         title="Start a new conversation"
-        className="fixed bottom-7 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-lime-deep text-dark shadow-lift transition hover:brightness-95 md:right-8"
+        className="fixed bottom-24 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-lime-deep text-dark shadow-lift transition hover:brightness-95 md:bottom-8 md:right-8"
       >
         <PencilLine className="h-6 w-6" />
       </Link>

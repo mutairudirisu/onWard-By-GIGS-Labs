@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/auth";
+import { Avatar } from "@/components/feed-post";
 import { PresenceAvatar } from "@/components/presence-avatar";
 import { PhoneShell } from "@/components/phone-shell";
 import { BackLink, TextInput } from "@/components/ui";
@@ -28,7 +29,7 @@ function mergeMessages(current: DirectMessage[], incoming: DirectMessage[]) {
 export default function DirectMessagePage() {
   const params = useParams<{ conversationId: string }>();
   const conversationId = params.conversationId;
-  const { user, ready } = useAuth();
+  const { user, profile, ready } = useAuth();
   const [thread, setThread] = useState<DirectMessageThread | null>(null);
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -125,7 +126,7 @@ export default function DirectMessagePage() {
 
   return (
     <PhoneShell>
-      <div className="flex min-h-[calc(100dvh-5.25rem)] flex-col md:min-h-[calc(100dvh-5rem)] lg:min-h-[calc(100dvh-5.5rem)] xl:min-h-[calc(100dvh-6.5rem)]">
+      <div className="flex h-[calc(100dvh-5.25rem)] flex-col md:h-[calc(100dvh-5rem)] lg:h-[calc(100dvh-5.5rem)] xl:h-[calc(100dvh-6.5rem)]">
         <div className="mb-4 flex shrink-0 items-center gap-2">
           <BackLink href="/messages" label="Back to messages" />
           {thread ? (
@@ -143,7 +144,12 @@ export default function DirectMessagePage() {
                   {thread.person.name || "onWard member"}
                 </span>
                 {thread.person.role ? (
-                  <span className="block truncate text-[9px] text-muted">{thread.person.role}</span>
+                  <span
+                    title={thread.person.role}
+                    className="block max-w-[60vw] truncate text-[10px] text-muted md:max-w-[400px]"
+                  >
+                    {thread.person.role}
+                  </span>
                 ) : null}
               </span>
             </Link>
@@ -153,49 +159,78 @@ export default function DirectMessagePage() {
         </div>
 
         <section className="-mx-5 flex min-h-0 flex-1 flex-col border-y border-line md:mx-0">
-          <div className="wheel min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
-          {loading ? (
-            <div className="flex items-center justify-center gap-2 py-10 text-[10px] text-muted">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading conversation…
-            </div>
-          ) : error ? (
-            <div className="py-8 text-center text-[10px] text-red-700">{error}</div>
-          ) : !thread ? (
-            <div className="py-8 text-center text-[10px] text-muted">
-              This conversation is unavailable.
-            </div>
-          ) : messages.length ? (
-            messages.map((message) => {
-              const mine = message.senderId === user.id;
-              return (
-                <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                  <article
-                    className={`max-w-[82%] rounded-2xl px-3 py-2 ${
-                      mine ? "rounded-br-sm bg-lime text-dark" : "rounded-bl-sm bg-cream text-ink"
-                    }`}
-                  >
-                    <p className="whitespace-pre-wrap break-words text-[11px] leading-[1.5]">
-                      {message.body}
-                    </p>
-                    <time className={`mt-1 block text-right text-[8px] ${mine ? "text-dark/65" : "text-muted"}`}>
-                      {new Date(message.createdAt).toLocaleTimeString(undefined, {
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}
-                    </time>
+          <div className="wheel min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4 pb-28 md:pb-4">
+            {loading ? (
+              <div className="flex items-center justify-center gap-2 py-10 text-[10px] text-muted">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading conversation…
+              </div>
+            ) : error ? (
+              <div className="py-8 text-center text-[10px] text-red-700">{error}</div>
+            ) : !thread ? (
+              <div className="py-8 text-center text-[10px] text-muted">
+                This conversation is unavailable.
+              </div>
+            ) : messages.length ? (
+              messages.map((message) => {
+                const mine = message.senderId === user.id;
+                return (
+                  <article key={message.id} className="flex items-start gap-3 py-2">
+                    <Link
+                      href={mine ? "/profile" : `/people/${thread.person.id}`}
+                      aria-label={`View ${mine ? "your" : thread.person.name + "'s"} profile`}
+                      className="shrink-0"
+                    >
+                      {mine ? (
+                        <Avatar
+                          initials={profile?.initials ?? ""}
+                          src={profile?.avatarUrl}
+                          size="md"
+                        />
+                      ) : (
+                        <Avatar
+                          initials={thread.person.initials}
+                          src={thread.person.avatarUrl}
+                          size="md"
+                        />
+                      )}
+                    </Link>
+                    <div className="min-w-0 flex-1">
+                      <header className="mb-1 flex min-w-0 items-center gap-2">
+                      <Link
+                        href={mine ? "/profile" : `/people/${thread.person.id}`}
+                        className="truncate text-[12px] font-semibold text-ink no-underline hover:no-underline"
+                      >
+                        {mine ? profile?.displayName || "You" : thread.person.name || "onWard member"}
+                      </Link>
+                      <span aria-hidden="true" className="text-[10px] text-muted">
+                        ·
+                      </span>
+                      <time className="shrink-0 text-[10px] text-muted">
+                        {new Date(message.createdAt).toLocaleTimeString(undefined, {
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}
+                      </time>
+                      </header>
+                      <p className="whitespace-pre-wrap break-words text-[13px] leading-[1.5] text-ink">
+                        {message.body}
+                      </p>
+                    </div>
                   </article>
-                </div>
-              );
-            })
-          ) : (
-            <div className="py-10 text-center">
-              <p className="text-[11px] font-semibold text-ink">Start the conversation</p>
-              <p className="mt-1 text-[9px] text-muted">Your messages are delivered in real time.</p>
-            </div>
-          )}
-          <div ref={bottomRef} />
+                );
+              })
+            ) : (
+              <div className="py-10 text-center">
+                <p className="text-[11px] font-semibold text-ink">Start the conversation</p>
+                <p className="mt-1 text-[9px] text-muted">Your messages are delivered in real time.</p>
+              </div>
+            )}
+            <div ref={bottomRef} />
           </div>
-          <form onSubmit={submit} className="flex shrink-0 items-center gap-2 border-t border-line px-4 py-3">
+          <form
+            onSubmit={submit}
+            className="fixed inset-x-0 bottom-7 z-50 mx-auto flex w-full max-w-[400px] shrink-0 items-center gap-2 border-t border-line bg-page px-4 py-3 shadow-lift md:relative md:inset-auto md:bottom-auto md:z-auto md:w-auto md:max-w-none md:bg-transparent md:shadow-none"
+          >
             <button
               type="button"
               disabled
