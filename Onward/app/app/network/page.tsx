@@ -89,6 +89,9 @@ function CatchupEventCard({ event }: { event: NetworkEvent }) {
 }
 
 function PostCatchupCard({ post }: { post: FeedPost }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLongPost = (post.body?.length ?? 0) > 240;
+
   return (
     <article className="border-b border-line px-6 py-4 last:border-b-0">
       <div className="flex items-center gap-2.5">
@@ -113,9 +116,23 @@ function PostCatchupCard({ post }: { post: FeedPost }) {
       </div>
       {post.title ? <h3 className="mt-3 text-[12px] font-bold text-ink">{post.title}</h3> : null}
       {post.body ? (
-        <p className="mt-1 whitespace-pre-wrap text-[10px] leading-[1.6] text-inksoft">
+        <p
+          className={`mt-1 whitespace-pre-wrap text-[10px] leading-[1.6] text-inksoft ${
+            isLongPost && !expanded ? "line-clamp-4" : ""
+          }`}
+        >
           {post.body}
         </p>
+      ) : null}
+      {isLongPost ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((current) => !current)}
+          aria-expanded={expanded}
+          className="mt-1 text-[9px] font-semibold text-lime-deep hover:underline"
+        >
+          {expanded ? "See less" : "See more"}
+        </button>
       ) : null}
       <Link
         href={`/feed/${post.id}`}
