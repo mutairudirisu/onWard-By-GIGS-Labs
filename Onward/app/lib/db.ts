@@ -836,6 +836,22 @@ export async function fetchFeed(limit = 40): Promise<FeedPost[]> {
   return (data as FeedRow[] | null ?? []).map(postFromRow);
 }
 
+export async function fetchConnectionPosts(
+  connectionIds: string[],
+  since: string,
+): Promise<FeedPost[]> {
+  if (!connectionIds.length) return [];
+  const { data, error } = await supabase
+    .from("feed_posts")
+    .select(FEED_COLUMNS)
+    .in("author_id", connectionIds)
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw new Error(error.message);
+  return (data as FeedRow[] | null ?? []).map(postFromRow);
+}
+
 /** What the Exchange tab badge needs: a number, not another page of rows. */
 export async function countNewExchangePosts(sinceIso: string): Promise<number> {
   const { count, error } = await supabase
@@ -1000,6 +1016,52 @@ export type ExchangePerson = {
   role: string | null;
 };
 
+export type NetworkRequest = {
+  requestId: string;
+  person: ExchangePerson;
+  direction: "incoming" | "outgoing";
+  requestedAt: string;
+};
+
+export type NetworkSuggestion = ExchangePerson & { reason: string };
+
+export type NetworkProfileDetails = {
+  school: string;
+  birthday: string;
+  shareBirthday: boolean;
+  currentEmployer: string;
+  employmentStartDate: string;
+  shareWorkEvents: boolean;
+};
+
+export type NetworkEvent = {
+  id: string;
+  userId: string;
+  type: "birthday" | "work_anniversary" | "job_change";
+  date: string;
+  fullName: string;
+  initials: string;
+  avatarUrl: string | null;
+  role: string | null;
+  organization: string;
+  years: number | null;
+};
+
+export type DirectMessage = {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  body: string;
+  createdAt: string;
+};
+
+export type DirectMessageThread = {
+  conversationId: string;
+  person: ExchangePerson;
+  lastMessage: string;
+  lastMessageAt: string;
+};
+
 export type SharedPost = {
   id: string;
   postId: string;
@@ -1050,6 +1112,314 @@ export async function searchPeople(query = ""): Promise<ExchangePerson[]> {
         role: row.role,
       }) as ExchangePerson,
   );
+}
+
+export async function fetchNetworkSuggestions(): Promise<NetworkSuggestion[]> {
+  const { data, error } = await supabase.rpc("network_suggestions");
+  fail(error);
+  return ((data as {
+    id: string;
+    display_name: string | null;
+    initials: string | null;
+    avatar_url: string | null;
+    role: string | null;
+    reason: string;
+  }[] | null) ?? []).map((row) => ({
+    id: row.id,
+    name: row.display_name ?? "",
+    initials: row.initials ?? "",
+    avatarUrl: row.avatar_url,
+    role: row.role,
+    reason: row.reason,
+  }));
+}
+
+export async function fetchNetworkRequests(): Promise<NetworkRequest[]> {
+  const { data, error } = await supabase.rpc("network_connection_requests");
+  fail(error);
+  return ((data as {
+    request_id: string;
+    person_id: string;
+    direction: "incoming" | "outgoing";
+    requested_at: string;
+    display_name: string | null;
+    initials: string | null;
+    avatar_url: string | null;
+    role: string | null;
+  }[] | null) ?? []).map((row) => ({
+    requestId: row.request_id,
+    direction: row.direction,
+    requestedAt: row.requested_at,
+    person: {
+      id: row.person_id,
+      name: row.display_name ?? "",
+      initials: row.initials ?? "",
+      avatarUrl: row.avatar_url,
+      role: row.role,
+    },
+  }));
+}
+
+export async function fetchNetworkConnections(): Promise<ExchangePerson[]> {
+  const { data, error } = await supabase.rpc("network_connections");
+  fail(error);
+  return ((data as {
+    id: string;
+    display_name: string | null;
+    initials: string | null;
+    avatar_url: string | null;
+    role: string | null;
+  }[] | null) ?? []).map((row) => ({
+    id: row.id,
+    name: row.display_name ?? "",
+    initials: row.initials ?? "",
+    avatarUrl: row.avatar_url,
+    role: row.role,
+  }));
+}
+
+export async function getConnectionStatus(
+  userId: string,
+): Promise<"connected" | "outgoing" | "incoming" | "none"> {
+  const { data, error } = await supabase.rpc("connection_status", { p_other_user: userId });
+  fail(error);
+  if (data === "connected" || data === "outgoing" || data === "incoming") return data;
+  return "none";
+}
+
+export async function sendConnectionRequest(userId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("send_connection_request", { p_recipient: userId });
+  fail(error);
+  return data === true;
+}
+
+export async function respondToConnectionRequest(
+  requestId: string,
+  accept: boolean,
+): Promise<void> {
+  const { error } = await supabase.rpc("respond_to_connection_request", {
+    p_request_id: requestId,
+    p_accept: accept,
+  });
+  fail(error);
+}
+
+const EMPTY_NETWORK_PROFILE: NetworkProfileDetails = {
+  school: "",
+  birthday: "",
+  shareBirthday: false,
+  currentEmployer: "",
+  employmentStartDate: "",
+  shareWorkEvents: false,
+};
+
+export async function fetchNetworkProfileDetails(
+  userId: string,
+): Promise<NetworkProfileDetails> {
+  const { data, error } = await supabase
+    .from("network_profile_details")
+    .select("school, birthday, share_birthday, current_employer, employment_start_date, share_work_events")
+    .eq("user_id", userId)
+    .maybeSingle();
+  fail(error);
+  if (!data) return { ...EMPTY_NETWORK_PROFILE };
+  const row = data as {
+    school: string | null;
+    birthday: string | null;
+    share_birthday: boolean | null;
+    current_employer: string | null;
+    employment_start_date: string | null;
+    share_work_events: boolean | null;
+  };
+  return {
+    school: row.school ?? "",
+    birthday: row.birthday ?? "",
+    shareBirthday: row.share_birthday ?? false,
+    currentEmployer: row.current_employer ?? "",
+    employmentStartDate: row.employment_start_date ?? "",
+    shareWorkEvents: row.share_work_events ?? false,
+  };
+}
+
+export async function saveNetworkProfileDetails(
+  details: NetworkProfileDetails,
+): Promise<void> {
+  const userId = await signedInUserId();
+  const { error } = await supabase.from("network_profile_details").upsert(
+    {
+      user_id: userId,
+      school: details.school.trim(),
+      birthday: details.birthday || null,
+      share_birthday: details.shareBirthday,
+      current_employer: details.currentEmployer.trim(),
+      employment_start_date: details.employmentStartDate || null,
+      share_work_events: details.shareWorkEvents,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  );
+  fail(error);
+}
+
+export async function fetchNetworkCatchupSince(): Promise<string> {
+  const { data, error } = await supabase.rpc("get_network_catchup_since");
+  fail(error);
+  if (typeof data !== "string") throw new Error("Couldn't determine your Catch up history.");
+  return data;
+}
+
+export async function fetchNetworkCatchupEvents(since: string): Promise<NetworkEvent[]> {
+  const { data, error } = await supabase.rpc("network_catchup_events", { p_since: since });
+  fail(error);
+  return ((data as {
+    event_id: string;
+    user_id: string;
+    event_type: NetworkEvent["type"];
+    event_date: string;
+    full_name: string | null;
+    initials: string | null;
+    avatar_url: string | null;
+    role: string | null;
+    organization: string | null;
+    years: number | null;
+  }[] | null) ?? []).map((row) => ({
+    id: row.event_id,
+    userId: row.user_id,
+    type: row.event_type,
+    date: row.event_date,
+    fullName: row.full_name ?? "",
+    initials: row.initials ?? "",
+    avatarUrl: row.avatar_url,
+    role: row.role,
+    organization: row.organization ?? "",
+    years: row.years,
+  }));
+}
+
+export async function markNetworkCatchupSeen(): Promise<void> {
+  const { error } = await supabase.rpc("mark_network_catchup_seen");
+  fail(error);
+}
+
+export async function fetchDirectMessageInbox(): Promise<DirectMessageThread[]> {
+  const { data, error } = await supabase.rpc("direct_message_inbox");
+  fail(error);
+  return ((data as {
+    conversation_id: string;
+    other_user_id: string;
+    display_name: string | null;
+    initials: string | null;
+    avatar_url: string | null;
+    role: string | null;
+    last_message: string | null;
+    last_message_at: string;
+  }[] | null) ?? []).map((row) => ({
+    conversationId: row.conversation_id,
+    person: {
+      id: row.other_user_id,
+      name: row.display_name ?? "",
+      initials: row.initials ?? "",
+      avatarUrl: row.avatar_url,
+      role: row.role,
+    },
+    lastMessage: row.last_message ?? "Start a conversation",
+    lastMessageAt: row.last_message_at,
+  }));
+}
+
+export async function openDirectConversation(userId: string): Promise<string> {
+  const { data, error } = await supabase.rpc("open_direct_conversation", {
+    p_other_user: userId,
+  });
+  fail(error);
+  if (typeof data !== "string") throw new Error("Couldn't open this conversation.");
+  return data;
+}
+
+export async function fetchDirectMessages(conversationId: string): Promise<DirectMessage[]> {
+  const { data, error } = await supabase
+    .from("direct_messages")
+    .select("id, conversation_id, sender_id, body, created_at")
+    .eq("conversation_id", conversationId)
+    .order("created_at", { ascending: true })
+    .limit(500);
+  fail(error);
+  return ((data as {
+    id: string;
+    conversation_id: string;
+    sender_id: string;
+    body: string;
+    created_at: string;
+  }[] | null) ?? []).map((row) => ({
+    id: row.id,
+    conversationId: row.conversation_id,
+    senderId: row.sender_id,
+    body: row.body,
+    createdAt: row.created_at,
+  }));
+}
+
+export async function sendDirectMessage(
+  conversationId: string,
+  body: string,
+): Promise<DirectMessage> {
+  const senderId = await signedInUserId();
+  const { data, error } = await supabase
+    .from("direct_messages")
+    .insert({ conversation_id: conversationId, sender_id: senderId, body: body.trim() })
+    .select("id, conversation_id, sender_id, body, created_at")
+    .single();
+  fail(error);
+  if (!data) throw new Error("The message was not saved.");
+  return {
+    id: data.id,
+    conversationId: data.conversation_id,
+    senderId: data.sender_id,
+    body: data.body,
+    createdAt: data.created_at,
+  };
+}
+
+export function subscribeToDirectMessages(
+  conversationId: string,
+  onMessage: (message: DirectMessage) => void,
+  onSubscribed?: () => void,
+  onError?: () => void,
+): () => void {
+  const channel = supabase
+    .channel(`direct-messages:${conversationId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "direct_messages",
+        filter: `conversation_id=eq.${conversationId}`,
+      },
+      (payload) => {
+        const row = payload.new as {
+          id: string;
+          conversation_id: string;
+          sender_id: string;
+          body: string;
+          created_at: string;
+        };
+        onMessage({
+          id: row.id,
+          conversationId: row.conversation_id,
+          senderId: row.sender_id,
+          body: row.body,
+          createdAt: row.created_at,
+        });
+      },
+    )
+    .subscribe((status) => {
+      if (status === "SUBSCRIBED") onSubscribed?.();
+      else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") onError?.();
+    });
+  return () => {
+    void supabase.removeChannel(channel);
+  };
 }
 
 /**

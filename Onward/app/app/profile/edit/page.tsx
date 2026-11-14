@@ -7,11 +7,16 @@ import { Loader2, Pencil } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { Avatar } from "@/components/feed-post";
 import { Modal } from "@/components/modal";
-import { BackLink, Button, Field, TextArea, TextInput } from "@/components/ui";
+import { BackLink, Button, Field, TextArea, TextInput, Toggle } from "@/components/ui";
 import { useAuth, useCurrentUser } from "@/components/auth";
 import { useStore } from "@/components/store";
 import { toastError, toastSuccess } from "@/components/toast";
-import { uploadAvatar } from "@/lib/db";
+import {
+  fetchNetworkProfileDetails,
+  saveNetworkProfileDetails,
+  uploadAvatar,
+  type NetworkProfileDetails,
+} from "@/lib/db";
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -24,6 +29,7 @@ export default function EditProfilePage() {
   const [email, setEmail] = useState(profile.email);
   const [location, setLocation] = useState(profile.location);
   const [bio, setBio] = useState(profile.bio);
+  const [networkDetails, setNetworkDetails] = useState<NetworkProfileDetails | null>(null);
   const [showSkillInput, setShowSkillInput] = useState(false);
   const [skillDraft, setSkillDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -60,6 +66,31 @@ export default function EditProfilePage() {
     if (!editedFields.current.has("location")) setLocation(authProfile.location);
     if (!editedFields.current.has("bio")) setBio(authProfile.bio);
   }, [authProfile, authUser]);
+
+  useEffect(() => {
+    if (!authUser) {
+      setNetworkDetails(null);
+      return;
+    }
+    setNetworkDetails(null);
+    let cancelled = false;
+    void fetchNetworkProfileDetails(authUser.id)
+      .then((details) => {
+        if (!cancelled) setNetworkDetails(details);
+      })
+      .catch((loadError: unknown) => {
+        if (!cancelled) {
+          toastError(
+            loadError instanceof Error
+              ? loadError.message
+              : "Couldn't load your network information.",
+          );
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authUser]);
 
   // The preview is a local blob: let it go once the saved photo takes over.
   useEffect(() => {
@@ -228,6 +259,19 @@ export default function EditProfilePage() {
       location: location.trim(),
       bio: bio.trim(),
     });
+    if (!result.error && networkDetails) {
+      try {
+        await saveNetworkProfileDetails(networkDetails);
+      } catch (saveError) {
+        setBusy(false);
+        setError(
+          saveError instanceof Error
+            ? saveError.message
+            : "Couldn't save your network information.",
+        );
+        return;
+      }
+    }
     let emailError = "";
     const nextEmail = email.trim();
     if (!result.error && nextEmail && nextEmail !== authUser?.email) {
@@ -373,6 +417,94 @@ export default function EditProfilePage() {
           />
         </Field>
 
+        <section className="space-y-4 rounded-2xl border border-line bg-paper p-4">
+          <div>
+            <h2 className="text-[13px] font-bold text-ink">Network information</h2>
+            <p className="mt-1 text-[10px] leading-[1.5] text-muted">
+              These details improve suggestions. School information stays off your public profile.
+            </p>
+          </div>
+          {networkDetails ? (
+            <>
+              <Field label="School or institution" uppercase>
+                <TextInput
+                  value={networkDetails.school}
+                  onChange={(event) =>
+                    setNetworkDetails({ ...networkDetails, school: event.target.value })
+                  }
+                  maxLength={160}
+                  placeholder="School, college or university"
+                />
+              </Field>
+              <Field label="Birthday" uppercase>
+                <TextInput
+                  type="date"
+                  value={networkDetails.birthday}
+                  max={new Date().toISOString().slice(0, 10)}
+                  onChange={(event) =>
+                    setNetworkDetails({ ...networkDetails, birthday: event.target.value })
+                  }
+                />
+              </Field>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-[11px] leading-[1.5] text-inksoft">
+                  Share birthday with connections
+                  <span className="mt-0.5 block text-[9px] text-muted">
+                    Your birth year is never shown.
+                  </span>
+                </span>
+                <Toggle
+                  checked={networkDetails.shareBirthday}
+                  onChange={(shareBirthday) =>
+                    setNetworkDetails({ ...networkDetails, shareBirthday })
+                  }
+                  label="Share birthday with connections"
+                />
+              </div>
+              <Field label="Current employer" uppercase>
+                <TextInput
+                  value={networkDetails.currentEmployer}
+                  onChange={(event) =>
+                    setNetworkDetails({ ...networkDetails, currentEmployer: event.target.value })
+                  }
+                  maxLength={160}
+                  placeholder="Company or organization"
+                />
+              </Field>
+              <Field label="Started at this employer" uppercase>
+                <TextInput
+                  type="date"
+                  value={networkDetails.employmentStartDate}
+                  max={new Date().toISOString().slice(0, 10)}
+                  onChange={(event) =>
+                    setNetworkDetails({
+                      ...networkDetails,
+                      employmentStartDate: event.target.value,
+                    })
+                  }
+                />
+              </Field>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-[11px] leading-[1.5] text-inksoft">
+                  Share work milestones
+                  <span className="mt-0.5 block text-[9px] text-muted">
+                    Job changes and anniversaries are visible only to connections.
+                  </span>
+                </span>
+                <Toggle
+                  checked={networkDetails.shareWorkEvents}
+                  onChange={(shareWorkEvents) =>
+                    setNetworkDetails({ ...networkDetails, shareWorkEvents })
+                  }
+                  label="Share work milestones with connections"
+                />
+              </div>
+            </>
+          ) : (
+            <p className="text-[10px] text-muted">Loading your network details…</p>
+          )}
+        </section>
+
         <div>
           <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
             My skills
@@ -437,7 +569,7 @@ export default function EditProfilePage() {
       ) : null}
 
       <div className="mt-6">
-        <Button onClick={save} disabled={busy}>
+        <Button onClick={save} disabled={busy || !networkDetails}>
           {busy ? "Saving…" : "Save changes"}
         </Button>
       </div>

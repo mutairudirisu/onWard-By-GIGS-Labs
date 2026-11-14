@@ -572,7 +572,7 @@ function Composer() {
             {selectedCommunity
               ? "Posting as you"
               : postAudience === "connections"
-              ? "Visible to mutual followers"
+              ? "Visible to your accepted connections"
               : "Public on the Exchange"}
           </p>
         </div>
@@ -1290,7 +1290,7 @@ function Composer() {
               <Users className="ml-1 h-5 w-5 shrink-0 text-ink" />
               <span className="flex-1">
                 <span className="block text-[13px] font-semibold text-ink">Connections only</span>
-                <span className="block text-[10px] text-muted">People who mutually follow you</span>
+                <span className="block text-[10px] text-muted">People you have accepted as connections</span>
               </span>
               {postAudience === "connections" ? <Check className="h-5 w-5 text-lime-deep" /> : null}
             </button>
@@ -1307,7 +1307,7 @@ function Composer() {
             {(
               [
                 ["anyone", "Anyone", "Anyone who can view the post"],
-                ["connections", "Connections only", "People who mutually follow you"],
+                ["connections", "Connections only", "People you have accepted as connections"],
                 ["off", "Off", "No one can comment"],
               ] as const
             ).map(([value, label, description]) => (

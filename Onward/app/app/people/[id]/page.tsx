@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import {
   Award,
   ChevronRight,
+  Loader2,
   MessageCircle,
   Plus,
   X,
@@ -27,7 +28,9 @@ import {
   fetchPersonPosts,
   fetchProfileCard,
   followPerson,
+  getConnectionStatus,
   likePost,
+  sendConnectionRequest,
   unlikePost,
   unfollowPerson,
   type ExchangePerson,
@@ -201,6 +204,10 @@ export default function PersonPage() {
   const [pendingDelete, setPendingDelete] = useState<FeedPost | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<
+    "connected" | "outgoing" | "incoming" | "none" | null
+  >(null);
+  const [connectionBusy, setConnectionBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -238,6 +245,31 @@ export default function PersonPage() {
       cancelled = true;
     };
   }, [id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) {
+      setConnectionStatus("none");
+      return;
+    }
+    if (user.id === id) {
+      setConnectionStatus(null);
+      return;
+    }
+    void getConnectionStatus(id)
+      .then((status) => {
+        if (!cancelled) setConnectionStatus(status);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setConnectionStatus("none");
+          toastError(error instanceof Error ? error.message : "Couldn't load connection status.");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -319,6 +351,27 @@ export default function PersonPage() {
       })
       .finally(() => setBusy(false));
   }, [busy, card, id, router, user]);
+
+  async function connectFromProfile() {
+    if (!user) {
+      router.push("/sign-in");
+      return;
+    }
+    if (connectionStatus === "incoming") {
+      router.push("/network/invitations");
+      return;
+    }
+    if (connectionStatus !== "none" || connectionBusy) return;
+    setConnectionBusy(true);
+    try {
+      const created = await sendConnectionRequest(id);
+      setConnectionStatus(created ? "outgoing" : await getConnectionStatus(id));
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : "Couldn't send the connection request.");
+    } finally {
+      setConnectionBusy(false);
+    }
+  }
 
   const toggleLike = useCallback(
     (postId: string) => {
@@ -518,19 +571,43 @@ export default function PersonPage() {
             Edit your profile
           </Link>
         ) : (
-          <button
-            type="button"
-            onClick={toggleFollow}
-            disabled={busy}
-            aria-pressed={card.followed}
-            className={`mt-3 flex w-full cursor-pointer items-center justify-center rounded-btn px-4 py-2.5 text-[12.5px] font-bold transition ${
-              card.followed
-                ? "border border-line bg-paper text-ink hover:bg-cream"
-                : "bg-lime text-dark hover:bg-lime-deep"
-            }`}
-          >
-            {card.followed ? "Following" : "Follow"}
-          </button>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <Link
+              href={`/messages/new?to=${encodeURIComponent(id)}`}
+              className="flex cursor-pointer items-center justify-center gap-1.5 rounded-btn border border-line bg-paper px-3 py-2.5 text-[11px] font-semibold text-ink transition hover:bg-cream"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              Message
+            </Link>
+            <button
+              type="button"
+              onClick={() => void connectFromProfile()}
+              disabled={connectionBusy || connectionStatus === null || connectionStatus === "connected" || connectionStatus === "outgoing"}
+              className="flex cursor-pointer items-center justify-center gap-1.5 rounded-btn border border-lime-deep px-3 py-2.5 text-[11px] font-bold text-lime-deep transition hover:bg-lime-pale disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {connectionBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              {connectionStatus === "connected"
+                ? "Connected"
+                : connectionStatus === "outgoing"
+                  ? "Requested"
+                  : connectionStatus === "incoming"
+                    ? "Respond"
+                    : "Connect"}
+            </button>
+            <button
+              type="button"
+              onClick={toggleFollow}
+              disabled={busy}
+              aria-pressed={card.followed}
+              className={`col-span-2 flex w-full cursor-pointer items-center justify-center rounded-btn px-4 py-2.5 text-[12.5px] font-bold transition ${
+                card.followed
+                  ? "border border-line bg-paper text-ink hover:bg-cream"
+                  : "bg-lime text-dark hover:bg-lime-deep"
+              }`}
+            >
+              {card.followed ? "Following" : "Follow"}
+            </button>
+          </div>
         )}
         </header>
       </div>

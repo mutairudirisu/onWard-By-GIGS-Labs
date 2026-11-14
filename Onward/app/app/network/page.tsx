@@ -1,388 +1,397 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth";
 import { Avatar } from "@/components/feed-post";
 import { PhoneShell } from "@/components/phone-shell";
 import { toastError } from "@/components/toast";
+import { TextInput } from "@/components/ui";
 import {
-  fetchFeed,
-  fetchFollowList,
-  followPerson,
+  fetchConnectionPosts,
+  fetchNetworkCatchupEvents,
+  fetchNetworkCatchupSince,
+  fetchNetworkConnections,
+  fetchNetworkRequests,
+  fetchNetworkSuggestions,
+  markNetworkCatchupSeen,
+  respondToConnectionRequest,
   searchPeople,
-  unfollowPerson,
+  sendConnectionRequest,
   type ExchangePerson,
+  type FeedPost,
+  type NetworkEvent,
+  type NetworkRequest,
+  type NetworkSuggestion,
 } from "@/lib/db";
 import {
   ArrowRight,
-  Flame,
+  Cake,
+  Check,
   Loader2,
+  MessageCircle,
   Search,
-  Sparkles,
-  UserCheck,
-  UserPlus,
   UsersRound,
   X,
-  type LucideIcon,
 } from "lucide-react";
 
-type NetworkTab = "discover" | "following" | "followers";
-type PersonSuggestion = { person: ExchangePerson; reason: string };
-type ActivitySuggestion = PersonSuggestion & { engagement: number; latest: string };
+type NetworkTab = "grow" | "catchup";
+type CatchupFilter = "all" | "posts" | "birthdays" | "job_change" | "work_anniversary";
 
-function NetworkSuggestionSection({
-  title,
-  description,
-  icon: Icon,
-  suggestions,
-  emptyText,
-  followedIds,
-  busyIds,
-  hiddenIds,
-  onFollow,
-  onHide,
-}: {
-  title: string;
-  description: string;
-  icon: LucideIcon;
-  suggestions: PersonSuggestion[];
-  emptyText: string;
-  followedIds: Set<string>;
-  busyIds: Set<string>;
-  hiddenIds: Set<string>;
-  onFollow: (person: ExchangePerson) => void;
-  onHide: (personId: string) => void;
-}) {
-  const visible = suggestions.filter(
-    ({ person }) => !hiddenIds.has(person.id) && !followedIds.has(person.id),
-  );
+const CATCHUP_FILTERS: { id: CatchupFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "posts", label: "Posts" },
+  { id: "birthdays", label: "Birthdays" },
+  { id: "job_change", label: "Job changes" },
+  { id: "work_anniversary", label: "Work anniversaries" },
+];
+
+function CatchupEventCard({ event }: { event: NetworkEvent }) {
+  const date = new Date(`${event.date}T00:00:00`).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+  const description =
+    event.type === "birthday"
+      ? "has a birthday"
+      : event.type === "work_anniversary"
+        ? `celebrates ${event.years} ${event.years === 1 ? "year" : "years"} at ${event.organization}`
+        : `started a new role${event.organization ? ` at ${event.organization}` : ""}`;
+  const href = `/messages/new?to=${encodeURIComponent(event.userId)}`;
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-line bg-paper">
-      <header className="flex items-start gap-2.5 border-b border-line px-4 py-3">
-        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-lime-pale text-lime-deep">
-          <Icon className="h-3.5 w-3.5" />
-        </span>
-        <span className="min-w-0">
-          <h2 className="text-[11.5px] font-bold text-ink">{title}</h2>
-          <p className="mt-0.5 text-[9px] leading-[1.45] text-muted">{description}</p>
-        </span>
-      </header>
-      {visible.length ? (
-        <ul className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3 xl:grid-cols-4">
-          {visible.map(({ person, reason }) => {
-            const isFollowing = followedIds.has(person.id);
-            const busy = busyIds.has(person.id);
-            return (
-              <li
-                key={person.id}
-                className="relative min-w-0 overflow-hidden rounded-xl border border-line bg-paper text-center"
-              >
-                <div className="relative h-14 bg-gradient-to-br from-[#dbe9df] via-[#eaf0e7] to-[#f7ead8]">
-                  <button
-                    type="button"
-                    onClick={() => onHide(person.id)}
-                    aria-label={`Hide ${person.name || "person"} suggestion`}
-                    className="absolute right-1.5 top-1.5 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-dark/70 text-on-panel transition hover:bg-dark"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                  <Link
-                    href={`/people/${person.id}`}
-                    aria-label={`View ${person.name || "person"} profile`}
-                    className="absolute left-1/2 top-1/2 -translate-x-1/2 translate-y-0"
-                  >
-                    <span className="flex h-[54px] w-[54px] items-center justify-center rounded-full bg-paper p-1 shadow-sm">
-                      <Avatar initials={person.initials} src={person.avatarUrl} size="lg" />
-                    </span>
-                  </Link>
-                </div>
-                <div className="px-2 pb-2.5 pt-8">
-                  <Link
-                    href={`/people/${person.id}`}
-                    className="block truncate text-[10px] font-bold text-ink hover:underline"
-                  >
-                    {person.name || "Someone"}
-                  </Link>
-                  <p className="mt-0.5 min-h-7 line-clamp-2 text-[9px] leading-[1.35] text-muted">
-                    {person.role || "onWard member"}
-                  </p>
-                  <p className="mt-1 truncate text-[8px] text-faint">{reason}</p>
-                  <button
-                    type="button"
-                    onClick={() => onFollow(person)}
-                    disabled={busy}
-                    aria-pressed={isFollowing}
-                    className={`mt-2 flex h-7 w-full cursor-pointer items-center justify-center gap-1 rounded-full px-1.5 text-[9px] font-bold transition disabled:cursor-wait disabled:opacity-60 ${
-                      isFollowing
-                        ? "border border-line bg-paper text-ink"
-                        : "border border-lime-deep text-lime-deep hover:bg-lime-pale"
-                    }`}
-                  >
-                    {busy ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : isFollowing ? (
-                      <>
-                        <UserCheck className="h-3 w-3" /> Following
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus className="h-3 w-3" /> Follow
-                      </>
-                    )}
-                  </button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <p className="px-4 py-5 text-center text-[9.5px] leading-[1.5] text-muted">{emptyText}</p>
-      )}
-    </section>
+    <article className="flex items-start gap-3 border-b border-line px-4 py-4 last:border-b-0">
+      <Link href={`/people/${event.userId}`} aria-label={`View ${event.fullName}'s profile`}>
+        <Avatar initials={event.initials} src={event.avatarUrl} />
+      </Link>
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] leading-[1.55] text-ink">
+          <Link href={`/people/${event.userId}`} className="font-bold hover:underline">
+            {event.fullName || "Someone in your network"}
+          </Link>{" "}
+          {description}
+        </p>
+        {event.role && event.type === "job_change" ? (
+          <p className="mt-1 text-[10px] text-muted">{event.role}</p>
+        ) : null}
+        <p className="mt-1 text-[9px] text-faint">{date}</p>
+      </div>
+      <Link
+        href={href}
+        className="flex h-8 shrink-0 items-center gap-1 rounded-full border border-line px-2.5 text-[9px] font-semibold text-inksoft transition hover:bg-cream"
+      >
+        <MessageCircle className="h-3 w-3" />
+        Say hello
+      </Link>
+    </article>
   );
 }
 
-const TABS: { id: NetworkTab; label: string }[] = [
-  { id: "discover", label: "Discover" },
-  { id: "following", label: "Following" },
-  { id: "followers", label: "Followers" },
-];
+function PostCatchupCard({ post }: { post: FeedPost }) {
+  return (
+    <article className="border-b border-line px-4 py-4 last:border-b-0">
+      <div className="flex items-center gap-2.5">
+        <Link href={post.authorId ? `/people/${post.authorId}` : "/network"}>
+          <Avatar initials={post.initials} src={post.avatarUrl} />
+        </Link>
+        <div className="min-w-0 flex-1">
+          <Link
+            href={post.authorId ? `/people/${post.authorId}` : "/network"}
+            className="block truncate text-[11px] font-bold text-ink hover:underline"
+          >
+            {post.fullName || "Someone in your network"}
+          </Link>
+          <p className="truncate text-[9px] text-muted">
+            {post.role || "onWard member"} ·{" "}
+            {new Date(post.createdAt).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            })}
+          </p>
+        </div>
+      </div>
+      {post.title ? <h3 className="mt-3 text-[12px] font-bold text-ink">{post.title}</h3> : null}
+      {post.body ? (
+        <p className="mt-1 whitespace-pre-wrap text-[10px] leading-[1.6] text-inksoft">
+          {post.body}
+        </p>
+      ) : null}
+      <Link
+        href={`/feed/${post.id}`}
+        className="mt-3 inline-flex items-center gap-1 text-[9px] font-semibold text-lime-deep hover:underline"
+      >
+        Open post <ArrowRight className="h-3 w-3" />
+      </Link>
+    </article>
+  );
+}
+
+function PersonCard({
+  person,
+  reason,
+  requested,
+  busy,
+  onConnect,
+}: {
+  person: ExchangePerson;
+  reason: string;
+  requested: boolean;
+  busy: boolean;
+  onConnect: () => void;
+}) {
+  return (
+    <article className="flex min-w-0 items-center gap-3 rounded-xl border border-line bg-paper p-3">
+      <Link href={`/people/${person.id}`} aria-label={`View ${person.name}'s profile`}>
+        <Avatar initials={person.initials} src={person.avatarUrl} />
+      </Link>
+      <div className="min-w-0 flex-1">
+        <Link href={`/people/${person.id}`} className="block truncate text-[11px] font-bold text-ink hover:underline">
+          {person.name || "onWard member"}
+        </Link>
+        <p className="truncate text-[9px] text-muted">{person.role || "onWard member"}</p>
+        <p className="mt-0.5 truncate text-[8px] font-medium text-lime-deep">{reason}</p>
+      </div>
+      <button
+        type="button"
+        onClick={onConnect}
+        disabled={busy || requested}
+        className="flex h-8 shrink-0 items-center gap-1 rounded-full border border-lime-deep px-2.5 text-[9px] font-bold text-lime-deep transition hover:bg-lime-pale disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : requested ? "Requested" : "Connect"}
+      </button>
+    </article>
+  );
+}
+
+function RequestCard({
+  request,
+  busy,
+  onRespond,
+}: {
+  request: NetworkRequest;
+  busy: boolean;
+  onRespond: (accept: boolean) => void;
+}) {
+  return (
+    <article className="flex items-center gap-3 border-b border-line px-4 py-3 last:border-b-0">
+      <Link href={`/people/${request.person.id}`}>
+        <Avatar initials={request.person.initials} src={request.person.avatarUrl} />
+      </Link>
+      <div className="min-w-0 flex-1">
+        <Link href={`/people/${request.person.id}`} className="block truncate text-[11px] font-bold text-ink hover:underline">
+          {request.person.name || "onWard member"}
+        </Link>
+        <p className="truncate text-[9px] text-muted">{request.person.role || "Connection request"}</p>
+      </div>
+      {request.direction === "incoming" ? (
+        <div className="flex shrink-0 gap-1.5">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onRespond(true)}
+            aria-label={`Accept ${request.person.name}'s request`}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-lime text-dark disabled:opacity-60"
+          >
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onRespond(false)}
+            aria-label={`Decline ${request.person.name}'s request`}
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-line text-muted disabled:opacity-60"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ) : (
+        <span className="rounded-full bg-cream px-2.5 py-1 text-[9px] font-semibold text-muted">
+          Pending
+        </span>
+      )}
+    </article>
+  );
+}
 
 export default function NetworkPage() {
   const { user, profile, ready } = useAuth();
-  const [tab, setTab] = useState<NetworkTab>("discover");
-  const [following, setFollowing] = useState<ExchangePerson[]>([]);
-  const [followers, setFollowers] = useState<ExchangePerson[]>([]);
-  const [discoverable, setDiscoverable] = useState<ExchangePerson[]>([]);
-  const [roleSuggestions, setRoleSuggestions] = useState<PersonSuggestion[]>([]);
-  const [connectionSuggestions, setConnectionSuggestions] = useState<PersonSuggestion[]>([]);
-  const [activitySuggestions, setActivitySuggestions] = useState<ActivitySuggestion[]>([]);
-  const [query, setQuery] = useState("");
-  const [loadingLists, setLoadingLists] = useState(true);
-  const [loadingPeople, setLoadingPeople] = useState(true);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [peopleError, setPeopleError] = useState<string | null>(null);
-  const [suggestionsError, setSuggestionsError] = useState<string | null>(null);
-  const [searchAttempt, setSearchAttempt] = useState(0);
-  const [suggestionsAttempt, setSuggestionsAttempt] = useState(0);
+  const [tab, setTab] = useState<NetworkTab>("grow");
+  const [requests, setRequests] = useState<NetworkRequest[]>([]);
+  const [suggestions, setSuggestions] = useState<NetworkSuggestion[]>([]);
+  const [connectionCount, setConnectionCount] = useState(0);
+  const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set());
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
-  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
-  const followedIds = useMemo(() => new Set(following.map((person) => person.id)), [following]);
-  const followedIdsRef = useRef(followedIds);
+  const [loadingGrow, setLoadingGrow] = useState(true);
+  const [growError, setGrowError] = useState("");
+  const [query, setQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<ExchangePerson[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [catchupFilter, setCatchupFilter] = useState<CatchupFilter>("all");
+  const [catchupPosts, setCatchupPosts] = useState<FeedPost[]>([]);
+  const [catchupEvents, setCatchupEvents] = useState<NetworkEvent[]>([]);
+  const [loadingCatchup, setLoadingCatchup] = useState(false);
+  const [catchupError, setCatchupError] = useState("");
 
   useEffect(() => {
-    followedIdsRef.current = followedIds;
-  }, [followedIds]);
-
-  const loadLists = useCallback(async () => {
-    if (!user) return;
-    setLoadingLists(true);
-    setLoadError(null);
-    try {
-      const [nextFollowing, nextFollowers] = await Promise.all([
-        fetchFollowList(user.id, "following"),
-        fetchFollowList(user.id, "followers"),
-      ]);
-      setFollowing(nextFollowing);
-      setFollowers(nextFollowers);
-    } catch (error) {
-      setLoadError(error instanceof Error ? error.message : "Couldn't load your network.");
-    } finally {
-      setLoadingLists(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (!ready) return;
-    if (!user) {
-      setLoadingLists(false);
-      setLoadingPeople(false);
-      return;
-    }
-    void loadLists();
-  }, [loadLists, ready, user]);
-
-  useEffect(() => {
-    if (!ready || !user || !query.trim()) return;
+    if (!ready || !user) return;
     let cancelled = false;
-    setLoadingPeople(true);
-    setPeopleError(null);
-    const timer = window.setTimeout(() => {
-      void searchPeople(query.trim())
-        .then((people) => {
-          if (!cancelled) setDiscoverable(people);
-        })
-        .catch((error: unknown) => {
-          if (!cancelled) {
-            setDiscoverable([]);
-            setPeopleError(error instanceof Error ? error.message : "Couldn't find people.");
-          }
-        })
-        .finally(() => {
-          if (!cancelled) setLoadingPeople(false);
-        });
-    }, query.trim() ? 250 : 0);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [query, ready, searchAttempt, user]);
-
-  useEffect(() => {
-    if (!ready || !user || loadingLists || query.trim()) return;
-    let cancelled = false;
-    setLoadingSuggestions(true);
-    setSuggestionsError(null);
-
+    setLoadingGrow(true);
+    setGrowError("");
     void Promise.all([
-      searchPeople(""),
-      fetchFeed(50),
-      Promise.all(
-        following.slice(0, 8).map(async (connection) => ({
-          connection,
-          people: await fetchFollowList(connection.id, "following"),
-        })),
-      ),
+      fetchNetworkRequests(),
+      fetchNetworkSuggestions(),
+      fetchNetworkConnections(),
     ])
-      .then(([people, posts, networkLists]) => {
+      .then(([nextRequests, nextSuggestions, connections]) => {
         if (cancelled) return;
-        setDiscoverable(people);
-        const alreadyFollowing = followedIdsRef.current;
-
-        const networkCounts = new Map<
-          string,
-          { person: ExchangePerson; connections: ExchangePerson[] }
-        >();
-        for (const { connection, people: connectedPeople } of networkLists) {
-          for (const person of connectedPeople) {
-            if (person.id === user.id || alreadyFollowing.has(person.id)) continue;
-            const existing = networkCounts.get(person.id);
-            if (existing) {
-              existing.connections.push(connection);
-            } else {
-              networkCounts.set(person.id, { person, connections: [connection] });
-            }
-          }
-        }
-        const networkSuggestions = [...networkCounts.values()]
-          .sort((a, b) => b.connections.length - a.connections.length)
-          .slice(0, 12)
-          .map(({ person, connections }) => ({
-            person,
-            reason:
-              connections.length > 1
-                ? `Followed by ${connections[0].name} + ${connections.length - 1}`
-                : `Followed by ${connections[0].name}`,
-          }));
-        setConnectionSuggestions(networkSuggestions);
-
-        const networkIds = new Set(networkSuggestions.map(({ person }) => person.id));
-        const ownRole = profile?.role.trim().toLowerCase() ?? "";
-        const sameRole = (candidateRole: string | null) => {
-          const role = candidateRole?.trim().toLowerCase() ?? "";
-          return Boolean(ownRole && role && (ownRole.includes(role) || role.includes(ownRole)));
-        };
-        const matchingRoles = people
-          .filter((person) => !alreadyFollowing.has(person.id) && !networkIds.has(person.id) && sameRole(person.role))
-          .slice(0, 12)
-          .map((person) => ({ person, reason: "Based on your profile role" }));
-        setRoleSuggestions(matchingRoles);
-
-        const roleIds = new Set(matchingRoles.map(({ person }) => person.id));
-        const activityByPerson = new Map<string, ActivitySuggestion>();
-        for (const post of posts) {
-          if (!post.authorId || post.authorId === user.id || alreadyFollowing.has(post.authorId)) continue;
-          const person: ExchangePerson = {
-            id: post.authorId,
-            name: post.fullName,
-            initials: post.initials,
-            avatarUrl: post.avatarUrl,
-            role: post.role,
-          };
-          const engagement = post.likes + post.comments + post.reshares;
-          const current = activityByPerson.get(person.id);
-          if (current) {
-            current.engagement += engagement;
-            if (post.createdAt > current.latest) current.latest = post.createdAt;
-          } else {
-            activityByPerson.set(person.id, {
-              person,
-              engagement,
-              latest: post.createdAt,
-              reason: "",
-            });
-          }
-        }
-        setActivitySuggestions(
-          [...activityByPerson.values()]
-            .filter(({ person }) => !networkIds.has(person.id) && !roleIds.has(person.id))
-            .sort((a, b) => b.engagement - a.engagement || b.latest.localeCompare(a.latest))
-            .slice(0, 12)
-            .map((suggestion) => ({
-              ...suggestion,
-              reason: suggestion.engagement
-                ? `${suggestion.engagement} recent interactions`
-                : "Recently active in the Exchange",
-            })),
+        setRequests(nextRequests);
+        setSuggestions(nextSuggestions);
+        setConnectionCount(connections.length);
+        setRequestedIds(
+          new Set(
+            nextRequests
+              .filter((request) => request.direction === "outgoing")
+              .map((request) => request.person.id),
+          ),
         );
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          setSuggestionsError(error instanceof Error ? error.message : "Couldn't load suggestions.");
+          setGrowError(error instanceof Error ? error.message : "Couldn't load your network.");
         }
       })
       .finally(() => {
-        if (!cancelled) setLoadingSuggestions(false);
+        if (!cancelled) setLoadingGrow(false);
       });
-
     return () => {
       cancelled = true;
     };
-  }, [loadingLists, profile?.role, query, ready, suggestionsAttempt, user]);
+  }, [ready, user]);
 
-  const toggleFollow = useCallback(
-    async (person: ExchangePerson) => {
-      if (busyIds.has(person.id)) return;
-      const alreadyFollowing = followedIds.has(person.id);
-      setBusyIds((current) => new Set(current).add(person.id));
-      try {
-        if (alreadyFollowing) {
-          await unfollowPerson(person.id);
-          setFollowing((current) => current.filter((entry) => entry.id !== person.id));
-        } else {
-          await followPerson(person.id);
-          setFollowing((current) =>
-            current.some((entry) => entry.id === person.id) ? current : [person, ...current],
-          );
-        }
-      } catch (error) {
-        toastError(
-          error instanceof Error
-            ? error.message
-            : alreadyFollowing
-              ? "Couldn't unfollow this person."
-              : "Couldn't follow this person.",
-        );
-      } finally {
-        setBusyIds((current) => {
-          const next = new Set(current);
-          next.delete(person.id);
-          return next;
+  useEffect(() => {
+    const term = query.trim();
+    if (!user || !term) {
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+    let cancelled = false;
+    setSearching(true);
+    const timer = window.setTimeout(() => {
+      void searchPeople(term)
+        .then((people) => {
+          if (!cancelled) setSearchResults(people);
+        })
+        .catch((error: unknown) => {
+          if (!cancelled) {
+            toastError(error instanceof Error ? error.message : "Couldn't search people.");
+            setSearchResults([]);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setSearching(false);
         });
+    }, 250);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [query, user]);
+
+  useEffect(() => {
+    if (tab !== "catchup" || !user) return;
+    let cancelled = false;
+    setLoadingCatchup(true);
+    setCatchupError("");
+    void (async () => {
+      try {
+        const [since, connections] = await Promise.all([
+          fetchNetworkCatchupSince(),
+          fetchNetworkConnections(),
+        ]);
+        const ids = connections.map((person) => person.id);
+        const [posts, events] = await Promise.all([
+          fetchConnectionPosts(ids, since),
+          fetchNetworkCatchupEvents(since),
+        ]);
+        if (cancelled) return;
+        setCatchupPosts(posts);
+        setCatchupEvents(events);
+        await markNetworkCatchupSeen();
+      } catch (error) {
+        if (!cancelled) {
+          setCatchupError(error instanceof Error ? error.message : "Couldn't load Catch up.");
+        }
+      } finally {
+        if (!cancelled) setLoadingCatchup(false);
       }
-    },
-    [busyIds, followedIds],
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, user]);
+
+  const incomingRequests = requests.filter((request) => request.direction === "incoming");
+  const filteredEvents = catchupEvents.filter((event) => {
+    if (catchupFilter === "all") return true;
+    if (catchupFilter === "birthdays") return event.type === "birthday";
+    if (catchupFilter === "posts") return false;
+    return event.type === catchupFilter;
+  });
+  const visiblePosts = catchupFilter === "all" || catchupFilter === "posts" ? catchupPosts : [];
+  const catchupItems = useMemo(
+    () => [
+      ...visiblePosts.map((post) => ({
+        key: `post:${post.id}`,
+        time: Date.parse(post.createdAt),
+        post,
+        event: null as NetworkEvent | null,
+      })),
+      ...filteredEvents.map((event) => ({
+        key: `event:${event.id}`,
+        time: Date.parse(`${event.date}T00:00:00`),
+        post: null as FeedPost | null,
+        event,
+      })),
+    ].sort((a, b) => b.time - a.time),
+    [filteredEvents, visiblePosts],
   );
 
-  const visiblePeople =
-    tab === "following"
-      ? following
-      : tab === "followers"
-        ? followers
-        : discoverable;
+  async function connect(person: ExchangePerson) {
+    if (busyIds.has(person.id)) return;
+    setBusyIds((ids) => new Set(ids).add(person.id));
+    try {
+      await sendConnectionRequest(person.id);
+      setRequestedIds((ids) => new Set(ids).add(person.id));
+      setSuggestions((people) => people.filter((candidate) => candidate.id !== person.id));
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : "Couldn't send the connection request.");
+    } finally {
+      setBusyIds((ids) => {
+        const next = new Set(ids);
+        next.delete(person.id);
+        return next;
+      });
+    }
+  }
+
+  async function respond(request: NetworkRequest, accept: boolean) {
+    if (busyIds.has(request.requestId)) return;
+    setBusyIds((ids) => new Set(ids).add(request.requestId));
+    try {
+      await respondToConnectionRequest(request.requestId, accept);
+      setRequests((current) => current.filter((entry) => entry.requestId !== request.requestId));
+      if (accept) setConnectionCount((count) => count + 1);
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : "Couldn't update the connection request.");
+    } finally {
+      setBusyIds((ids) => {
+        const next = new Set(ids);
+        next.delete(request.requestId);
+        return next;
+      });
+    }
+  }
 
   if (!ready || !user) {
     return (
@@ -390,11 +399,8 @@ export default function NetworkPage() {
         <div className="card px-4 py-8 text-center">
           <UsersRound className="mx-auto h-6 w-6 text-lime-deep" />
           <h1 className="mt-2 text-[14px] font-bold text-ink">My Network</h1>
-          <p className="mt-1 text-[11px] text-muted">Sign in to find and follow people.</p>
-          <Link
-            href="/sign-in"
-            className="mt-4 inline-flex cursor-pointer items-center gap-1 rounded-full bg-lime px-4 py-2 text-[11px] font-bold text-dark hover:bg-lime-deep"
-          >
+          <p className="mt-1 text-[11px] text-muted">Sign in to grow your network.</p>
+          <Link href="/sign-in" className="mt-4 inline-flex items-center gap-1 rounded-full bg-lime px-4 py-2 text-[11px] font-bold text-dark">
             Sign in <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
@@ -404,313 +410,202 @@ export default function NetworkPage() {
 
   return (
     <PhoneShell tab="network" wide>
-      <div className="-mx-1.5 grid w-[calc(100%+0.75rem)] max-w-[1080px] items-start gap-6 md:-mx-2 md:w-[calc(100%+1rem)] lg:-mx-3 lg:w-[calc(100%+1.5rem)] lg:grid-cols-[minmax(0,1fr)_260px]">
-        <main className="min-w-0">
-          <header className="mb-5 -mx-3.5 -mt-5 w-[calc(100%+1.75rem)] overflow-hidden bg-paper md:mx-0 md:mt-0 md:w-auto">
-            <div className="relative min-h-[190px] overflow-hidden bg-dark px-4 pb-7 pt-4 sm:px-7">
-              <span className="pointer-events-none absolute -right-7 -top-16 h-48 w-48 rounded-full border-[22px] border-lime/20" />
-              <span className="pointer-events-none absolute right-40 top-12 h-12 w-12 rounded-full bg-lime/15" />
-              <span className="pointer-events-none absolute -bottom-16 left-[36%] h-36 w-36 rounded-full bg-lime/10" />
-              <div className="relative flex h-10 items-center gap-2 text-[9px] font-bold uppercase tracking-[0.14em] text-lime">
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-lime/15 text-lime">
-                  <UsersRound className="h-5 w-5" />
-                </span>
-                Your people
+      <header className="relative z-10 mb-5 flex items-center gap-2.5">
+        <Link href="/profile" aria-label="Your profile">
+          <Avatar
+            initials={profile?.initials ?? user.email?.slice(0, 2).toUpperCase() ?? "ME"}
+            src={profile?.avatarUrl}
+            size="sm"
+          />
+        </Link>
+        <div className="relative min-w-0 flex-1">
+          <div className="flex h-10 items-center gap-2 rounded-full border border-line bg-paper px-3 text-muted focus-within:border-lime-deep">
+            <Search className="h-4 w-4 shrink-0" />
+            <TextInput
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search people"
+              aria-label="Search people"
+              className="h-full min-w-0 border-0 bg-transparent px-0 py-0 text-[11px] focus:border-0 focus:ring-0"
+            />
+            {searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+          </div>
+          {query.trim() ? (
+            <div className="absolute inset-x-0 top-12 z-30 overflow-hidden rounded-xl border border-line bg-paper shadow-lift">
+              {searchResults.length ? searchResults.slice(0, 6).map((person) => (
+                <Link
+                  key={person.id}
+                  href={`/people/${person.id}`}
+                  onClick={() => setQuery("")}
+                  className="flex items-center gap-2.5 border-b border-line px-3 py-2.5 last:border-0 hover:bg-cream"
+                >
+                  <Avatar initials={person.initials} src={person.avatarUrl} size="sm" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[10px] font-semibold text-ink">{person.name}</span>
+                    <span className="block truncate text-[9px] text-muted">{person.role || "onWard member"}</span>
+                  </span>
+                </Link>
+              )) : (
+                <p className="px-3 py-4 text-center text-[10px] text-muted">
+                  {searching ? "Searching…" : "No people found."}
+                </p>
+              )}
+            </div>
+          ) : null}
+        </div>
+        <Link
+          href="/messages"
+          aria-label="Open messages"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line bg-paper text-ink transition hover:bg-cream"
+        >
+          <MessageCircle className="h-[18px] w-[18px]" />
+        </Link>
+      </header>
+
+      <div className="mb-4 flex items-end justify-between gap-3">
+        <div>
+          <h1 className="text-[20px] font-bold tracking-tight text-ink">My Network</h1>
+          <p className="mt-0.5 text-[10px] text-muted">{connectionCount} connections</p>
+        </div>
+        <Link href="/network/invitations" className="text-[10px] font-semibold text-lime-deep hover:underline">
+          Invitations <ArrowRight className="ml-0.5 inline h-3 w-3" />
+        </Link>
+      </div>
+
+      <div className="mb-5 grid grid-cols-2 rounded-xl border border-line bg-paper p-1">
+        {(["grow", "catchup"] as const).map((item) => (
+          <button
+            key={item}
+            type="button"
+            onClick={() => setTab(item)}
+            aria-pressed={tab === item}
+            className={`rounded-lg px-3 py-2.5 text-[11px] font-bold transition ${
+              tab === item ? "bg-lime text-dark" : "text-muted hover:bg-cream hover:text-ink"
+            }`}
+          >
+            {item === "grow" ? "Grow" : "Catch up"}
+          </button>
+        ))}
+      </div>
+
+      {tab === "grow" ? (
+        <div className="space-y-5">
+          {growError ? (
+            <div className="card px-4 py-4 text-[10px] text-red-700">{growError}</div>
+          ) : null}
+          <section className="overflow-hidden rounded-2xl border border-line bg-paper">
+            <header className="flex items-center justify-between border-b border-line px-4 py-3">
+              <div>
+                <h2 className="text-[12px] font-bold text-ink">Connection requests</h2>
+                <p className="mt-0.5 text-[9px] text-muted">Accept or decline invitations to connect.</p>
               </div>
-              <h1 className="relative mt-3 text-[24px] font-bold tracking-tight text-on-panel sm:text-[28px]">
-                My Network
-              </h1>
-              <p className="relative mt-1 max-w-[54ch] text-[11px] leading-[1.6] text-on-panel/75">
-                Find people sharing what they know and doing work worth learning from. Following is
-                one-way, so you choose whose updates to keep up with.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 divide-x divide-line border-t border-line">
-              <button
-                type="button"
-                onClick={() => setTab("following")}
-                aria-pressed={tab === "following"}
-                className={`flex cursor-pointer items-center justify-between border-b-2 px-4 py-3 text-left transition ${
-                  tab === "following"
-                    ? "border-lime-deep bg-lime-pale/60"
-                    : "border-transparent hover:bg-cream"
-                }`}
-              >
-                <span className={`text-[11px] font-semibold ${tab === "following" ? "text-ink" : "text-muted"}`}>
-                  Following
-                </span>
-                <span className="rounded-full bg-paper px-2.5 py-1 text-[12px] font-bold tabular-nums text-ink">
-                  {loadingLists ? "—" : following.length}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setTab("followers")}
-                aria-pressed={tab === "followers"}
-                className={`flex cursor-pointer items-center justify-between border-b-2 px-4 py-3 text-left transition ${
-                  tab === "followers"
-                    ? "border-lime-deep bg-lime-pale/60"
-                    : "border-transparent hover:bg-cream"
-                }`}
-              >
-                <span className={`text-[11px] font-semibold ${tab === "followers" ? "text-ink" : "text-muted"}`}>
-                  Followers
-                </span>
-                <span className="rounded-full bg-paper px-2.5 py-1 text-[12px] font-bold tabular-nums text-ink">
-                  {loadingLists ? "—" : followers.length}
-                </span>
-              </button>
-            </div>
-          </header>
+              <Link href="/network/invitations" className="text-[9px] font-semibold text-lime-deep">
+                View all
+              </Link>
+            </header>
+            {loadingGrow ? (
+              <p className="px-4 py-5 text-center text-[10px] text-muted">Loading requests…</p>
+            ) : incomingRequests.length ? (
+              incomingRequests.slice(0, 4).map((request) => (
+                <RequestCard
+                  key={request.requestId}
+                  request={request}
+                  busy={busyIds.has(request.requestId)}
+                  onRespond={(accept) => void respond(request, accept)}
+                />
+              ))
+            ) : (
+              <p className="px-4 py-5 text-center text-[10px] text-muted">No new connection requests.</p>
+            )}
+          </section>
 
           <section className="overflow-hidden rounded-2xl border border-line bg-paper">
-            <div className="border-b border-line px-4 pt-3">
-              <nav className="flex gap-5" aria-label="Network sections">
-                {TABS.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setTab(item.id)}
-                    aria-current={tab === item.id ? "page" : undefined}
-                    className={`cursor-pointer border-b-2 px-0.5 pb-2.5 text-[11px] font-semibold transition ${
-                      tab === item.id
-                        ? "border-lime-deep text-ink"
-                        : "border-transparent text-muted hover:text-ink"
-                    }`}
-                  >
-                    {item.label}
-                  </button>
+            <header className="flex items-center gap-2.5 border-b border-line px-4 py-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-lime-pale text-lime-deep">
+                <UsersRound className="h-4 w-4" />
+              </span>
+              <span>
+                <h2 className="text-[12px] font-bold text-ink">People you may know</h2>
+                <p className="mt-0.5 text-[9px] text-muted">Based on your school, role and shared connections.</p>
+              </span>
+            </header>
+            {loadingGrow ? (
+              <p className="px-4 py-5 text-center text-[10px] text-muted">Finding people…</p>
+            ) : suggestions.length ? (
+              <div className="grid gap-2 p-3 sm:grid-cols-2">
+                {suggestions.map((person) => (
+                  <PersonCard
+                    key={person.id}
+                    person={person}
+                    reason={person.reason}
+                    requested={requestedIds.has(person.id)}
+                    busy={busyIds.has(person.id)}
+                    onConnect={() => void connect(person)}
+                  />
                 ))}
-              </nav>
-            </div>
-
-            {tab === "discover" ? (
-              <label className="mx-4 mt-4 flex h-10 items-center gap-2 rounded-full border border-line bg-cream px-3 focus-within:border-lime-deep">
-                <Search className="h-4 w-4 shrink-0 text-muted" />
-                <input
-                  type="search"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search people by name"
-                  aria-label="Search people by name"
-                  className="min-w-0 flex-1 bg-transparent text-[11px] text-ink outline-none placeholder:text-faint"
-                />
-              </label>
-            ) : null}
-
-            {tab === "discover" && !query.trim() ? (
-              <div className="space-y-3 p-3 sm:p-4">
-                {suggestionsError ? (
-                  <div className="rounded-xl bg-danger/5 px-4 py-4 text-center">
-                    <p role="alert" className="text-[10px] text-muted">{suggestionsError}</p>
-                    <button
-                      type="button"
-                      onClick={() => setSuggestionsAttempt((attempt) => attempt + 1)}
-                      className="mt-2 cursor-pointer text-[10px] font-bold text-lime-deep hover:underline"
-                    >
-                      Try again
-                    </button>
-                  </div>
-                ) : loadingSuggestions ? (
-                  <div className="flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-10 text-[11px] text-muted">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Finding people for you…
-                  </div>
-                ) : (
-                  <>
-                    <NetworkSuggestionSection
-                      title="Suggestions for you"
-                      description={
-                        profile?.role
-                          ? `People with a role similar to ${profile.role}.`
-                          : "Add a role to your profile for more relevant suggestions."
-                      }
-                      icon={Sparkles}
-                      suggestions={roleSuggestions}
-                      emptyText={
-                        profile?.role
-                          ? "No role matches yet. Keep your role up to date and check back for new people."
-                          : "Set your profile role to get suggestions that match your work."
-                      }
-                      followedIds={followedIds}
-                      busyIds={busyIds}
-                      hiddenIds={hiddenIds}
-                      onFollow={(person) => void toggleFollow(person)}
-                      onHide={(personId) =>
-                        setHiddenIds((current) => new Set(current).add(personId))
-                      }
-                    />
-                    <NetworkSuggestionSection
-                      title="People in your network"
-                      description="People followed by those you follow."
-                      icon={UsersRound}
-                      suggestions={connectionSuggestions}
-                      emptyText="Follow a few people to discover others in their network."
-                      followedIds={followedIds}
-                      busyIds={busyIds}
-                      hiddenIds={hiddenIds}
-                      onFollow={(person) => void toggleFollow(person)}
-                      onHide={(personId) =>
-                        setHiddenIds((current) => new Set(current).add(personId))
-                      }
-                    />
-                    <NetworkSuggestionSection
-                      title="Active in the Exchange"
-                      description="People sharing posts and conversations with the community."
-                      icon={Flame}
-                      suggestions={activitySuggestions}
-                      emptyText="As more people share and engage in the Exchange, suggestions will appear here."
-                      followedIds={followedIds}
-                      busyIds={busyIds}
-                      hiddenIds={hiddenIds}
-                      onFollow={(person) => void toggleFollow(person)}
-                      onHide={(personId) =>
-                        setHiddenIds((current) => new Set(current).add(personId))
-                      }
-                    />
-                  </>
-                )}
               </div>
-            ) : tab !== "discover" && loadError ? (
-              <div className="px-4 py-6 text-center">
-                <p role="alert" className="text-[11px] text-muted">{loadError}</p>
-                <button
-                  type="button"
-                  onClick={() => void loadLists()}
-                  className="mt-2 cursor-pointer text-[10px] font-bold text-lime-deep hover:underline"
-                >
-                  Try again
-                </button>
-              </div>
-            ) : tab === "discover" && peopleError ? (
-              <div className="px-4 py-6 text-center">
-                <p role="alert" className="text-[11px] text-muted">{peopleError}</p>
-                <button
-                  type="button"
-                  onClick={() => setSearchAttempt((attempt) => attempt + 1)}
-                  className="mt-2 cursor-pointer text-[10px] font-bold text-lime-deep hover:underline"
-                >
-                  Try again
-                </button>
-              </div>
-            ) : (tab === "discover" ? loadingPeople : loadingLists) ? (
-              <div className="flex items-center justify-center gap-2 px-4 py-10 text-[11px] text-muted">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading people…
-              </div>
-            ) : visiblePeople.length ? (
-              <ul className="mt-3 divide-y divide-line">
-                {visiblePeople.map((person) => {
-                  const isFollowing = followedIds.has(person.id);
-                  const busy = busyIds.has(person.id);
-                  const actionAvailable = tab !== "following" || isFollowing;
-                  return (
-                    <li key={person.id} className="flex items-center gap-3 px-4 py-3">
-                      <Link
-                        href={`/people/${person.id}`}
-                        className="flex min-w-0 flex-1 cursor-pointer items-center gap-3"
-                      >
-                        <Avatar initials={person.initials} src={person.avatarUrl} size="md" />
-                        <span className="min-w-0">
-                          <span className="block truncate text-[11.5px] font-bold text-ink">
-                            {person.name || "Someone"}
-                          </span>
-                          {person.role ? (
-                            <span className="mt-0.5 block truncate text-[10px] text-muted">
-                              {person.role}
-                            </span>
-                          ) : (
-                            <span className="mt-0.5 block text-[9px] text-faint">
-                              onWard member
-                            </span>
-                          )}
-                        </span>
-                      </Link>
-                      {actionAvailable ? (
-                        <button
-                          type="button"
-                          onClick={() => void toggleFollow(person)}
-                          disabled={busy}
-                          aria-pressed={isFollowing}
-                          className={`flex h-8 min-w-[92px] cursor-pointer items-center justify-center gap-1.5 rounded-full px-3 text-[10px] font-bold transition disabled:cursor-wait disabled:opacity-60 ${
-                            isFollowing
-                              ? "border border-line bg-paper text-ink hover:border-danger/30 hover:bg-danger/5 hover:text-danger"
-                              : "bg-lime text-dark hover:bg-lime-deep"
-                          }`}
-                        >
-                          {busy ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : isFollowing ? (
-                            <>
-                              <UserCheck className="h-3.5 w-3.5" />
-                              {tab === "following" ? "Unfollow" : "Following"}
-                            </>
-                          ) : (
-                            <>
-                              <UserPlus className="h-3.5 w-3.5" />
-                              Follow
-                            </>
-                          )}
-                        </button>
-                      ) : null}
-                    </li>
-                  );
-                })}
-              </ul>
             ) : (
-              <div className="px-5 py-10 text-center">
-                <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-lime-pale text-lime-deep">
-                  {tab === "discover" ? (
-                    <Search className="h-5 w-5" />
-                  ) : (
-                    <UsersRound className="h-5 w-5" />
-                  )}
-                </span>
-                <p className="mt-2 text-[11.5px] font-bold text-ink">
-                  {tab === "discover"
-                    ? query.trim()
-                      ? "No people found"
-                      : "No people to discover yet"
-                    : tab === "following"
-                      ? "You’re not following anyone yet"
-                      : "You don’t have followers yet"}
-                </p>
-                <p className="mx-auto mt-1 max-w-[38ch] text-[10px] leading-[1.5] text-muted">
-                  {tab === "discover"
-                    ? "Try another name to find people sharing your interests."
-                    : tab === "following"
-                      ? "Discover people in the Exchange and follow the voices you want to hear from."
-                      : "Keep sharing your work and ideas in the Exchange to help others find you."}
-                </p>
-                {tab !== "discover" ? (
-                  <button
-                    type="button"
-                    onClick={() => setTab("discover")}
-                    className="mt-3 cursor-pointer text-[10px] font-bold text-lime-deep hover:underline"
-                  >
-                    Discover people
-                  </button>
-                ) : null}
+              <div className="px-4 py-6 text-center">
+                <p className="text-[10px] text-muted">No suggestions yet. Add your school or role to your profile to get better matches.</p>
+                <Link href="/profile/edit" className="mt-2 inline-flex items-center gap-1 text-[9px] font-semibold text-lime-deep">
+                  Update profile <ArrowRight className="h-3 w-3" />
+                </Link>
               </div>
             )}
           </section>
-          <p className="mt-3 px-4 text-center text-[9px] leading-[1.5] text-faint lg:px-0 lg:text-left">
-            Following is one-way. People can see public Exchange posts whether or not you follow
-            them.
-          </p>
-        </main>
-
-        <aside className="hidden space-y-3 lg:sticky lg:top-6 lg:block">
-          <section className="rounded-2xl border border-line bg-paper p-4">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-lime-pale text-lime-deep">
-              <Sparkles className="h-4 w-4" />
-            </span>
-            <h2 className="mt-3 text-[12px] font-bold text-ink">Grow your circle</h2>
-            <p className="mt-1.5 text-[10px] leading-[1.6] text-muted">
-              Follow people whose experience, skills or ideas you want to keep up with. Their
-              public posts are still open to everyone.
-            </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <section className="overflow-hidden rounded-2xl border border-line bg-paper">
+            <header className="border-b border-line px-4 py-3">
+              <h2 className="text-[12px] font-bold text-ink">Catch up with your connections</h2>
+              <p className="mt-0.5 text-[9px] text-muted">New posts and milestones since your last visit.</p>
+            </header>
+            <div className="wheel flex gap-1.5 overflow-x-auto border-b border-line px-3 py-2">
+              {CATCHUP_FILTERS.map((filter) => (
+                <button
+                  key={filter.id}
+                  type="button"
+                  onClick={() => setCatchupFilter(filter.id)}
+                  aria-pressed={catchupFilter === filter.id}
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-[9px] font-semibold transition ${
+                    catchupFilter === filter.id
+                      ? "bg-lime text-dark"
+                      : "border border-line text-muted hover:bg-cream"
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+            {catchupError ? (
+              <p className="px-4 py-5 text-center text-[10px] text-red-700">{catchupError}</p>
+            ) : loadingCatchup ? (
+              <div className="flex items-center justify-center gap-2 px-4 py-8 text-[10px] text-muted">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading Catch up…
+              </div>
+            ) : catchupItems.length ? (
+              catchupItems.map((item) =>
+                item.post ? (
+                  <PostCatchupCard key={item.key} post={item.post} />
+                ) : item.event ? (
+                  <CatchupEventCard key={item.key} event={item.event} />
+                ) : null,
+              )
+            ) : (
+              <div className="px-4 py-9 text-center">
+                {catchupFilter === "birthdays" ? (
+                  <Cake className="mx-auto h-5 w-5 text-lime-deep" />
+                ) : (
+                  <UsersRound className="mx-auto h-5 w-5 text-lime-deep" />
+                )}
+                <p className="mt-2 text-[10px] font-semibold text-ink">You’re all caught up</p>
+                <p className="mt-1 text-[9px] text-muted">New connection posts and milestones will show here.</p>
+              </div>
+            )}
           </section>
-        </aside>
-      </div>
+        </div>
+      )}
     </PhoneShell>
   );
 }
