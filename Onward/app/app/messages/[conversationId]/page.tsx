@@ -184,13 +184,13 @@ export default function DirectMessagePage() {
                         <Avatar
                           initials={profile?.initials ?? ""}
                           src={profile?.avatarUrl}
-                          size="md"
+                          size="lg"
                         />
                       ) : (
                         <Avatar
                           initials={thread.person.initials}
                           src={thread.person.avatarUrl}
-                          size="md"
+                          size="lg"
                         />
                       )}
                     </Link>
