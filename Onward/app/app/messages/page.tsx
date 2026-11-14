@@ -101,21 +101,11 @@ export default function MessagesPage() {
 
   return (
     <PhoneShell>
-      <div className="mb-5 flex items-center gap-1">
-        <BackLink href="/network" label="Back to My Network" />
-        <h1 className="text-[17px] font-bold tracking-tight text-ink">Messages</h1>
-      </div>
-
-      <div className="mb-4 flex items-center gap-2">
-        <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full border border-line bg-paper px-3 text-muted focus-within:border-lime-deep">
-          <Search className="h-4 w-4" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search conversations"
-            className="min-w-0 flex-1 bg-transparent text-[11px] text-ink outline-none placeholder:text-muted"
-          />
-        </label>
+      <div className="mb-5 flex items-center justify-between">
+        <div className="flex items-center gap-1">
+          <BackLink href="/network" label="Back to My Network" />
+          <h1 className="text-[17px] font-bold tracking-tight text-ink">Messages</h1>
+        </div>
         <button
           type="button"
           aria-label="Message settings"
@@ -125,6 +115,18 @@ export default function MessagesPage() {
         >
           <MoreVertical className="h-5 w-5" />
         </button>
+      </div>
+
+      <div className="mb-4">
+        <label className="flex h-10 min-w-0 items-center gap-2 rounded-full border border-line bg-paper px-3 text-muted focus-within:border-lime-deep">
+          <Search className="h-4 w-4" />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search conversations"
+            className="min-w-0 flex-1 bg-transparent text-[11px] text-ink outline-none placeholder:text-muted"
+          />
+        </label>
       </div>
 
       <section id="conversation-list" className="-mx-5 md:mx-0">
