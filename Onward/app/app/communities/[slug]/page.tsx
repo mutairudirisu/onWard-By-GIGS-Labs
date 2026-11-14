@@ -483,8 +483,8 @@ export default function CommunityHomePage() {
                   community.isOwner
                     ? "bg-lime-pale text-lime-deep"
                     : community.isMember
-                      ? "bg-cream text-ink hover:bg-lime-pale"
-                      : "bg-lime-deep text-dark hover:bg-dark hover:text-on-panel"
+                      ? "bg-lime-pale text-lime-deep hover:bg-lime/30"
+                      : "bg-lime text-dark hover:bg-lime-deep"
                 }`}
               >
                 {joining ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : community.isMember ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}

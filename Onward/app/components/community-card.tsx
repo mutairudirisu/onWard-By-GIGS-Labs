@@ -165,7 +165,7 @@ export function CommunityCard({
       aria-haspopup="dialog"
       disabled={membershipBusy}
       onClick={() => setLeaveOpen(true)}
-      className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-full bg-cream px-2.5 py-1.5 text-[9px] font-bold text-ink hover:bg-lime-pale disabled:cursor-wait disabled:opacity-60"
+      className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-full bg-lime-pale px-2.5 py-1.5 text-[9px] font-bold text-lime-deep transition hover:bg-lime/30 disabled:cursor-wait disabled:opacity-60"
     >
       <Check className="h-3 w-3" />
       {membershipBusy ? "Leaving…" : "Joined"}
@@ -175,7 +175,7 @@ export function CommunityCard({
       type="button"
       disabled={membershipBusy}
       onClick={() => onJoin(community)}
-      className="shrink-0 cursor-pointer rounded-full bg-cream px-2.5 py-1.5 text-[9px] font-bold text-ink transition hover:bg-lime-pale disabled:cursor-wait disabled:opacity-60"
+      className="shrink-0 cursor-pointer rounded-full bg-lime px-2.5 py-1.5 text-[9px] font-bold text-dark transition hover:bg-lime-deep disabled:cursor-wait disabled:opacity-60"
     >
       {membershipBusy ? "Joining…" : "Join"}
     </button>

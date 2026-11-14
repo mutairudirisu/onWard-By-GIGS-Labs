@@ -223,6 +223,7 @@ export default function NetworkPage() {
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
   const [loadingGrow, setLoadingGrow] = useState(true);
   const [growError, setGrowError] = useState("");
+  const [growRetry, setGrowRetry] = useState(0);
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<ExchangePerson[]>([]);
   const [searching, setSearching] = useState(false);
@@ -257,7 +258,12 @@ export default function NetworkPage() {
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          setGrowError(error instanceof Error ? error.message : "Couldn't load your network.");
+          const message = error instanceof Error ? error.message : "Couldn't load your network.";
+          setGrowError(
+            message.toLowerCase().includes("schema cache")
+              ? "The Network database functions are not refreshed yet. Apply the latest Supabase migration, then try again."
+              : message,
+          );
         }
       })
       .finally(() => {
@@ -266,7 +272,7 @@ export default function NetworkPage() {
     return () => {
       cancelled = true;
     };
-  }, [ready, user]);
+  }, [growRetry, ready, user]);
 
   useEffect(() => {
     const term = query.trim();
@@ -472,26 +478,40 @@ export default function NetworkPage() {
         </Link>
       </div>
 
-      <div className="mb-5 grid grid-cols-2 rounded-xl border border-line bg-paper p-1">
+      <nav
+        className="-mx-5 mb-5 grid grid-cols-2 border-b border-line px-3 md:mx-0 md:px-0"
+        aria-label="My Network"
+      >
         {(["grow", "catchup"] as const).map((item) => (
           <button
             key={item}
             type="button"
             onClick={() => setTab(item)}
-            aria-pressed={tab === item}
-            className={`rounded-lg px-3 py-2.5 text-[11px] font-bold transition ${
-              tab === item ? "bg-lime text-dark" : "text-muted hover:bg-cream hover:text-ink"
+            aria-current={tab === item ? "page" : undefined}
+            className={`cursor-pointer border-b-2 px-2 py-2.5 text-[11px] font-semibold transition ${
+              tab === item
+                ? "border-lime-deep text-ink"
+                : "border-transparent text-muted hover:text-ink"
             }`}
           >
             {item === "grow" ? "Grow" : "Catch up"}
           </button>
         ))}
-      </div>
+      </nav>
 
       {tab === "grow" ? (
         <div className="space-y-5">
           {growError ? (
-            <div className="card px-4 py-4 text-[10px] text-red-700">{growError}</div>
+            <div className="card flex items-center justify-between gap-3 px-4 py-4 text-[10px] text-red-700">
+              <span>{growError}</span>
+              <button
+                type="button"
+                onClick={() => setGrowRetry((attempt) => attempt + 1)}
+                className="shrink-0 font-semibold underline"
+              >
+                Retry
+              </button>
+            </div>
           ) : null}
           <section className="overflow-hidden rounded-2xl border border-line bg-paper">
             <header className="flex items-center justify-between border-b border-line px-4 py-3">

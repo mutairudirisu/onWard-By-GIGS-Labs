@@ -511,6 +511,15 @@ export default function PersonPage() {
             {card.role ? <p className="truncate text-[11px] text-muted">{card.role}</p> : null}
             {card.location ? <p className="truncate text-[10.5px] text-faint">{card.location}</p> : null}
           </div>
+          {!card.mine ? (
+            <Link
+              href={`/messages/new?to=${encodeURIComponent(id)}`}
+              className="flex shrink-0 items-center gap-1.5 rounded-full border border-lime-deep/25 bg-paper/80 px-3 py-2 text-[10px] font-semibold text-ink transition hover:bg-paper"
+            >
+              <MessageCircle className="h-3.5 w-3.5 text-lime-deep" />
+              Message
+            </Link>
+          ) : null}
         </div>
 
         {card.bio ? (
@@ -571,14 +580,7 @@ export default function PersonPage() {
             Edit your profile
           </Link>
         ) : (
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <Link
-              href={`/messages/new?to=${encodeURIComponent(id)}`}
-              className="flex cursor-pointer items-center justify-center gap-1.5 rounded-btn border border-line bg-paper px-3 py-2.5 text-[11px] font-semibold text-ink transition hover:bg-cream"
-            >
-              <MessageCircle className="h-3.5 w-3.5" />
-              Message
-            </Link>
+          <div className="mt-3 grid grid-cols-1 gap-2">
             <button
               type="button"
               onClick={() => void connectFromProfile()}
@@ -599,7 +601,7 @@ export default function PersonPage() {
               onClick={toggleFollow}
               disabled={busy}
               aria-pressed={card.followed}
-              className={`col-span-2 flex w-full cursor-pointer items-center justify-center rounded-btn px-4 py-2.5 text-[12.5px] font-bold transition ${
+              className={`flex w-full cursor-pointer items-center justify-center rounded-btn px-4 py-2.5 text-[12.5px] font-bold transition ${
                 card.followed
                   ? "border border-line bg-paper text-ink hover:bg-cream"
                   : "bg-lime text-dark hover:bg-lime-deep"
