@@ -31,6 +31,7 @@ import {
   Loader2,
   MessageCircle,
   Search,
+  Star,
   UsersRound,
   X,
 } from "lucide-react";
@@ -60,7 +61,7 @@ function CatchupEventCard({ event }: { event: NetworkEvent }) {
   const href = `/messages/new?to=${encodeURIComponent(event.userId)}`;
 
   return (
-    <article className="flex items-start gap-3 border-b border-line px-4 py-4 last:border-b-0">
+    <article className="flex items-start gap-3 border-b border-line px-6 py-4 last:border-b-0">
       <Link href={`/people/${event.userId}`} aria-label={`View ${event.fullName}'s profile`}>
         <Avatar initials={event.initials} src={event.avatarUrl} />
       </Link>
@@ -89,7 +90,7 @@ function CatchupEventCard({ event }: { event: NetworkEvent }) {
 
 function PostCatchupCard({ post }: { post: FeedPost }) {
   return (
-    <article className="border-b border-line px-4 py-4 last:border-b-0">
+    <article className="border-b border-line px-6 py-4 last:border-b-0">
       <div className="flex items-center gap-2.5">
         <Link href={post.authorId ? `/people/${post.authorId}` : "/network"}>
           <Avatar initials={post.initials} src={post.avatarUrl} />
@@ -471,15 +472,16 @@ export default function NetworkPage() {
       <div className="mb-4 flex items-end justify-between gap-3">
         <div>
           <h1 className="text-[20px] font-bold tracking-tight text-ink">My Network</h1>
-          <p className="mt-0.5 text-[10px] text-muted">{connectionCount} connections</p>
+          <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-dashed border-lime-deep/50 bg-lime-pale px-3 py-1 text-[10px] font-semibold text-lime-deep">
+            <Star className="h-3 w-3 fill-current" aria-hidden="true" />
+            <span>{connectionCount} {connectionCount === 1 ? "connection" : "connections"}</span>
+            <Star className="h-3 w-3 fill-current" aria-hidden="true" />
+          </div>
         </div>
-        <Link href="/network/invitations" className="text-[10px] font-semibold text-lime-deep hover:underline">
-          Invitations <ArrowRight className="ml-0.5 inline h-3 w-3" />
-        </Link>
       </div>
 
       <nav
-        className="-mx-5 mb-5 grid grid-cols-2 border-b border-line px-3 md:mx-0 md:px-0"
+        className="-mx-5 grid grid-cols-2 border-b border-line px-3 md:mx-0 md:px-0"
         aria-label="My Network"
       >
         {(["grow", "catchup"] as const).map((item) => (
@@ -498,6 +500,13 @@ export default function NetworkPage() {
           </button>
         ))}
       </nav>
+
+      <Link
+        href="/network/invitations"
+        className="-mx-5 mb-5 flex min-h-10 items-center justify-between border-b border-line px-3 text-[11px] font-medium text-ink transition hover:bg-paper/50 md:mx-0"
+      >
+        Invitations <ArrowRight className="h-4 w-4 text-muted" />
+      </Link>
 
       {tab === "grow" ? (
         <div className="space-y-5">
@@ -575,12 +584,9 @@ export default function NetworkPage() {
           </section>
         </div>
       ) : (
-        <div className="space-y-4">
-          <section className="overflow-hidden rounded-2xl border border-line bg-paper">
-            <header className="border-b border-line px-4 py-3">
-              <h2 className="text-[12px] font-bold text-ink">Catch up with your connections</h2>
-              <p className="mt-0.5 text-[9px] text-muted">New posts and milestones since your last visit.</p>
-            </header>
+        <div>
+          <section className="-mx-5 md:mx-0">
+            <h2 className="sr-only">Catch up with your connections</h2>
             <div className="wheel flex gap-1.5 overflow-x-auto border-b border-line px-3 py-2">
               {CATCHUP_FILTERS.map((filter) => (
                 <button
