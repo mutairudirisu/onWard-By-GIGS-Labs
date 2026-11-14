@@ -158,7 +158,7 @@ function PersonCard({
   onConnect: () => void;
 }) {
   return (
-    <article className="flex min-w-0 items-center gap-3 rounded-xl border border-line bg-paper p-3">
+    <article className="flex min-w-0 items-center gap-3 border-b border-line px-6 py-3 last:border-b-0">
       <Link href={`/people/${person.id}`} aria-label={`View ${person.name}'s profile`}>
         <Avatar initials={person.initials} src={person.avatarUrl} />
       </Link>
@@ -191,7 +191,7 @@ function RequestCard({
   onRespond: (accept: boolean) => void;
 }) {
   return (
-    <article className="flex items-center gap-3 border-b border-line px-4 py-3 last:border-b-0">
+    <article className="flex items-center gap-3 border-b border-line px-6 py-3 last:border-b-0">
       <Link href={`/people/${request.person.id}`}>
         <Avatar initials={request.person.initials} src={request.person.avatarUrl} />
       </Link>
@@ -528,7 +528,7 @@ export default function NetworkPage() {
       {tab === "grow" ? (
         <div className="space-y-5">
           {growError ? (
-            <div className="card flex items-center justify-between gap-3 px-4 py-4 text-[10px] text-red-700">
+            <div className="-mx-5 flex items-center justify-between gap-3 border-y border-line px-5 py-4 text-[10px] text-red-700 md:mx-0">
               <span>{growError}</span>
               <button
                 type="button"
@@ -539,8 +539,8 @@ export default function NetworkPage() {
               </button>
             </div>
           ) : null}
-          <section className="overflow-hidden rounded-2xl border border-line bg-paper">
-            <header className="flex items-center justify-between border-b border-line px-4 py-3">
+          <section className="-mx-5 md:mx-0">
+            <header className="flex items-center justify-between border-b border-line px-5 py-3">
               <div>
                 <h2 className="text-[12px] font-bold text-ink">Connection requests</h2>
                 <p className="mt-0.5 text-[9px] text-muted">Accept or decline invitations to connect.</p>
@@ -550,7 +550,7 @@ export default function NetworkPage() {
               </Link>
             </header>
             {loadingGrow ? (
-              <p className="px-4 py-5 text-center text-[10px] text-muted">Loading requests…</p>
+              <p className="border-b border-line px-5 py-5 text-center text-[10px] text-muted">Loading requests…</p>
             ) : incomingRequests.length ? (
               incomingRequests.slice(0, 4).map((request) => (
                 <RequestCard
@@ -561,12 +561,12 @@ export default function NetworkPage() {
                 />
               ))
             ) : (
-              <p className="px-4 py-5 text-center text-[10px] text-muted">No new connection requests.</p>
+              <p className="border-b border-line px-5 py-5 text-center text-[10px] text-muted">No new connection requests.</p>
             )}
           </section>
 
-          <section className="overflow-hidden rounded-2xl border border-line bg-paper">
-            <header className="flex items-center gap-2.5 border-b border-line px-4 py-3">
+          <section className="-mx-5 md:mx-0">
+            <header className="flex items-center gap-2.5 border-b border-line px-5 py-3">
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-lime-pale text-lime-deep">
                 <UsersRound className="h-4 w-4" />
               </span>
@@ -576,9 +576,9 @@ export default function NetworkPage() {
               </span>
             </header>
             {loadingGrow ? (
-              <p className="px-4 py-5 text-center text-[10px] text-muted">Finding people…</p>
+              <p className="border-b border-line px-5 py-5 text-center text-[10px] text-muted">Finding people…</p>
             ) : suggestions.length ? (
-              <div className="grid gap-2 p-3 sm:grid-cols-2">
+              <div>
                 {suggestions.map((person) => (
                   <PersonCard
                     key={person.id}
@@ -591,7 +591,7 @@ export default function NetworkPage() {
                 ))}
               </div>
             ) : (
-              <div className="px-4 py-6 text-center">
+              <div className="border-b border-line px-5 py-6 text-center">
                 <p className="text-[10px] text-muted">No suggestions yet. Add your school or role to your profile to get better matches.</p>
                 <Link href="/profile/edit" className="mt-2 inline-flex items-center gap-1 text-[9px] font-semibold text-lime-deep">
                   Update profile <ArrowRight className="h-3 w-3" />
