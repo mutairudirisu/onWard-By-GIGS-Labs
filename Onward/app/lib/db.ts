@@ -1422,6 +1422,38 @@ export function subscribeToDirectMessages(
   };
 }
 
+export function subscribeToDirectConversationPresence(
+  conversationId: string,
+  userId: string,
+  onPresence: (otherUserOnline: boolean) => void,
+  onError?: () => void,
+): () => void {
+  const channel = supabase
+    .channel(`dm-presence:${conversationId}`, {
+      config: { private: true, presence: { key: userId } },
+    })
+    .on("presence", { event: "sync" }, () => {
+      const state = channel.presenceState();
+      const otherUserOnline = Object.entries(state).some(
+        ([key, presences]) => key !== userId && presences.length > 0,
+      );
+      onPresence(otherUserOnline);
+    })
+    .subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        void channel.track({ online_at: new Date().toISOString() }).then((result) => {
+          if (result !== "ok") onError?.();
+        });
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        onError?.();
+      }
+    });
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
+}
+
 /**
  * Handing the post to one person. The row names the original rather than copying it, so
  * there is one post and one thread, and a second tap for the same pair changes nothing.

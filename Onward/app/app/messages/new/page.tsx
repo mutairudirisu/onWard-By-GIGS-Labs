@@ -43,7 +43,7 @@ export default function NewMessagePage() {
   }, [ready, router, user]);
 
   return (
-    <PhoneShell tab="network">
+    <PhoneShell>
       <div className="card flex flex-col items-center px-4 py-10 text-center">
         {error ? null : <Loader2 className="h-5 w-5 animate-spin text-lime-deep" />}
         <p className="mt-2 text-[11px] font-semibold text-ink">
