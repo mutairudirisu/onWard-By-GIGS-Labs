@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronRight, Compass, Plus, Search, UsersRound } from "lucide-react";
+import { ChevronRight, Compass, Plus, Search, UsersRound } from "lucide-react";
 import { useAuth } from "@/components/auth";
+import { BackLink } from "@/components/ui";
 import { CommunityTopicIcon } from "@/components/community-card";
 import { CommunityCarousel } from "@/components/community-carousel";
 import { PhoneShell } from "@/components/phone-shell";
@@ -161,13 +162,12 @@ export default function CommunitiesPage() {
         <main className="min-w-0">
           <header className="mb-5">
             <div className="flex items-center gap-3">
-              <Link
+              <BackLink
                 href="/today"
-                aria-label="Back to home"
+                label="Back to home"
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink transition hover:bg-paper"
               >
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
+              </BackLink>
               <h1 className="text-[22px] font-bold tracking-tight text-ink sm:text-[25px]">
                 Discover communities
               </h1>

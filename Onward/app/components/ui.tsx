@@ -2,8 +2,8 @@
 
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ArrowRight, Plus } from "lucide-react";
+import { useSmartBack } from "@/components/navigation-history";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "quiet" | "dark";
@@ -294,30 +294,35 @@ export function BackLink({
   href,
   label,
   onClick,
+  className = "",
+  children,
 }: {
   href: string;
   label: string;
   /** Replaces the navigation when leaving has to save something first. */
   onClick?: () => void;
+  className?: string;
+  children?: ReactNode;
 }) {
+  const smartBack = useSmartBack(href);
   const arrow = (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path d="M15 5 8 12l7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
-  const className =
-    "-ml-1 flex h-8 w-8 items-center justify-center rounded-full text-inksoft hover:bg-cream";
+  const classes =
+    className || "-ml-1 flex h-8 w-8 items-center justify-center rounded-full text-inksoft hover:bg-cream";
   if (onClick) {
     return (
-      <button type="button" aria-label={label} onClick={onClick} className={className}>
-        {arrow}
+      <button type="button" aria-label={label} onClick={onClick} className={classes}>
+        {children ?? arrow}
       </button>
     );
   }
   return (
-    <Link href={href} aria-label={label} className={className}>
-      {arrow}
-    </Link>
+    <button type="button" aria-label={label} onClick={smartBack} className={classes}>
+      {children ?? arrow}
+    </button>
   );
 }
 
@@ -328,15 +333,12 @@ export function BackButton({
   label?: string;
   fallback?: string;
 }) {
-  const router = useRouter();
+  const smartBack = useSmartBack(fallback);
   return (
     <button
       type="button"
       aria-label={label}
-      onClick={() => {
-        if (typeof window !== "undefined" && window.history.length > 1) router.back();
-        else if (fallback) router.push(fallback);
-      }}
+      onClick={smartBack}
       className="-ml-1 flex h-8 w-8 items-center justify-center rounded-full text-inksoft hover:bg-cream"
     >
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden>

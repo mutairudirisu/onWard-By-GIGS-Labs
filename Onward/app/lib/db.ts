@@ -544,6 +544,7 @@ export type PostMedia = {
 
 export type PostComment = {
   id: string;
+  authorId: string | null;
   body: string;
   fullName: string;
   initials: string;
@@ -619,6 +620,7 @@ export type FeedPost = {
 
 type CommentJson = {
   id: string;
+  author_id?: string | null;
   body: string;
   full_name: string | null;
   initials: string | null;
@@ -693,6 +695,7 @@ type FeedRow = {
 function commentFromJson(row: CommentJson): PostComment {
   return {
     id: row.id,
+    authorId: row.author_id ?? null,
     body: row.body,
     fullName: row.full_name ?? "",
     initials: row.initials ?? "",
@@ -857,7 +860,7 @@ export async function fetchPost(id: string): Promise<FeedPost | null> {
 export async function fetchComments(postId: string): Promise<PostComment[]> {
   const { data, error } = await supabase
     .from("feed_comments")
-    .select("id, body, full_name, initials, created_at, mine, likes, liked")
+    .select("id, author_id, body, full_name, initials, created_at, mine, likes, liked")
     .eq("post_id", postId)
     .order("created_at");
   if (error) throw new Error(error.message);

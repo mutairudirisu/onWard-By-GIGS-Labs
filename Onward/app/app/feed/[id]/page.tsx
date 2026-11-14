@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, Send, ThumbsUp, Trash2 } from "lucide-react";
+import { Loader2, Send, ThumbsUp, Trash2 } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
+import { BackLink } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { ExchangeShareSheet } from "@/components/exchange-share-sheet";
 import { useAuth, useCurrentUser } from "@/components/auth";
@@ -252,6 +253,7 @@ export default function PostPage() {
         ...prev,
         {
           id: created.id,
+          authorId: user?.id ?? null,
           body,
           fullName: me.name.trim() || "Someone",
           initials: me.initials || (me.name.slice(0, 1).toUpperCase() || "?"),
@@ -325,9 +327,9 @@ export default function PostPage() {
           <p className="text-[12px] font-semibold text-ink">The Exchange is out of reach right now.</p>
           <p className="tiny mt-1">Check your connection and try again.</p>
           <p className="mt-4">
-            <Link href="/feed" className="cursor-pointer text-[11px] font-bold text-lime-deep hover:underline">
+            <BackLink href="/feed" label="Back to the Exchange" className="cursor-pointer text-[11px] font-bold text-lime-deep hover:underline">
               Back to the Exchange
-            </Link>
+            </BackLink>
           </p>
         </div>
       </PhoneShell>
@@ -349,9 +351,9 @@ export default function PostPage() {
           <p className="text-[12px] font-semibold text-ink">This post is gone.</p>
           <p className="tiny mt-1">It was deleted, or the link is not right.</p>
           <p className="mt-4">
-            <Link href="/feed" className="cursor-pointer text-[11px] font-bold text-lime-deep hover:underline">
+            <BackLink href="/feed" label="Back to the Exchange" className="cursor-pointer text-[11px] font-bold text-lime-deep hover:underline">
               Back to the Exchange
-            </Link>
+            </BackLink>
           </p>
         </div>
       </PhoneShell>
@@ -362,13 +364,12 @@ export default function PostPage() {
     <PhoneShell tab="feed">
       <div className="mx-auto w-full max-w-[680px]">
       <div className="mb-3.5 flex items-center gap-2 lg:mb-5">
-        <Link
+        <BackLink
           href="/feed"
-          aria-label="Back to the Exchange"
+          label="Back to the Exchange"
           className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-inksoft transition hover:bg-cream"
         >
-          <ArrowLeft className="h-[18px] w-[18px]" />
-        </Link>
+        </BackLink>
         <h1 className="text-[13px] font-bold tracking-tight text-ink">Post</h1>
       </div>
 
@@ -414,7 +415,17 @@ export default function PostPage() {
           <section className="mt-3.5 space-y-3">
             {comments.map((comment) => (
               <div key={comment.id} className="flex items-start gap-2.5">
-                <Avatar initials={comment.initials} />
+                {comment.authorId ? (
+                  <Link
+                    href={`/people/${comment.authorId}`}
+                    aria-label={`View ${comment.fullName || "commenter"}'s profile`}
+                    className="shrink-0"
+                  >
+                    <Avatar initials={comment.initials} />
+                  </Link>
+                ) : (
+                  <Avatar initials={comment.initials} />
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="text-[11.5px] leading-[1.55] text-ink [overflow-wrap:anywhere]">
                     <span className="font-bold">{comment.fullName || "Someone"}</span> {comment.body}
@@ -458,10 +469,12 @@ export default function PostPage() {
 
           {user && post.canComment !== false ? (
             <div className="mt-4 flex items-end gap-2.5 border-t border-line pt-3">
-              <Avatar
-                initials={me.initials || (me.name.slice(0, 1).toUpperCase() || "?")}
-                src={me.avatarUrl}
-              />
+              <Link href={`/people/${user.id}`} aria-label="View your profile" className="shrink-0">
+                <Avatar
+                  initials={me.initials || (me.name.slice(0, 1).toUpperCase() || "?")}
+                  src={me.avatarUrl}
+                />
+              </Link>
               <input
                 id="comment-box"
                 value={draft}

@@ -100,6 +100,7 @@ export function CommentsSheet({
         ...(comments ?? []),
         {
           id: created.id,
+          authorId: user?.id ?? null,
           body,
           fullName: me.name.trim() || "Someone",
           initials: me.initials || (me.name.slice(0, 1).toUpperCase() || "?"),
@@ -210,7 +211,17 @@ export function CommentsSheet({
             <ul className="pb-2">
               {comments.map((comment) => (
                 <li key={comment.id} className="flex gap-2.5 border-b border-line py-3 last:border-0">
-                  <Avatar initials={comment.initials} />
+                  {comment.authorId ? (
+                    <Link
+                      href={`/people/${comment.authorId}`}
+                      aria-label={`View ${comment.fullName || "commenter"}'s profile`}
+                      className="shrink-0"
+                    >
+                      <Avatar initials={comment.initials} />
+                    </Link>
+                  ) : (
+                    <Avatar initials={comment.initials} />
+                  )}
                   <div className="min-w-0 flex-1">
                     <p className="text-[11.5px] leading-[1.55] text-ink [overflow-wrap:anywhere]">
                       <span className="font-bold">{comment.fullName || "Someone"}</span>{" "}
@@ -268,7 +279,11 @@ export function CommentsSheet({
         <div className="shrink-0 border-t border-line px-4 py-3">
           {canType ? (
             <div className="flex items-end gap-2.5">
-              <Avatar initials={me.initials || (me.name.slice(0, 1).toUpperCase() || "?")} src={me.avatarUrl} />
+              {user ? (
+                <Link href={`/people/${user.id}`} aria-label="View your profile" className="shrink-0">
+                  <Avatar initials={me.initials || (me.name.slice(0, 1).toUpperCase() || "?")} src={me.avatarUrl} />
+                </Link>
+              ) : null}
               <label className="flex min-w-0 flex-1 items-end rounded-full border border-line bg-paper px-3.5 py-2 focus-within:border-dash">
                 <textarea
                   ref={fieldRef}

@@ -18,6 +18,7 @@ import {
 import { useAuth } from "@/components/auth";
 import { CommunityIcon, CommunityTopicIcon } from "@/components/community-card";
 import { PhoneShell } from "@/components/phone-shell";
+import { useSmartBack, useTrackedReplace } from "@/components/navigation-history";
 import { Toggle } from "@/components/ui";
 import { Wordmark } from "@/components/wordmark";
 import {
@@ -50,6 +51,8 @@ function communitySlug(name: string) {
 
 export default function NewCommunityPage() {
   const router = useRouter();
+  const smartBack = useSmartBack("/communities");
+  const trackedReplace = useTrackedReplace();
   const { user, ready } = useAuth();
   const [step, setStep] = useState(0);
   const [idea, setIdea] = useState("");
@@ -191,7 +194,7 @@ export default function NewCommunityPage() {
         description: description.trim(),
         idea: idea.trim(),
       });
-      router.replace(`/communities/${community.slug}`);
+      trackedReplace(`/communities/${community.slug}`);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not create this community.");
     } finally {
@@ -231,7 +234,7 @@ export default function NewCommunityPage() {
               aria-label={step === 0 ? "Back to communities" : "Previous step"}
               onClick={() => {
                 setError("");
-                if (step === 0) router.push("/communities");
+                if (step === 0) smartBack();
                 else setStep((current) => current - 1);
               }}
               className="flex h-8 w-8 items-center justify-center rounded-full text-ink hover:bg-paper"

@@ -70,7 +70,13 @@ export default function OnWardDetailPage() {
         </div>
         <p className="card px-4 py-6 text-center text-[12px] text-muted">This onWard no longer exists.</p>
         <div className="mt-4">
-          <Button href="/onwards">Back to onWards</Button>
+          <BackLink
+            href="/onwards"
+            label="Back to onWards"
+            className="flex w-full items-center justify-center rounded-btn bg-lime px-4 py-3 text-[13px] font-semibold text-dark transition hover:bg-lime-deep"
+          >
+            Back to onWards
+          </BackLink>
         </div>
       </PhoneShell>
     );

@@ -5,6 +5,7 @@ import { AuthGate, AuthProvider } from "@/components/auth";
 import { ChecklistReminderScheduler } from "@/components/checklist-widget";
 import { FeedbackPrompt } from "@/components/feedback-prompt";
 import { NotificationsProvider } from "@/components/notifications";
+import { NavigationHistoryTracker } from "@/components/navigation-history";
 import { FocusTimerScheduler } from "@/components/pomodoro-widget";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { Sidebar } from "@/components/sidebar";
@@ -51,6 +52,7 @@ export default async function RootLayout({
           <StoreProvider>
             <AuthGate>
               <NotificationsProvider>
+                <NavigationHistoryTracker />
                 <ThemeManager />
                 <ChecklistReminderScheduler />
                 <FocusTimerScheduler />

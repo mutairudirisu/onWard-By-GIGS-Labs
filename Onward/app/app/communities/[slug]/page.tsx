@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   Check,
   ChevronDown,
   ChevronUp,
@@ -25,6 +24,7 @@ import { CommunityTopicIcon, LeaveCommunityDialog } from "@/components/community
 import { PostBlock } from "@/components/feed-post";
 import { Modal } from "@/components/modal";
 import { PhoneShell } from "@/components/phone-shell";
+import { BackLink } from "@/components/ui";
 import { ShareSheet } from "@/components/share-sheet";
 import { toastError, toastSuccess } from "@/components/toast";
 import { withVote } from "@/components/post-poll";
@@ -396,13 +396,12 @@ export default function CommunityHomePage() {
             <span className="pointer-events-none absolute right-40 top-12 h-12 w-12 rounded-full bg-lime/15" />
             <span className="pointer-events-none absolute -bottom-16 left-[36%] h-36 w-36 rounded-full bg-lime/10" />
             <div className="relative flex items-center justify-between">
-              <Link
+              <BackLink
                 href="/communities"
-                aria-label="Back to all communities"
+                label="Back to all communities"
                 className="flex h-11 w-11 items-center justify-center rounded-full bg-dark/60 text-on-panel transition hover:bg-dark/80"
               >
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
+              </BackLink>
               <div className="flex items-center gap-2">
                 {community.isOwner ? (
                   <button

@@ -8,6 +8,7 @@ import { useAuth } from "@/components/auth";
 import { CommunityCard, CommunityTopicIcon } from "@/components/community-card";
 import { CommunityCarousel } from "@/components/community-carousel";
 import { PhoneShell } from "@/components/phone-shell";
+import { BackLink } from "@/components/ui";
 import { toastError, toastSuccess } from "@/components/toast";
 import {
   defaultCommunityTaxonomy,
@@ -214,13 +215,13 @@ export function CommunityDirectoryPage({
       <main className="mx-auto w-full max-w-[1080px]">
         <header className="mb-5">
           <div className="flex items-center gap-3">
-            <Link
+            <BackLink
               href={backHref}
-              aria-label={isSubcategoryPage ? `Back to ${topic}` : "Back to all communities"}
+              label={isSubcategoryPage ? `Back to ${topic}` : "Back to all communities"}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink transition hover:bg-paper"
             >
               <ArrowLeft className="h-5 w-5" />
-            </Link>
+            </BackLink>
             <div className="min-w-0">
               <p className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.12em] text-lime-deep">
                 <CommunityTopicIcon topic={topic} className="h-3 w-3" />

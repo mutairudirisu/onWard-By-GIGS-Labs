@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  ArrowLeft,
   Award,
   ChevronRight,
   Flame,
@@ -14,6 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
+import { BackLink } from "@/components/ui";
 import {
   EXCHANGE_ACHIEVEMENT_CATEGORIES,
   getExchangeAchievement,
@@ -167,13 +167,11 @@ function PageHeader({
 }) {
   return (
     <header className="mb-5 flex items-center gap-3">
-      <Link
+      <BackLink
         href={href}
-        aria-label="Go back"
+        label="Go back"
         className="-ml-2 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-ink transition hover:bg-cream"
-      >
-        <ArrowLeft className="h-5 w-5" />
-      </Link>
+      />
       <h1 className="min-w-0 flex-1 truncate text-[18px] font-bold tracking-tight text-ink">
         {title}
       </h1>

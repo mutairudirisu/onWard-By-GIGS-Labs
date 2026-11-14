@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { AuthHeader } from "@/components/phone-shell";
 import { AuthShell } from "@/components/auth-shell";
-import { ArrowIcon, Button, Field, TextInput } from "@/components/ui";
+import { ArrowIcon, BackLink, Button, Field, TextInput } from "@/components/ui";
 import { useAuth } from "@/components/auth";
 import { Lock, Mail, MailCheck, Sparkles } from "lucide-react";
 
@@ -109,9 +108,13 @@ export default function ForgotPasswordPage() {
       </div>
 
       <p className="mt-6 text-center">
-        <Link href="/sign-in" className="text-[11px] font-semibold text-inksoft underline">
+        <BackLink
+          href="/sign-in"
+          label="Back to sign in"
+          className="text-[11px] font-semibold text-inksoft underline"
+        >
           Back to sign in
-        </Link>
+        </BackLink>
       </p>
     </AuthShell>
   );

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AuthHeader } from "@/components/phone-shell";
 import { AuthShell } from "@/components/auth-shell";
-import { ArrowIcon, Button, Divider, Field, TextInput } from "@/components/ui";
+import { ArrowIcon, BackLink, Button, Divider, Field, TextInput } from "@/components/ui";
 import { useAuth } from "@/components/auth";
 import { GoogleAuthButton } from "@/components/auth-decor";
 import { Check, Eye, EyeOff, Mail, MailCheck } from "lucide-react";
@@ -103,9 +103,14 @@ export default function CreateAccountPage() {
           </p>
         </div>
         <div className="mt-6">
-          <Button href="/sign-in" variant="secondary" icon={<ArrowIcon />}>
+          <BackLink
+            href="/sign-in"
+            label="Back to sign in"
+            className="flex w-full items-center justify-center gap-2 rounded-btn border border-line bg-paper px-4 py-3 text-[13px] font-semibold text-ink transition hover:bg-cream"
+          >
             Back to sign in
-          </Button>
+            <ArrowIcon />
+          </BackLink>
         </div>
       </AuthShell>
     );

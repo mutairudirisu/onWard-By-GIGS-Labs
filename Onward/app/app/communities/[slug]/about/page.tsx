@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, CalendarDays, Eye, Globe, Lightbulb, LockKeyhole } from "lucide-react";
+import { BackLink } from "@/components/ui";
 import { CommunityTopicIcon } from "@/components/community-card";
 import { PhoneShell } from "@/components/phone-shell";
 import {
@@ -87,12 +88,13 @@ export default function CommunityAboutPage() {
     return (
       <PhoneShell wide>
         <div className="mx-auto w-full max-w-[1080px]">
-          <Link
+          <BackLink
             href={`/communities/${slug}`}
+            label="Back to community"
             className="mb-4 inline-flex items-center gap-2 text-[11px] font-semibold text-muted hover:text-ink"
           >
             <ArrowLeft className="h-4 w-4" /> Back to community
-          </Link>
+          </BackLink>
           <section className="card px-5 py-9 text-center">
             <h1 className="text-[15px] font-bold text-ink">
               {error ? "We couldn’t open this page" : "Community not found"}
@@ -119,12 +121,13 @@ export default function CommunityAboutPage() {
   return (
     <PhoneShell wide>
       <div className="mx-auto w-full max-w-[1080px]">
-        <Link
+        <BackLink
           href={`/communities/${community.slug}`}
+          label={`Back to ${community.name}`}
           className="mb-4 inline-flex items-center gap-2 text-[11px] font-semibold text-muted transition hover:text-ink"
         >
           <ArrowLeft className="h-4 w-4" /> Back to {community.name}
-        </Link>
+        </BackLink>
 
         <header className="relative overflow-hidden rounded-[24px] bg-panel px-5 pb-5 pt-20 sm:px-7">
           {bannerUrl ? (
