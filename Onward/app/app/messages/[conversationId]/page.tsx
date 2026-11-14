@@ -125,31 +125,35 @@ export default function DirectMessagePage() {
 
   return (
     <PhoneShell>
-      <div className="mb-4 flex items-center gap-2">
-        <BackLink href="/messages" label="Back to messages" />
-        {thread ? (
-          <Link href={`/people/${thread.person.id}`} className="flex min-w-0 items-center gap-2">
-            <PresenceAvatar
-              initials={thread.person.initials}
-              src={thread.person.avatarUrl}
-              online={otherOnline}
-            />
-            <span className="min-w-0">
-              <span className="block truncate text-[12px] font-bold text-ink">
-                {thread.person.name || "onWard member"}
+      <div className="flex min-h-[calc(100dvh-5.25rem)] flex-col md:min-h-[calc(100dvh-5rem)] lg:min-h-[calc(100dvh-5.5rem)] xl:min-h-[calc(100dvh-6.5rem)]">
+        <div className="mb-4 flex shrink-0 items-center gap-2">
+          <BackLink href="/messages" label="Back to messages" />
+          {thread ? (
+            <Link
+              href={`/people/${thread.person.id}`}
+              className="flex min-w-0 items-center gap-2 no-underline hover:no-underline focus:no-underline active:no-underline"
+            >
+              <PresenceAvatar
+                initials={thread.person.initials}
+                src={thread.person.avatarUrl}
+                online={otherOnline}
+              />
+              <span className="min-w-0">
+                <span className="block truncate text-[12px] font-bold text-ink">
+                  {thread.person.name || "onWard member"}
+                </span>
+                {thread.person.role ? (
+                  <span className="block truncate text-[9px] text-muted">{thread.person.role}</span>
+                ) : null}
               </span>
-              {thread.person.role ? (
-                <span className="block truncate text-[9px] text-muted">{thread.person.role}</span>
-              ) : null}
-            </span>
-          </Link>
-        ) : (
-          <h1 className="text-[15px] font-bold text-ink">Conversation</h1>
-        )}
-      </div>
+            </Link>
+          ) : (
+            <h1 className="text-[15px] font-bold text-ink">Conversation</h1>
+          )}
+        </div>
 
-      <section className="-mx-5 flex min-h-[65vh] flex-col border-y border-line md:mx-0">
-        <div className="wheel flex-1 space-y-3 overflow-y-auto px-5 py-4">
+        <section className="-mx-5 flex min-h-0 flex-1 flex-col border-y border-line md:mx-0">
+          <div className="wheel min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-10 text-[10px] text-muted">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading conversation…
@@ -190,48 +194,49 @@ export default function DirectMessagePage() {
             </div>
           )}
           <div ref={bottomRef} />
-        </div>
-        <form onSubmit={submit} className="flex items-center gap-2 border-t border-line px-4 py-3">
-          <button
-            type="button"
-            disabled
-            aria-label="Attachments are not available yet"
-            title="Attachments are not available yet"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line text-muted disabled:opacity-70"
-          >
-            <Plus className="h-6 w-6" />
-          </button>
-          <TextInput
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            placeholder="Write a message…"
-            aria-label="Write a message"
-            maxLength={5000}
-            disabled={!thread || sending}
-            className="h-12 min-w-0 flex-1 rounded-2xl border-0 bg-cream px-4 text-[12px] focus:border-0 focus:ring-0"
-          />
-          {draft.trim() ? (
-            <button
-              type="submit"
-              aria-label="Send message"
-              disabled={sending || !thread}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-lime text-dark transition hover:bg-lime-deep disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </button>
-          ) : (
+          </div>
+          <form onSubmit={submit} className="flex shrink-0 items-center gap-2 border-t border-line px-4 py-3">
             <button
               type="button"
               disabled
-              aria-label="Voice messages are not available yet"
-              title="Voice messages are not available yet"
-              className="flex h-11 w-10 shrink-0 items-center justify-center text-muted disabled:opacity-70"
+              aria-label="Attachments are not available yet"
+              title="Attachments are not available yet"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line text-muted disabled:opacity-70"
             >
-              <Mic className="h-6 w-6" />
+              <Plus className="h-6 w-6" />
             </button>
-          )}
-        </form>
-      </section>
+            <TextInput
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              placeholder="Write a message…"
+              aria-label="Write a message"
+              maxLength={5000}
+              disabled={!thread || sending}
+              className="h-12 min-w-0 flex-1 rounded-2xl border-0 bg-line px-4 text-[12px] focus:border-0 focus:ring-0"
+            />
+            {draft.trim() ? (
+              <button
+                type="submit"
+                aria-label="Send message"
+                disabled={sending || !thread}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-lime text-dark transition hover:bg-lime-deep disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled
+                aria-label="Voice messages are not available yet"
+                title="Voice messages are not available yet"
+                className="flex h-11 w-10 shrink-0 items-center justify-center text-muted disabled:opacity-70"
+              >
+                <Mic className="h-6 w-6" />
+              </button>
+            )}
+          </form>
+        </section>
+      </div>
     </PhoneShell>
   );
 }
