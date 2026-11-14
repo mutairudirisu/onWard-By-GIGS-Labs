@@ -674,8 +674,8 @@ export default function CommunityHomePage() {
 
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
           <main className="min-w-0">
-            <section id="community-feed" className="border-t border-line pt-5">
-              <div className="flex items-center justify-between gap-3">
+            <section id="community-feed" className="-mx-5 border-t border-line pt-5 md:mx-0">
+              <div className="flex items-center justify-between gap-3 px-5 md:px-0">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-lime-deep">Community feed</p>
                   <h2 className="mt-1 text-[17px] font-bold text-ink">A good place to begin</h2>
@@ -691,9 +691,9 @@ export default function CommunityHomePage() {
               </div>
 
               {posts.length ? (
-                <div className="mt-3 divide-y-2 divide-line">
+                <div className="mt-3 divide-y divide-line">
                   {posts.map((post) => (
-                    <div key={post.id} className="px-4">
+                    <div key={post.id} className="px-6">
                       <PostBlock
                         post={post}
                         liked={likedPosts.has(post.id)}
@@ -714,7 +714,7 @@ export default function CommunityHomePage() {
                   ))}
                 </div>
               ) : (
-                <div className="mt-4 rounded-xl bg-lime-pale/60 px-4 py-7 text-center">
+                <div className="mt-4 border-y border-line px-6 py-7 text-center">
                   <MessageCircle className="mx-auto h-6 w-6 text-lime-deep" />
                   <p className="mt-2 text-[13px] font-semibold text-ink">Start the conversation</p>
                   <p className="mt-1 text-[11px] leading-[1.5] text-muted">
