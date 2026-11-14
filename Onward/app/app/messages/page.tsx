@@ -68,9 +68,9 @@ export default function MessagesPage() {
         />
       </label>
 
-      <section className="overflow-hidden rounded-2xl border border-line bg-paper">
+      <section className="-mx-5 md:mx-0">
         {loading ? (
-          <div className="flex items-center justify-center gap-2 px-4 py-8 text-[10px] text-muted">
+          <div className="flex items-center justify-center gap-2 border-b border-line px-5 py-8 text-[10px] text-muted">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading messages…
           </div>
         ) : visibleThreads.length ? (
@@ -78,7 +78,7 @@ export default function MessagesPage() {
             <Link
               key={thread.conversationId}
               href={`/messages/${thread.conversationId}`}
-              className="flex items-center gap-3 border-b border-line px-4 py-3.5 last:border-0 transition hover:bg-cream"
+              className="flex items-center gap-3 border-b border-line px-6 py-3.5 last:border-b-0 transition hover:bg-paper/50"
             >
               <Avatar initials={thread.person.initials} src={thread.person.avatarUrl} />
               <span className="min-w-0 flex-1">
@@ -98,7 +98,7 @@ export default function MessagesPage() {
             </Link>
           ))
         ) : (
-          <div className="px-5 py-10 text-center">
+          <div className="border-y border-line px-5 py-10 text-center">
             <MessageCircle className="mx-auto h-5 w-5 text-lime-deep" />
             <p className="mt-2 text-[11px] font-semibold text-ink">
               {query ? "No conversations found" : "No messages yet"}

@@ -131,8 +131,8 @@ export default function DirectMessagePage() {
         )}
       </div>
 
-      <section className="flex min-h-[65vh] flex-col overflow-hidden rounded-2xl border border-line bg-paper">
-        <div className="wheel flex-1 space-y-3 overflow-y-auto px-3 py-4">
+      <section className="-mx-5 flex min-h-[65vh] flex-col border-y border-line md:mx-0">
+        <div className="wheel flex-1 space-y-3 overflow-y-auto px-5 py-4">
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-10 text-[10px] text-muted">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading conversation…
@@ -174,7 +174,7 @@ export default function DirectMessagePage() {
           )}
           <div ref={bottomRef} />
         </div>
-        <form onSubmit={submit} className="flex items-center gap-2 border-t border-line p-3">
+        <form onSubmit={submit} className="flex items-center gap-2 border-t border-line px-5 py-3">
           <TextInput
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
