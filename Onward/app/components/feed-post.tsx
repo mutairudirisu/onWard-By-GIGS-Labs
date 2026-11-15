@@ -37,19 +37,21 @@ export function Avatar({
 }: {
   initials: string;
   src?: string | null;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "compact";
   ring?: boolean;
 }) {
   const tile = (
     <span
       className={`flex ${
-        size === "xl"
-          ? "h-16 w-16 text-[16px] lg:h-20 lg:w-20 lg:text-[20px]"
-          : size === "md"
-            ? "h-14 w-14 text-[15px]"
-            : size === "lg"
-              ? "h-[46px] w-[46px] text-[12px]"
-              : "h-8 w-8 text-[10px]"
+        size === "compact"
+          ? "h-10 w-10 text-[11px]"
+          : size === "xl"
+            ? "h-16 w-16 text-[16px] lg:h-20 lg:w-20 lg:text-[20px]"
+            : size === "md"
+              ? "h-14 w-14 text-[15px]"
+              : size === "lg"
+                ? "h-[46px] w-[46px] text-[12px]"
+                : "h-8 w-8 text-[10px]"
       } shrink-0 items-center justify-center overflow-hidden rounded-full border border-lime-deep bg-lime-soft font-bold text-ink`}
     >
       {src ? <img src={src} alt="" className="h-full w-full object-cover" /> : initials || "?"}

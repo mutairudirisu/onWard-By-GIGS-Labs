@@ -86,7 +86,7 @@ export default function TodayPage() {
                 aria-label="Your profile"
                 className="flex cursor-pointer items-center justify-center rounded-full"
               >
-                <Avatar initials={user.initials} src={user.avatarUrl} size="lg" />
+                <Avatar initials={user.initials} src={user.avatarUrl} size="compact" />
               </Link>
             </div>
           </div>
