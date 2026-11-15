@@ -91,6 +91,7 @@ function CatchupEventCard({ event }: { event: NetworkEvent }) {
 function PostCatchupCard({ post }: { post: FeedPost }) {
   const [expanded, setExpanded] = useState(false);
   const isLongPost = (post.body?.length ?? 0) > 240;
+  const canComment = post.canComment !== false;
 
   return (
     <article className="border-b border-line px-6 py-4 last:border-b-0">
@@ -135,10 +136,14 @@ function PostCatchupCard({ post }: { post: FeedPost }) {
         </button>
       ) : null}
       <Link
-        href={`/feed/${post.id}`}
+        href={
+          canComment
+            ? `/feed/${post.id}?focus=comments#comments`
+            : `/feed/${post.id}`
+        }
         className="mt-3 inline-flex items-center gap-1 text-[9px] font-semibold text-lime-deep hover:underline"
       >
-        Open post <ArrowRight className="h-3 w-3" />
+        {canComment ? "Comment" : "Open post"} <ArrowRight className="h-3 w-3" />
       </Link>
     </article>
   );

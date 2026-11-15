@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Send, ThumbsUp, Trash2 } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { BackLink } from "@/components/ui";
@@ -43,6 +43,8 @@ import { timeAgo } from "@/lib/dates";
 export default function PostPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const focusComments = searchParams.get("focus") === "comments";
   const { user } = useAuth();
   const me = useCurrentUser();
   const [post, setPost] = useState<FeedPost | null | undefined>(undefined);
@@ -66,6 +68,17 @@ export default function PostPage() {
   const [reposting, setReposting] = useState(false);
 
   const id = params.id;
+
+  useEffect(() => {
+    if (!post || !focusComments) return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById("comments")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusComments, post]);
 
   useEffect(() => {
     let cancelled = false;
@@ -404,7 +417,10 @@ export default function PostPage() {
           />
         </div>
 
-        <aside className="mt-3.5 rounded-2xl border border-line bg-paper p-4">
+        <aside
+          id="comments"
+          className="mt-3.5 scroll-mt-4 rounded-2xl border border-line bg-paper p-4"
+        >
           <div className="flex items-center justify-between border-b border-line pb-3">
             <h2 className="text-[12px] font-bold text-ink">Comments</h2>
             <span className="text-[10px] font-semibold tabular-nums text-muted">
