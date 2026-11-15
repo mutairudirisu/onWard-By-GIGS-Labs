@@ -60,13 +60,11 @@ export function StepsShowcase() {
 
   return (
     <section id="how-it-works" className="bg-night text-paper">
-      <div className="container-x grid gap-4 py-20 lg:grid-cols-2 lg:gap-16 lg:py-24">
+      <div className="container-x grid gap-4 py-24 lg:grid-cols-2 lg:gap-16 lg:py-32">
         <div>
           <p className="eyebrow">Simple by design</p>
-          <h2 className="h2 mt-4">
-            Two minutes a day,
-            <br />
-            and it keeps.
+          <h2 className="editorial-heading mt-4 max-w-xl text-paper">
+            Make the work count. Keep the proof.
           </h2>
 
           {STEPS.map((s, i) => (
@@ -92,13 +90,13 @@ export function StepsShowcase() {
                 </span>
                 <div className="max-w-sm">
                   <h3
-                    className={`text-[19px] font-bold leading-snug tracking-tight sm:text-[22px] ${
+                    className={`text-[21px] font-bold leading-snug tracking-tight sm:text-[24px] ${
                       i === active ? "text-paper" : "text-paper/70"
                     }`}
                   >
                     {s.title}
                   </h3>
-                  <p className="mt-3 text-[14.5px] leading-relaxed text-paper/55 sm:text-[15px]">
+                  <p className="mt-3 text-[15px] leading-relaxed text-paper/60 sm:text-[16px]">
                     {s.body}
                   </p>
                 </div>

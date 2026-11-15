@@ -18,13 +18,12 @@ export function WorkDemo() {
 
   return (
     <section
-      id="how-it-works"
-      className="overflow-hidden border-y border-line bg-[#F7F8F3] py-16 sm:py-20 lg:py-28"
+      className="overflow-hidden border-y border-line bg-[#F7F8F3] py-20 sm:py-24 lg:py-32"
     >
       <div className="container-x grid items-center gap-10 lg:grid-cols-[0.86fr_1.14fr] lg:gap-20">
         <div className="mx-auto max-w-xl lg:mx-0">
           <p className="eyebrow">From the moment to the meaning</p>
-          <h2 className="h2 mt-4">
+          <h2 className="editorial-heading mt-4">
             Keep the work. See the story it tells.
           </h2>
           <p className="lead mt-5">
@@ -40,7 +39,7 @@ export function WorkDemo() {
             ].map((item) => (
               <li
                 key={item}
-                className="flex items-start gap-3 text-[13px] font-medium text-ink/80"
+                className="flex items-start gap-3 text-[15px] font-medium leading-relaxed text-ink/80"
               >
                 <span className="check">
                   <Check className="h-3 w-3" strokeWidth={3} />
@@ -51,7 +50,7 @@ export function WorkDemo() {
           </ul>
           <a
             href={SIGNUP_URL}
-            className="mt-8 inline-flex items-center gap-2 text-[13px] font-semibold text-ink transition hover:gap-3"
+            className="mt-8 inline-flex items-center gap-2 text-[14px] font-semibold text-ink transition hover:gap-3"
           >
             Start with one win <ArrowUpRight className="h-4 w-4" />
           </a>
@@ -70,7 +69,7 @@ export function WorkDemo() {
                 aria-pressed={view === "capture"}
                 aria-controls="work-demo-panel"
                 onClick={() => setView("capture")}
-                className={`flex min-h-10 items-center justify-center gap-2 rounded-full px-3 text-[11px] font-semibold transition ${
+                className={`flex min-h-11 items-center justify-center gap-2 rounded-full px-3 text-[12px] font-semibold transition ${
                   view === "capture"
                     ? "bg-ink text-paper shadow-card"
                     : "text-ink/55 hover:text-ink"
@@ -84,7 +83,7 @@ export function WorkDemo() {
                 aria-pressed={view === "portfolio"}
                 aria-controls="work-demo-panel"
                 onClick={() => setView("portfolio")}
-                className={`flex min-h-10 items-center justify-center gap-2 rounded-full px-3 text-[11px] font-semibold transition ${
+                className={`flex min-h-11 items-center justify-center gap-2 rounded-full px-3 text-[12px] font-semibold transition ${
                   view === "portfolio"
                     ? "bg-ink text-paper shadow-card"
                     : "text-ink/55 hover:text-ink"

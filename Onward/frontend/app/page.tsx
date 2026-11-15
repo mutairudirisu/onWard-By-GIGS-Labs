@@ -11,8 +11,8 @@ import {
   Sprout,
   UsersRound,
 } from "lucide-react";
-import { Starfield } from "@/components/starfield";
 import { WorkDemo } from "@/components/work-demo";
+import { StepsShowcase } from "@/components/steps-showcase";
 import { APP_URL, SIGNUP_URL } from "@/lib/site";
 
 function ProductScreenshot({
@@ -27,8 +27,8 @@ function ProductScreenshot({
   priority?: boolean;
 }) {
   return (
-    <figure className="mx-auto w-full max-w-[270px] sm:max-w-[300px]">
-      <div className="overflow-hidden rounded-[34px] border-[7px] border-[#171813] bg-[#171813] p-[2px] shadow-[0_32px_80px_rgba(0,0,0,0.28)]">
+    <figure className="relative z-10 mx-auto w-full max-w-[270px] sm:max-w-[300px]">
+      <div className="overflow-hidden rounded-[34px] border-[7px] border-[#171813] bg-[#171813] p-[2px] shadow-[0_32px_80px_rgba(0,0,0,0.2)]">
         <Image
           src={src}
           alt={alt}
@@ -39,10 +39,39 @@ function ProductScreenshot({
           className="h-auto w-full rounded-[25px]"
         />
       </div>
-      <figcaption className="mt-4 text-center text-[11px] font-medium text-muted">
+      <figcaption className="mt-4 text-center text-[12px] font-medium text-muted">
         {caption}
       </figcaption>
     </figure>
+  );
+}
+
+function JourneyOrbit() {
+  return (
+    <svg
+      viewBox="0 0 520 520"
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 z-0 h-full w-full text-ink/35 motion-safe:animate-[onward-orbit_55s_linear_infinite]"
+    >
+      <defs>
+        <path
+          id="onward-hero-orbit"
+          d="M 260,260 m -226,0 a 226,226 0 1,1 452,0 a 226,226 0 1,1 -452,0"
+        />
+      </defs>
+      <circle cx="260" cy="260" r="226" fill="none" stroke="currentColor" strokeOpacity=".12" />
+      <text
+        fill="currentColor"
+        fontFamily="Arial, sans-serif"
+        fontSize="11"
+        fontWeight="600"
+        letterSpacing="3.2"
+      >
+        <textPath href="#onward-hero-orbit">
+          PLAN AHEAD · NOTICE YOUR PROGRESS · KEEP THE PROOF · SHARE WHEN READY ·
+        </textPath>
+      </text>
+    </svg>
   );
 }
 
@@ -50,12 +79,12 @@ const PILLARS = [
   {
     icon: CalendarDays,
     title: "Plan the day",
-    body: "Keep tasks and the next small step in one calm place.",
+    body: "Keep your tasks and the next small step in one calm place.",
   },
   {
     icon: Sprout,
     title: "Capture your work",
-    body: "Save the wins, lessons and impact you will want to remember.",
+    body: "Save the wins, lessons, and impact you will want to remember.",
   },
   {
     icon: BookOpen,
@@ -69,156 +98,255 @@ const PILLARS = [
   },
 ];
 
+const FAQS = [
+  {
+    question: "Is onWard just a to-do list?",
+    answer:
+      "No. Plan your next steps, then keep a record of what you did, what changed, and the skills and evidence connected to the work.",
+  },
+  {
+    question: "Who can see the work I save?",
+    answer:
+      "Your onWards are private by default. You choose what to include in a portfolio or share with other people.",
+  },
+  {
+    question: "Can I use onWard to build a portfolio or CV?",
+    answer:
+      "Yes. Select the onWards that show your work, add your experience and education, choose a template, and export or print when you are ready.",
+  },
+  {
+    question: "Is onWard useful for students?",
+    answer:
+      "Yes. Keep coursework, projects, and new skills together as they happen, so you have a clearer record to draw on later.",
+  },
+  {
+    question: "Can I connect with people and share ideas?",
+    answer:
+      "My Network helps you find and keep up with people. The Exchange is a place to share posts and learn from the wider onWard community.",
+  },
+];
+
 export default function Home() {
   return (
-    <main>
-      <section className="relative overflow-hidden bg-night pb-14 pt-[104px] text-paper sm:pb-20 sm:pt-[124px] lg:min-h-[760px] lg:pb-16 lg:pt-[118px]">
-        <Starfield />
-        <span className="pointer-events-none absolute -left-36 top-36 h-80 w-80 rounded-full bg-lime/10 blur-3xl" />
-        <div className="container-x relative grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.78fr)] lg:items-start lg:gap-16">
-          <div className="mx-auto max-w-2xl text-center lg:mx-0 lg:pt-20 lg:text-left">
-            <p className="eyebrow">A little more intention. A lot more progress.</p>
-            <h1 className="h-display mt-5 text-balance">
-              Your growth,
+    <main className="overflow-hidden bg-paper">
+      <div className="flex min-h-10 items-center justify-center gap-2 bg-[#173e31] px-4 py-2 text-center text-[11px] font-medium text-paper sm:text-[13px]">
+        <span>Small steps add up. Give your progress a place to live.</span>
+        <a
+          href={SIGNUP_URL}
+          className="inline-flex shrink-0 items-center gap-1 font-semibold text-lime transition hover:gap-2"
+        >
+          Start free <ArrowRight className="h-3.5 w-3.5" />
+        </a>
+      </div>
+
+      <section className="relative overflow-hidden bg-[#fbfaf3] pb-16 pt-20 sm:pb-20 sm:pt-28 lg:pb-24">
+        <span className="pointer-events-none absolute -left-40 top-28 h-[28rem] w-[28rem] rounded-full bg-lime/10 blur-3xl" />
+        <span className="pointer-events-none absolute -right-36 top-64 h-96 w-96 rounded-full bg-[#dbe7c6]/55 blur-3xl" />
+        <div className="container-x relative">
+          <div className="mx-auto max-w-[1040px] text-center">
+            <p className="eyebrow">A calmer way to grow</p>
+            <h1 className="editorial-display mt-6 text-balance text-ink">
+              Your work deserves
               <br className="hidden sm:block" />{" "}
-              <span className="text-lime">documented.</span>
+              <span className="font-serif italic text-lime-deep">
+                to be remembered.
+              </span>
             </h1>
-            <p className="mx-auto mt-5 max-w-xl text-[clamp(15px,1.7vw,19px)] leading-relaxed text-paper/70 lg:mx-0">
-              Plan your day, capture what changed, and build a story of your
-              work that is ready when opportunity comes.
+            <p className="mx-auto mt-6 max-w-2xl text-[17px] leading-relaxed text-ink/65 sm:text-[19px]">
+              Plan your day, capture what changed, and turn the work you do into
+              a story you can carry forward.
             </p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
-              <a href={SIGNUP_URL} className="btn-light">
-                Start free
-                <ArrowRight className="h-4 w-4" strokeWidth={2.4} />
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              <a href={SIGNUP_URL} className="btn-dark px-7 py-3.5 text-[15px]">
+                Start your onWard
+                <ArrowRight className="h-4 w-4" />
               </a>
               <a
                 href="#how-it-works"
-                className="inline-flex items-center gap-2 rounded-full border border-paper/20 px-6 py-3 text-[14px] font-semibold text-paper/85 transition hover:border-lime hover:text-lime"
+                className="inline-flex items-center gap-2 rounded-full border border-ink/15 bg-paper/60 px-6 py-3.5 text-[14px] font-semibold text-ink transition hover:border-ink/35 hover:bg-paper"
               >
                 See how it works
               </a>
             </div>
-            <p className="tiny mt-4 text-paper/45">
-              Free to start · Your work stays private until you choose to share it
+            <p className="mt-4 text-[13px] text-ink/45">
+              Private by default. Share when you choose.
             </p>
-            <div className="mt-7 flex flex-wrap justify-center gap-2 lg:justify-start">
-              {["Plan", "Capture", "Reflect", "Share"].map((item, index) => (
-                <span
-                  key={item}
-                  className="inline-flex items-center gap-2 rounded-full border border-paper/10 bg-paper/5 px-3 py-1.5 text-[10px] font-semibold text-paper/65"
-                >
-                  <span className="h-1.5 w-1.5 rounded-full bg-lime/70" />
-                  {item}
-                  {index < 3 ? <span className="sr-only">then</span> : null}
-                </span>
-              ))}
-            </div>
           </div>
 
-          <div className="relative mx-auto w-full max-w-[340px]">
-            <span className="pointer-events-none absolute -right-10 top-16 h-40 w-40 rounded-full border border-lime/20 sm:-right-16 sm:h-56 sm:w-56" />
-            <span className="pointer-events-none absolute -left-8 bottom-24 h-20 w-20 rounded-full bg-lime/10 blur-xl" />
-            <div className="absolute -left-12 top-[27%] z-10 hidden rounded-2xl border border-paper/10 bg-[#181911]/95 px-3.5 py-3 shadow-lift backdrop-blur sm:block">
-              <p className="flex items-center gap-1.5 text-[8px] font-bold uppercase tracking-[0.13em] text-lime">
-                <Check className="h-3 w-3" strokeWidth={3} /> Saved for later
+          <div className="relative mx-auto mt-12 max-w-5xl sm:mt-16">
+            <div className="pointer-events-none absolute left-1/2 top-[43%] h-[360px] w-[360px] -translate-x-1/2 -translate-y-1/2 sm:h-[500px] sm:w-[500px]">
+              <JourneyOrbit />
+            </div>
+
+            <div className="absolute left-0 top-[22%] z-10 hidden max-w-[230px] rounded-[22px] border border-line/80 bg-paper/95 p-5 text-left shadow-[0_20px_60px_rgba(16,17,8,0.10)] backdrop-blur md:block">
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-lime-deep">
+                Start with today
               </p>
-              <p className="mt-1 text-[10px] font-semibold text-paper">A win worth remembering.</p>
+              <p className="mt-2 text-[18px] font-semibold leading-snug tracking-tight text-ink">
+                A plan you can actually come back to.
+              </p>
+              <div className="mt-4 space-y-2.5 text-[13px] text-ink/65">
+                <p className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-lime-deep" /> Keep the next step clear
+                </p>
+                <p className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-lime-deep" /> Make room for what matters
+                </p>
+              </div>
             </div>
-            <div className="absolute -right-5 bottom-[17%] z-10 hidden items-center gap-2 rounded-full border border-ink/5 bg-paper px-3 py-2 shadow-lift sm:flex">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-lime-pale">
-                <Sprout className="h-3.5 w-3.5 text-lime-deep" />
+
+            <div className="absolute bottom-[18%] right-0 z-10 hidden max-w-[230px] rounded-[22px] border border-line/80 bg-paper/95 p-5 text-left shadow-[0_20px_60px_rgba(16,17,8,0.10)] backdrop-blur md:block">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-lime-pale text-lime-deep">
+                <Sprout className="h-5 w-5" />
               </span>
-              <span className="text-[9px] font-semibold text-ink">Progress, in your own words</span>
+              <p className="mt-3 text-[18px] font-semibold leading-snug tracking-tight text-ink">
+                Keep more than the task.
+              </p>
+              <p className="mt-2 text-[13px] leading-relaxed text-muted">
+                Save the impact, skills, and evidence behind a piece of work.
+              </p>
             </div>
-            <div className="relative">
-              <ProductScreenshot
-                src="/screenshots/onwards.png"
-                alt="onWard mobile screen showing a timeline of work wins and their impact"
-                caption="A real onWard screen · sample entries"
-                priority
-              />
-            </div>
+
+            <ProductScreenshot
+              src="/screenshots/onwards.png"
+              alt="onWard mobile screen showing a timeline of work wins and their impact"
+              caption="A real onWard screen · sample entries"
+              priority
+            />
           </div>
         </div>
       </section>
 
-      <section id="features" className="container-x py-16 sm:py-20 lg:py-24">
-        <div className="mx-auto max-w-2xl text-center">
+      <section aria-label="The onWard journey" className="overflow-hidden bg-night py-6 text-paper sm:py-7">
+        <p className="sr-only">
+          Plan the day, capture your work, see your progress, and share when
+          you are ready.
+        </p>
+        <div
+          aria-hidden="true"
+          className="flex w-max motion-safe:animate-[onward-marquee_36s_linear_infinite]"
+        >
+          {[0, 1].map((copy) => (
+            <div key={copy} className="flex items-center gap-8 px-4 sm:gap-12">
+              {["Plan", "Capture", "Reflect", "Carry it forward", "Connect"].map(
+                (item) => (
+                  <span
+                    key={item}
+                    className="flex items-center gap-8 whitespace-nowrap font-serif text-[24px] italic text-paper/90 sm:gap-12 sm:text-[30px]"
+                  >
+                    {item}
+                    <span className="h-2 w-2 rounded-full bg-lime" />
+                  </span>
+                ),
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section id="features" className="container-x py-24 sm:py-28 lg:py-36">
+        <div className="mx-auto max-w-3xl text-center">
           <p className="eyebrow">The whole journey, in one place</p>
-          <h2 className="h2 mt-4">Your work is more than a to-do list.</h2>
-          <p className="lead mt-4">
+          <h2 className="editorial-heading mt-5 text-ink">
+            More than a list of things to do.
+          </h2>
+          <p className="mx-auto mt-5 max-w-2xl text-[16px] leading-relaxed text-muted sm:text-[18px]">
             onWard helps you keep the small steps, the work behind them, and
             the proof of how you are growing.
           </p>
         </div>
-        <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:mt-14 lg:grid-cols-4">
-          {PILLARS.map(({ icon: Icon, title, body }) => (
+        <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:mt-16 lg:grid-cols-4">
+          {PILLARS.map(({ icon: Icon, title, body }, index) => (
             <article
               key={title}
-              className="rounded-2xl border border-line bg-paper p-5 sm:p-6"
+              className="group rounded-[24px] border border-line bg-paper p-6 transition duration-300 hover:-translate-y-1 hover:border-lime/60 hover:shadow-[0_18px_48px_rgba(16,17,8,0.07)] sm:p-7"
             >
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-lime-pale text-lime-deep">
-                <Icon className="h-5 w-5" strokeWidth={2.1} />
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-lime-pale text-lime-deep transition group-hover:bg-lime">
+                <Icon className="h-5 w-5" strokeWidth={2} />
               </span>
-              <h3 className="mt-4 text-[15px] font-bold tracking-tight text-ink">
+              <p className="mt-6 text-[12px] font-semibold uppercase tracking-[0.15em] text-muted/80">
+                0{index + 1}
+              </p>
+              <h3 className="mt-2 text-[18px] font-semibold tracking-tight text-ink sm:text-[20px]">
                 {title}
               </h3>
-              <p className="mt-2 text-[12px] leading-relaxed text-muted">{body}</p>
+              <p className="mt-2 text-[14px] leading-relaxed text-muted sm:text-[15px]">
+                {body}
+              </p>
             </article>
           ))}
         </div>
       </section>
 
       <WorkDemo />
+      <StepsShowcase />
 
-      <section className="container-x py-16 sm:py-20 lg:py-24">
-        <div className="grid items-center gap-10 md:grid-cols-2 lg:gap-20">
-          <div className="mx-auto max-w-xl">
-            <p className="eyebrow">Reflect</p>
-            <h2 className="h2 mt-4">See the skills your work is building.</h2>
-            <p className="lead mt-5">
-              Your record adds up over time. Look back on the wins you logged,
-              the skills you practised and the days you kept showing up.
+      <section className="bg-[#f0f2e7] py-24 sm:py-28 lg:py-36">
+        <div className="container-x grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-20">
+          <div className="max-w-2xl">
+            <p className="eyebrow">Progress is personal. Growth is shared.</p>
+            <h2 className="editorial-heading mt-5 text-ink">
+              Find your people, and keep learning together.
+            </h2>
+            <p className="mt-5 max-w-xl text-[16px] leading-relaxed text-ink/65 sm:text-[18px]">
+              Build connections in My Network, catch up on the work people
+              share, and bring your ideas to the Exchange.
             </p>
-            <div className="mt-7 grid gap-3 sm:grid-cols-2">
-              {[
-                ["Your rhythm", "A clear view of your consistency"],
-                ["Your strengths", "Skills backed by work you logged"],
-              ].map(([title, body]) => (
-                <div key={title} className="rounded-xl border border-line bg-paper p-4">
-                  <p className="text-[12px] font-bold text-ink">{title}</p>
-                  <p className="mt-1 text-[10.5px] leading-relaxed text-muted">{body}</p>
-                </div>
-              ))}
-            </div>
+            <a
+              href={APP_URL}
+              className="mt-8 inline-flex items-center gap-2 text-[15px] font-semibold text-ink transition hover:gap-3"
+            >
+              Explore the onWard community <ArrowUpRight className="h-4 w-4" />
+            </a>
           </div>
-          <ProductScreenshot
-            src="/screenshots/insights.png"
-            alt="onWard insights screen with monthly progress, work documented and skills showing up"
-            caption="Your progress, based on the work you logged."
-          />
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <article className="rounded-[26px] bg-paper p-6 shadow-[0_18px_60px_rgba(16,17,8,0.06)] sm:p-7">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-lime-pale text-lime-deep">
+                <UsersRound className="h-5 w-5" />
+              </span>
+              <h3 className="mt-6 font-serif text-[27px] leading-tight tracking-tight text-ink">
+                My Network
+              </h3>
+              <p className="mt-3 text-[14px] leading-relaxed text-muted sm:text-[15px]">
+                Discover people, build connections, and catch up with the work
+                your community shares.
+              </p>
+            </article>
+            <article className="rounded-[26px] bg-night p-6 text-paper shadow-[0_18px_60px_rgba(16,17,8,0.1)] sm:mt-10 sm:p-7">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-lime/10 text-lime">
+                <MessageCircle className="h-5 w-5" />
+              </span>
+              <h3 className="mt-6 font-serif text-[27px] leading-tight tracking-tight">
+                The Exchange
+              </h3>
+              <p className="mt-3 text-[14px] leading-relaxed text-paper/65 sm:text-[15px]">
+                Share what you are learning, join a conversation, and pick up
+                ideas from others.
+              </p>
+            </article>
+          </div>
         </div>
       </section>
 
-      <section id="portfolio" className="bg-night py-16 text-paper sm:py-20 lg:py-24">
+      <section id="portfolio" className="bg-night py-24 text-paper sm:py-28 lg:py-36">
         <div className="container-x">
-          <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.9fr)] lg:gap-20">
-            <div className="max-w-xl">
+          <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.9fr)] lg:gap-20">
+            <div className="max-w-2xl">
               <p className="eyebrow">Carry it forward</p>
-              <h2 className="h2 mt-4">
+              <h2 className="editorial-heading mt-5 text-paper">
                 When opportunity comes, your story is already there.
               </h2>
-              <p className="mt-5 text-[15px] leading-relaxed text-paper/65">
+              <p className="mt-5 text-[16px] leading-relaxed text-paper/65 sm:text-[18px]">
                 Turn the wins you have saved into a portfolio or CV. Choose a
-                template, add your experience and education, then export or print
-                when you are ready.
+                template, add your experience and education, then export or
+                print when you are ready.
               </p>
               <div className="mt-7 flex flex-wrap gap-2">
                 {["Portfolio", "CV builder", "PDF", "Word", "Print"].map((item) => (
                   <span
                     key={item}
-                    className="rounded-full border border-paper/15 bg-paper/5 px-3 py-1.5 text-[10px] font-semibold text-paper/75"
+                    className="rounded-full border border-paper/15 bg-paper/5 px-3.5 py-2 text-[12px] font-semibold text-paper/75"
                   >
                     {item}
                   </span>
@@ -229,63 +357,49 @@ export default function Home() {
                 <ArrowUpRight className="h-4 w-4" />
               </a>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <article className="rounded-2xl border border-paper/10 bg-paper/[0.04] p-5 sm:p-6">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-lime/10 text-lime">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <article className="rounded-[24px] border border-paper/10 bg-paper/[0.04] p-6 sm:p-7">
+                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-lime/10 text-lime">
                   <FileText className="h-5 w-5" />
                 </span>
-                <h3 className="mt-5 text-[15px] font-bold">Start with your proof</h3>
-                <p className="mt-2 text-[12px] leading-relaxed text-paper/55">
-                  Bring your selected onWards, skills and impact into a portfolio
+                <h3 className="mt-5 text-[18px] font-semibold sm:text-[20px]">
+                  Start with your proof
+                </h3>
+                <p className="mt-2 text-[14px] leading-relaxed text-paper/60 sm:text-[15px]">
+                  Bring selected onWards, skills, and impact into a portfolio
                   that is yours to review.
                 </p>
               </article>
-              <article className="rounded-2xl border border-paper/10 bg-paper/[0.04] p-5 sm:mt-10 sm:p-6">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-lime/10 text-lime">
+              <article className="rounded-[24px] border border-paper/10 bg-paper/[0.04] p-6 sm:mt-10 sm:p-7">
+                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-lime/10 text-lime">
                   <ArrowUpRight className="h-5 w-5" />
                 </span>
-                <h3 className="mt-5 text-[15px] font-bold">Make it yours</h3>
-                <p className="mt-2 text-[12px] leading-relaxed text-paper/55">
+                <h3 className="mt-5 text-[18px] font-semibold sm:text-[20px]">
+                  Make it yours
+                </h3>
+                <p className="mt-2 text-[14px] leading-relaxed text-paper/60 sm:text-[15px]">
                   Add the parts of your CV that are not in onWard yet, then
                   choose how to share it.
                 </p>
               </article>
             </div>
           </div>
-
-          <div className="mt-12 flex flex-col gap-4 border-t border-paper/10 pt-7 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-lime/10 text-lime">
-                <MessageCircle className="h-4 w-4" />
-              </span>
-              <p className="max-w-xl text-[12px] leading-relaxed text-paper/60">
-                Want to keep learning with others? Share a post in the Exchange
-                and find people to follow in My Network.
-              </p>
-            </div>
-            <a
-              href={APP_URL}
-              className="inline-flex shrink-0 items-center gap-2 text-[12px] font-semibold text-lime hover:underline"
-            >
-              Explore the app <ArrowUpRight className="h-3.5 w-3.5" />
-            </a>
-          </div>
         </div>
       </section>
 
-      <section id="students" className="container-x py-14 sm:py-16">
-        <div className="flex flex-col gap-5 rounded-2xl border border-line bg-lime-pale px-5 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-7">
-          <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-lime text-ink">
+      <section id="students" className="container-x py-16 sm:py-20">
+        <div className="flex flex-col gap-6 rounded-[26px] border border-line bg-lime-pale px-6 py-7 sm:flex-row sm:items-center sm:justify-between sm:px-9 sm:py-9">
+          <div className="flex items-start gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-lime text-ink">
               <BookOpen className="h-5 w-5" />
             </span>
             <div>
               <p className="eyebrow">For students, too</p>
-              <h2 className="mt-1 text-[17px] font-bold tracking-tight text-ink">
+              <h2 className="mt-2 font-serif text-[clamp(25px,3.2vw,38px)] leading-tight tracking-tight text-ink">
                 Start building your story before graduation.
               </h2>
-              <p className="mt-1 max-w-2xl text-[12px] leading-relaxed text-inksoft">
-                Keep projects, coursework and new skills together as they happen.
+              <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-ink/65 sm:text-[16px]">
+                Keep projects, coursework, and new skills together as they happen.
               </p>
             </div>
           </div>
@@ -295,17 +409,49 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="container-x pb-16 sm:pb-24">
-        <div className="relative overflow-hidden rounded-[28px] bg-[#F3F4EC] px-5 py-12 text-center sm:px-8 sm:py-16">
-          <span className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-lime/45 blur-2xl" />
-          <div className="relative mx-auto max-w-2xl">
+      <section className="container-x py-20 sm:py-24 lg:py-28">
+        <div className="mx-auto max-w-3xl">
+          <div className="text-center">
+            <p className="eyebrow">A few things you might be wondering</p>
+            <h2 className="editorial-heading mt-5 text-ink">
+              Good questions.
+            </h2>
+          </div>
+          <div className="mt-10 divide-y divide-line border-y border-line">
+            {FAQS.map(({ question, answer }) => (
+              <details key={question} className="group py-5 sm:py-6">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-5 text-left text-[16px] font-semibold text-ink marker:hidden sm:text-[18px] [&::-webkit-details-marker]:hidden">
+                  {question}
+                  <span
+                    aria-hidden="true"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line text-[20px] font-normal text-ink/60 transition-transform group-open:rotate-45"
+                  >
+                    +
+                  </span>
+                </summary>
+                <p className="max-w-2xl pr-10 pt-4 text-[14px] leading-relaxed text-muted sm:text-[16px]">
+                  {answer}
+                </p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="container-x pb-20 sm:pb-28">
+        <div className="relative overflow-hidden rounded-[32px] bg-[#f0f2e7] px-6 py-16 text-center sm:px-10 sm:py-20">
+          <span className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-lime/45 blur-3xl" />
+          <span className="pointer-events-none absolute -bottom-28 -left-14 h-64 w-64 rounded-full bg-[#d5e5bb]/70 blur-3xl" />
+          <div className="relative mx-auto max-w-3xl">
             <p className="eyebrow">Start with what you did today</p>
-            <h2 className="h2 mt-4">Small steps. A story you can stand behind.</h2>
-            <p className="lead mt-4">
+            <h2 className="editorial-heading mt-5 text-ink">
+              Small steps. A story you can stand behind.
+            </h2>
+            <p className="mx-auto mt-5 max-w-2xl text-[16px] leading-relaxed text-ink/65 sm:text-[18px]">
               Begin free. Keep your work in one place, and decide what to share
               when the time is right.
             </p>
-            <div className="mt-7 flex flex-wrap justify-center gap-3">
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
               <a href={SIGNUP_URL} className="btn-dark">
                 Get started <ArrowRight className="h-4 w-4" />
               </a>
