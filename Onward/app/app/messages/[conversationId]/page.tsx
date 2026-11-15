@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import Image from "next/image";
 import { useAuth } from "@/components/auth";
 import { Avatar } from "@/components/feed-post";
 import { PresenceAvatar } from "@/components/presence-avatar";
@@ -12,6 +13,7 @@ import { toastError } from "@/components/toast";
 import {
   fetchDirectMessageInbox,
   fetchDirectMessages,
+  directMessageMediaProblem,
   markDirectMessagesRead,
   sendDirectMessage,
   subscribeToDirectConversationPresence,
@@ -19,7 +21,77 @@ import {
   type DirectMessage,
   type DirectMessageThread,
 } from "@/lib/db";
-import { CircleCheck, Loader2, Mic, Plus, Send } from "lucide-react";
+import { CircleCheck, FileText, Loader2, Mic, Plus, Send, Square, X } from "lucide-react";
+
+const MAX_VOICE_SECONDS = 5 * 60;
+
+function formatDuration(seconds: number) {
+  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function formatFileSize(bytes: number) {
+  return bytes < 1024 * 1024
+    ? `${Math.max(1, Math.round(bytes / 1024))} KB`
+    : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function MessageAttachment({ message }: { message: DirectMessage }) {
+  if (!message.mediaUrl || !message.mediaType) return null;
+  if (message.mediaType === "image") {
+    return (
+      <a
+        href={message.mediaUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="mt-2 block w-fit max-w-full overflow-hidden rounded-xl border border-line"
+      >
+        <Image
+          src={message.mediaUrl}
+          alt={message.mediaName || "Image attachment"}
+          width={480}
+          height={360}
+          unoptimized
+          className="h-auto max-h-72 w-auto max-w-full object-contain"
+        />
+      </a>
+    );
+  }
+  if (message.mediaType === "video") {
+    return (
+      <video
+        controls
+        preload="metadata"
+        src={message.mediaUrl}
+        className="mt-2 max-h-72 max-w-full rounded-xl border border-line"
+      >
+        Your browser does not support video playback.
+      </video>
+    );
+  }
+  if (message.mediaType === "audio") {
+    return (
+      <audio
+        controls
+        preload="metadata"
+        src={message.mediaUrl}
+        className="mt-2 block h-10 max-w-full"
+      >
+        Your browser does not support audio playback.
+      </audio>
+    );
+  }
+  return (
+    <a
+      href={message.mediaUrl}
+      target="_blank"
+      rel="noreferrer"
+      className="mt-2 inline-flex max-w-full items-center gap-2 rounded-xl border border-line bg-paper px-3 py-2 text-[10px] font-semibold text-lime-deep hover:bg-cream"
+    >
+      <FileText className="h-4 w-4 shrink-0" />
+      <span className="truncate">{message.mediaName || "Download attachment"}</span>
+    </a>
+  );
+}
 
 function mergeMessages(current: DirectMessage[], incoming: DirectMessage[]) {
   const unique = new Map(current.map((message) => [message.id, message]));
@@ -46,7 +118,16 @@ export default function DirectMessagePage() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [otherOnline, setOtherOnline] = useState<boolean | null>(null);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const recordingChunksRef = useRef<Blob[]>([]);
+  const discardRecordingRef = useRef(false);
+  const mountedRef = useRef(true);
 
   const markMessagesRead = useCallback(async () => {
     if (!user) return;
@@ -95,8 +176,14 @@ export default function DirectMessagePage() {
           }
         });
       },
-      () => {
-        if (!cancelled) toastError("Realtime messaging disconnected. Check your connection.");
+      (subscribeError) => {
+        if (!cancelled) {
+          toastError(
+            subscribeError instanceof Error
+              ? `Couldn't load message attachment: ${subscribeError.message}`
+              : "Realtime messaging disconnected. Check your connection.",
+          );
+        }
       },
     );
     void loadMessages()
@@ -126,20 +213,140 @@ export default function DirectMessagePage() {
   }, [conversationId, ready, user]);
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      discardRecordingRef.current = true;
+      if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!recording) return;
+    const startedAt = Date.now();
+    const timer = window.setInterval(() => {
+      const seconds = Math.floor((Date.now() - startedAt) / 1000);
+      setRecordingSeconds(seconds);
+      if (seconds >= MAX_VOICE_SECONDS && recorderRef.current?.state === "recording") {
+        toastError("Voice messages can be up to 5 minutes.");
+        recorderRef.current.stop();
+      }
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, [recording]);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages]);
+
+  async function startVoiceRecording() {
+    if (!thread || sending || attachmentFile) return;
+    if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      toastError("Voice recording is not supported by this browser.");
+      return;
+    }
+
+    recordingChunksRef.current = [];
+    discardRecordingRef.current = false;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (!mountedRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      streamRef.current = stream;
+      const mimeType = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/mp4",
+        "audio/ogg;codecs=opus",
+      ].find((candidate) => MediaRecorder.isTypeSupported(candidate));
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      recorderRef.current = recorder;
+      recorder.ondataavailable = (event) => {
+        if (event.data.size) recordingChunksRef.current.push(event.data);
+      };
+      recorder.onerror = () => {
+        recorderRef.current = null;
+        stream.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+        recordingChunksRef.current = [];
+        if (mountedRef.current) {
+          setRecording(false);
+          toastError("Recording failed. Check microphone access and try again.");
+        }
+      };
+      recorder.onstop = () => {
+        recorderRef.current = null;
+        stream.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+        const chunks = recordingChunksRef.current;
+        recordingChunksRef.current = [];
+        if (!mountedRef.current) return;
+        setRecording(false);
+        if (discardRecordingRef.current) return;
+        const rawType = recorder.mimeType || mimeType || "audio/webm";
+        const type = rawType.split(";")[0].toLowerCase();
+        const blob = new Blob(chunks, { type });
+        if (!blob.size) {
+          toastError("The voice recording is empty. Try again.");
+          return;
+        }
+        const extension =
+          type === "audio/mp4"
+            ? "m4a"
+            : type === "audio/ogg"
+              ? "ogg"
+              : type === "audio/mpeg"
+                ? "mp3"
+                : type === "audio/wav" || type === "audio/x-wav"
+                  ? "wav"
+                : "webm";
+        const file = new File([blob], `voice-message-${Date.now()}.${extension}`, { type });
+        const problem = directMessageMediaProblem(file);
+        if (problem) {
+          toastError(problem);
+          return;
+        }
+        setAttachmentFile(file);
+      };
+      recorder.start(250);
+      setRecordingSeconds(0);
+      setRecording(true);
+    } catch (recordingError) {
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      const message =
+        recordingError instanceof DOMException &&
+        (recordingError.name === "NotAllowedError" || recordingError.name === "SecurityError")
+          ? "Allow microphone access in your browser settings to record a voice message."
+          : recordingError instanceof DOMException && recordingError.name === "NotFoundError"
+            ? "No microphone was found on this device."
+            : recordingError instanceof Error
+              ? recordingError.message
+              : "Couldn't start recording.";
+      toastError(message);
+    }
+  }
+
+  function stopVoiceRecording(discard = false) {
+    discardRecordingRef.current = discard;
+    if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const body = draft.trim();
-    if (!body || sending || !user) return;
+    if ((!body && !attachmentFile) || sending || recording || !user) return;
     setSending(true);
-    setDraft("");
     try {
-      const message = await sendDirectMessage(conversationId, body);
+      const message = await sendDirectMessage(conversationId, body, attachmentFile);
       setMessages((current) => mergeMessages(current, [message]));
+      setDraft("");
+      setAttachmentFile(null);
     } catch (sendError) {
-      setDraft(body);
       toastError(sendError instanceof Error ? sendError.message : "Couldn't send your message.");
     } finally {
       setSending(false);
@@ -253,9 +460,12 @@ export default function DirectMessagePage() {
                         </span>
                       ) : null}
                       </header>
-                      <p className="whitespace-pre-wrap break-words text-[13px] leading-[1.5] text-ink">
-                        {message.body}
-                      </p>
+                      {message.body ? (
+                        <p className="whitespace-pre-wrap break-words text-[13px] leading-[1.5] text-ink">
+                          {message.body}
+                        </p>
+                      ) : null}
+                      <MessageAttachment message={message} />
                     </div>
                   </article>
                 );
@@ -270,14 +480,72 @@ export default function DirectMessagePage() {
           </div>
           <form
             onSubmit={submit}
-            className="fixed inset-x-0 bottom-7 z-50 mx-auto flex w-full max-w-[400px] shrink-0 items-center gap-2 border-t border-line bg-page px-4 py-3 shadow-lift md:relative md:inset-auto md:bottom-auto md:z-auto md:w-auto md:max-w-none md:bg-transparent md:shadow-none"
+            className="fixed inset-x-0 bottom-7 z-50 mx-auto flex w-full max-w-[400px] shrink-0 flex-wrap items-center gap-2 border-t border-line bg-page px-4 py-3 shadow-lift md:relative md:inset-auto md:bottom-auto md:z-auto md:w-auto md:max-w-none md:bg-transparent md:shadow-none"
           >
+            <input
+              ref={mediaInputRef}
+              type="file"
+              hidden
+              accept="image/jpeg,image/png,image/gif,image/webp,image/avif,video/mp4,video/webm,video/quicktime,audio/webm,audio/mp4,audio/ogg,audio/mpeg,audio/wav,audio/x-wav,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain"
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                event.currentTarget.value = "";
+                if (!file) return;
+                const problem = directMessageMediaProblem(file);
+                if (problem) {
+                  toastError(problem);
+                  return;
+                }
+                setAttachmentFile(file);
+              }}
+            />
+            {attachmentFile ? (
+              <div className="flex basis-full items-center gap-2 rounded-xl bg-paper px-3 py-2 text-[10px] text-inksoft">
+                <FileText className="h-4 w-4 shrink-0 text-lime-deep" />
+                <span className="min-w-0 flex-1 truncate">{attachmentFile.name}</span>
+                <span className="shrink-0 text-muted">{formatFileSize(attachmentFile.size)}</span>
+                <button
+                  type="button"
+                  aria-label="Remove attachment"
+                  disabled={sending}
+                  onClick={() => setAttachmentFile(null)}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted hover:bg-cream"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : null}
+            {recording ? (
+              <div className="flex basis-full items-center gap-2 rounded-xl bg-red-50 px-3 py-2 text-[10px] text-red-700">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-red-600" />
+                <span className="flex-1 font-semibold">
+                  Recording {formatDuration(recordingSeconds)} / 05:00
+                </span>
+                <button
+                  type="button"
+                  onClick={() => stopVoiceRecording(true)}
+                  aria-label="Discard voice recording"
+                  className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-red-100"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => stopVoiceRecording()}
+                  aria-label="Finish voice recording"
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-red-600 text-white"
+                >
+                  <Square className="h-3 w-3 fill-current" />
+                </button>
+              </div>
+            ) : null}
             <button
               type="button"
-              disabled
-              aria-label="Attachments are not available yet"
-              title="Attachments are not available yet"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line text-muted disabled:opacity-70"
+              disabled={!thread || sending || recording || Boolean(attachmentFile)}
+              onClick={() => mediaInputRef.current?.click()}
+              aria-label="Attach media or file"
+              title="Attach media or file"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line text-muted transition hover:bg-cream disabled:opacity-50"
             >
               <Plus className="h-6 w-6" />
             </button>
@@ -290,11 +558,11 @@ export default function DirectMessagePage() {
               disabled={!thread || sending}
               className="h-12 min-w-0 flex-1 rounded-2xl border-0 bg-line px-4 text-[12px] focus:border-0 focus:ring-0"
             />
-            {draft.trim() ? (
+            {draft.trim() || attachmentFile ? (
               <button
                 type="submit"
                 aria-label="Send message"
-                disabled={sending || !thread}
+                disabled={sending || !thread || recording}
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-lime text-dark transition hover:bg-lime-deep disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -302,10 +570,11 @@ export default function DirectMessagePage() {
             ) : (
               <button
                 type="button"
-                disabled
-                aria-label="Voice messages are not available yet"
-                title="Voice messages are not available yet"
-                className="flex h-11 w-10 shrink-0 items-center justify-center text-muted disabled:opacity-70"
+                disabled={!thread || sending || recording || Boolean(attachmentFile)}
+                onClick={() => void startVoiceRecording()}
+                aria-label="Record voice message"
+                title="Record voice message"
+                className="flex h-11 w-10 shrink-0 items-center justify-center text-muted transition hover:text-ink disabled:opacity-50"
               >
                 <Mic className="h-6 w-6" />
               </button>

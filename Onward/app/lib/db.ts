@@ -1054,7 +1054,76 @@ export type DirectMessage = {
   body: string;
   createdAt: string;
   readAt: string | null;
+  mediaUrl: string | null;
+  mediaType: DirectMessageMediaType | null;
+  mediaName: string | null;
+  mediaSize: number | null;
 };
+
+export type DirectMessageMediaType = "image" | "video" | "audio" | "file";
+
+export const DIRECT_MESSAGE_MEDIA_MAX_BYTES = 26_214_400;
+
+const DIRECT_MESSAGE_MEDIA_BUCKET = "direct-message-media";
+const DIRECT_MESSAGE_MEDIA_MIMES: Record<string, DirectMessageMediaType> = {
+  "image/jpeg": "image",
+  "image/png": "image",
+  "image/gif": "image",
+  "image/webp": "image",
+  "image/avif": "image",
+  "video/mp4": "video",
+  "video/webm": "video",
+  "video/quicktime": "video",
+  "audio/webm": "audio",
+  "audio/mp4": "audio",
+  "audio/ogg": "audio",
+  "audio/mpeg": "audio",
+  "audio/wav": "audio",
+  "audio/x-wav": "audio",
+  "application/pdf": "file",
+  "application/msword": "file",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "file",
+  "application/vnd.ms-powerpoint": "file",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": "file",
+  "text/plain": "file",
+};
+const DIRECT_MESSAGE_MIME_BY_EXTENSION: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  gif: "image/gif",
+  webp: "image/webp",
+  avif: "image/avif",
+  mp4: "video/mp4",
+  webm: "video/webm",
+  mov: "video/quicktime",
+  m4a: "audio/mp4",
+  mp3: "audio/mpeg",
+  ogg: "audio/ogg",
+  wav: "audio/wav",
+  pdf: "application/pdf",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ppt: "application/vnd.ms-powerpoint",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  txt: "text/plain",
+};
+
+function directMessageMimeType(file: File): string {
+  const declared = file.type.split(";")[0].trim().toLowerCase();
+  if (DIRECT_MESSAGE_MEDIA_MIMES[declared]) return declared;
+  const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return DIRECT_MESSAGE_MIME_BY_EXTENSION[extension] ?? declared;
+}
+
+export function directMessageMediaProblem(file: File): string | null {
+  if (file.size < 1) return "Choose a non-empty attachment.";
+  if (file.size > DIRECT_MESSAGE_MEDIA_MAX_BYTES) return "Keep message attachments under 25 MB.";
+  if (!DIRECT_MESSAGE_MEDIA_MIMES[directMessageMimeType(file)]) {
+    return "Choose an image, video, audio recording, PDF, Office document or text file.";
+  }
+  return null;
+}
 
 export type DirectMessageThread = {
   conversationId: string;
@@ -1337,29 +1406,54 @@ export async function openDirectConversation(userId: string): Promise<string> {
   return data;
 }
 
-export async function fetchDirectMessages(conversationId: string): Promise<DirectMessage[]> {
-  const { data, error } = await supabase
-    .from("direct_messages")
-    .select("id, conversation_id, sender_id, body, created_at, read_at")
-    .eq("conversation_id", conversationId)
-    .order("created_at", { ascending: true })
-    .limit(500);
-  fail(error);
-  return ((data as {
-    id: string;
-    conversation_id: string;
-    sender_id: string;
-    body: string;
-    created_at: string;
-    read_at: string | null;
-  }[] | null) ?? []).map((row) => ({
+type DirectMessageRow = {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  body: string;
+  created_at: string;
+  read_at: string | null;
+  media_path: string | null;
+  media_type: DirectMessageMediaType | null;
+  media_name: string | null;
+  media_size: number | string | null;
+};
+
+async function directMessageFromRow(row: DirectMessageRow): Promise<DirectMessage> {
+  let mediaUrl: string | null = null;
+  if (row.media_path) {
+    const { data, error } = await supabase.storage
+      .from(DIRECT_MESSAGE_MEDIA_BUCKET)
+      .createSignedUrl(row.media_path, 86_400);
+    fail(error);
+    if (!data) throw new Error("Couldn't load the message attachment.");
+    mediaUrl = data.signedUrl;
+  }
+  return {
     id: row.id,
     conversationId: row.conversation_id,
     senderId: row.sender_id,
     body: row.body,
     createdAt: row.created_at,
     readAt: row.read_at,
-  }));
+    mediaUrl,
+    mediaType: row.media_type,
+    mediaName: row.media_name,
+    mediaSize: row.media_size == null ? null : Number(row.media_size),
+  };
+}
+
+export async function fetchDirectMessages(conversationId: string): Promise<DirectMessage[]> {
+  const { data, error } = await supabase
+    .from("direct_messages")
+    .select("id, conversation_id, sender_id, body, created_at, read_at, media_path, media_type, media_name, media_size")
+    .eq("conversation_id", conversationId)
+    .order("created_at", { ascending: true })
+    .limit(500);
+  fail(error);
+  return await Promise.all(
+    ((data as DirectMessageRow[] | null) ?? []).map(directMessageFromRow),
+  );
 }
 
 export async function markDirectMessagesRead(conversationId: string): Promise<string> {
@@ -1374,30 +1468,104 @@ export async function markDirectMessagesRead(conversationId: string): Promise<st
 export async function sendDirectMessage(
   conversationId: string,
   body: string,
+  file?: File | null,
 ): Promise<DirectMessage> {
   const senderId = await signedInUserId();
-  const { data, error } = await supabase
-    .from("direct_messages")
-    .insert({ conversation_id: conversationId, sender_id: senderId, body: body.trim() })
-    .select("id, conversation_id, sender_id, body, created_at, read_at")
-    .single();
-  fail(error);
-  if (!data) throw new Error("The message was not saved.");
-  return {
-    id: data.id,
-    conversationId: data.conversation_id,
-    senderId: data.sender_id,
-    body: data.body,
-    createdAt: data.created_at,
-    readAt: data.read_at,
-  };
+  const cleanBody = body.trim();
+  if (!cleanBody && !file) throw new Error("Write a message or attach a file.");
+  let uploaded: {
+    path: string;
+    type: DirectMessageMediaType;
+    name: string;
+    size: number;
+    url: string;
+  } | null = null;
+
+  if (file) {
+    const problem = directMessageMediaProblem(file);
+    if (problem) throw new Error(problem);
+    const mimeType = directMessageMimeType(file);
+    const mediaType = DIRECT_MESSAGE_MEDIA_MIMES[mimeType];
+    const safeName =
+      file.name.trim().replace(/[^a-zA-Z0-9._-]/g, "_").slice(-180) || "attachment";
+    const path = `${conversationId}/${senderId}/${uuid()}-${safeName}`;
+    const { error: uploadError } = await supabase.storage
+      .from(DIRECT_MESSAGE_MEDIA_BUCKET)
+      .upload(path, file, { contentType: mimeType, upsert: false });
+    fail(uploadError);
+    const { data: signedUrl, error: signedUrlError } = await supabase.storage
+      .from(DIRECT_MESSAGE_MEDIA_BUCKET)
+      .createSignedUrl(path, 86_400);
+    if (signedUrlError) {
+      const { error: cleanupError } = await supabase.storage
+        .from(DIRECT_MESSAGE_MEDIA_BUCKET)
+        .remove([path]);
+      if (cleanupError) {
+        throw new Error(
+          `Couldn't prepare the attachment: ${signedUrlError.message}. The uploaded file could not be removed: ${cleanupError.message}`,
+        );
+      }
+      throw new Error(signedUrlError.message);
+    }
+    uploaded = {
+      path,
+      type: mediaType,
+      name: safeName,
+      size: file.size,
+      url: signedUrl.signedUrl,
+    };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("direct_messages")
+      .insert({
+        conversation_id: conversationId,
+        sender_id: senderId,
+        body: cleanBody,
+        media_path: uploaded?.path ?? null,
+        media_type: uploaded?.type ?? null,
+        media_name: uploaded?.name ?? null,
+        media_size: uploaded?.size ?? null,
+      })
+      .select("id, conversation_id, sender_id, body, created_at, read_at, media_path, media_type, media_name, media_size")
+      .single();
+    fail(error);
+    if (!data) throw new Error("The message was not saved.");
+    const row = data as DirectMessageRow;
+    return {
+      ...row,
+      id: row.id,
+      conversationId: row.conversation_id,
+      senderId: row.sender_id,
+      body: row.body,
+      createdAt: row.created_at,
+      readAt: row.read_at,
+      mediaUrl: uploaded?.url ?? null,
+      mediaType: row.media_type,
+      mediaName: row.media_name,
+      mediaSize: row.media_size == null ? null : Number(row.media_size),
+    };
+  } catch (sendError) {
+    if (uploaded) {
+      const { error: cleanupError } = await supabase.storage
+        .from(DIRECT_MESSAGE_MEDIA_BUCKET)
+        .remove([uploaded.path]);
+      if (cleanupError) {
+        throw new Error(
+          `${sendError instanceof Error ? sendError.message : "Couldn't send your message."} The uploaded attachment could not be removed: ${cleanupError.message}`,
+        );
+      }
+    }
+    throw sendError;
+  }
 }
 
 export function subscribeToDirectMessages(
   conversationId: string,
   onMessage: (message: DirectMessage) => void,
   onSubscribed?: () => void,
-  onError?: () => void,
+  onError?: (error?: unknown) => void,
 ): () => void {
   const channel = supabase
     .channel(`direct-messages:${conversationId}`)
@@ -1417,15 +1585,14 @@ export function subscribeToDirectMessages(
           body: string;
           created_at: string;
           read_at: string | null;
+          media_path: string | null;
+          media_type: DirectMessageMediaType | null;
+          media_name: string | null;
+          media_size: number | string | null;
         };
-        onMessage({
-          id: row.id,
-          conversationId: row.conversation_id,
-          senderId: row.sender_id,
-          body: row.body,
-          createdAt: row.created_at,
-          readAt: row.read_at,
-        });
+        void directMessageFromRow(row)
+          .then(onMessage)
+          .catch((error: unknown) => onError?.(error));
       },
     )
     .on(
@@ -1444,15 +1611,14 @@ export function subscribeToDirectMessages(
           body: string;
           created_at: string;
           read_at: string | null;
+          media_path: string | null;
+          media_type: DirectMessageMediaType | null;
+          media_name: string | null;
+          media_size: number | string | null;
         };
-        onMessage({
-          id: row.id,
-          conversationId: row.conversation_id,
-          senderId: row.sender_id,
-          body: row.body,
-          createdAt: row.created_at,
-          readAt: row.read_at,
-        });
+        void directMessageFromRow(row)
+          .then(onMessage)
+          .catch((error: unknown) => onError?.(error));
       },
     )
     .subscribe((status) => {

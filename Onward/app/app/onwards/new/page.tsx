@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth";
+import { Modal } from "@/components/modal";
 import { PhoneShell } from "@/components/phone-shell";
 import { DictateTextArea } from "@/components/dictate-field";
 import { BackLink, Button, Field, TextInput, Toggle } from "@/components/ui";
@@ -32,6 +33,64 @@ function kindIcon(kind: Evidence["kind"], className = "h-4 w-4") {
   return <FileIcon className={className} />;
 }
 
+type OnWardDraft = {
+  version: 1;
+  title: string;
+  date: string;
+  project: string;
+  body: string;
+  impact: string;
+  skills: string[];
+  evidence: Evidence[];
+  inPortfolio: boolean;
+};
+
+function isDraftEvidence(value: unknown): value is Evidence {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Record<string, unknown>;
+  return (
+    typeof item.id === "string" &&
+    (item.kind === "file" || item.kind === "url" || item.kind === "image") &&
+    typeof item.label === "string" &&
+    (item.meta === undefined || typeof item.meta === "string") &&
+    (item.url === undefined || typeof item.url === "string") &&
+    (item.storagePath === undefined || typeof item.storagePath === "string")
+  );
+}
+
+function parseOnWardDraft(raw: string): OnWardDraft | null {
+  const value: unknown = JSON.parse(raw);
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const item = value as Record<string, unknown>;
+  if (
+    item.version !== 1 ||
+    typeof item.title !== "string" ||
+    typeof item.date !== "string" ||
+    typeof item.project !== "string" ||
+    typeof item.body !== "string" ||
+    typeof item.impact !== "string" ||
+    !Array.isArray(item.skills) ||
+    !Array.isArray(item.evidence) ||
+    typeof item.inPortfolio !== "boolean"
+  ) {
+    return null;
+  }
+  const skills = item.skills.filter((skill): skill is string => typeof skill === "string");
+  const evidence = item.evidence.filter(isDraftEvidence);
+  if (skills.length !== item.skills.length || evidence.length !== item.evidence.length) return null;
+  return {
+    version: 1,
+    title: item.title,
+    date: item.date,
+    project: item.project,
+    body: item.body,
+    impact: item.impact,
+    skills,
+    evidence,
+    inPortfolio: item.inPortfolio,
+  };
+}
+
 export default function LogOnWardPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -52,8 +111,9 @@ export default function LogOnWardPage() {
   const [wardGate, setWardGate] = useState(false);
   const [evidenceGate, setEvidenceGate] = useState(false);
 
+  const initialDate = useRef(selectedDate || todayISO());
   const [title, setTitle] = useState("");
-  const [date, setDate] = useState(selectedDate || todayISO());
+  const [date, setDate] = useState(initialDate.current);
   const [project, setProject] = useState("");
   const [body, setBody] = useState("");
   const [impact, setImpact] = useState("");
@@ -67,6 +127,10 @@ export default function LogOnWardPage() {
   const [urlDraft, setUrlDraft] = useState("");
   const [pendingUploadCount, setPendingUploadCount] = useState(0);
   const uploadingEvidence = pendingUploadCount > 0;
+  const [queryReady, setQueryReady] = useState(false);
+  const [draftMode, setDraftMode] = useState<"checking" | "editing" | "active">("checking");
+  const [draftRestored, setDraftRestored] = useState(false);
+  const [showExitPrompt, setShowExitPrompt] = useState(false);
   /** Set from ?edit= on the way in, so a reload lands back on the same entry. */
   const [editId, setEditId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -74,12 +138,61 @@ export default function LogOnWardPage() {
   const uploadedPaths = useRef(new Set<string>());
   const keepUploads = useRef(false);
   const mounted = useRef(true);
+  const draftKeyRef = useRef<string | null>(null);
+  const draftPayloadRef = useRef<OnWardDraft | null>(null);
+  const draftModeRef = useRef(draftMode);
+  const finalSaveRef = useRef(false);
+  const draftStorageErrorReported = useRef(false);
+  const draftKey = !editId && user ? `onward-draft:${user.id}` : null;
+  draftKeyRef.current = draftKey;
+  draftModeRef.current = draftMode;
+  const currentDraft = useMemo<OnWardDraft>(
+    () => ({
+      version: 1,
+      title,
+      date,
+      project,
+      body,
+      impact,
+      skills,
+      evidence,
+      inPortfolio,
+    }),
+    [body, date, evidence, impact, inPortfolio, project, skills, title],
+  );
+  const hasDraftContent = Boolean(
+    title.trim() ||
+      project.trim() ||
+      body.trim() ||
+      impact.trim() ||
+      skills.length ||
+      evidence.length ||
+      !inPortfolio ||
+      date !== initialDate.current,
+  );
+  draftPayloadRef.current = hasDraftContent ? currentDraft : null;
 
   useEffect(
     () => {
       mounted.current = true;
       return () => {
         mounted.current = false;
+        const draft = draftPayloadRef.current;
+        const key = draftKeyRef.current;
+        if (
+          !finalSaveRef.current &&
+          draft &&
+          key &&
+          draftModeRef.current === "active"
+        ) {
+          try {
+            localStorage.setItem(key, JSON.stringify(draft));
+            if (draft.evidence.some((item) => item.storagePath)) keepUploads.current = true;
+            return;
+          } catch (error) {
+            console.error("Could not save the onWard draft before leaving", error);
+          }
+        }
         if (!keepUploads.current && uploadedPaths.current.size) {
           void removeWardEvidenceFiles([...uploadedPaths.current]).catch((error: unknown) =>
             console.error("Could not clean up unsaved onWard attachments", error),
@@ -96,6 +209,7 @@ export default function LogOnWardPage() {
     const editing = query.get("edit");
     if (editing) {
       setEditId(editing);
+      setQueryReady(true);
       return;
     }
     const presetProject = query.get("project");
@@ -112,7 +226,91 @@ export default function LogOnWardPage() {
       });
     }
     window.history.replaceState(null, "", window.location.pathname);
+    setQueryReady(true);
   }, []);
+
+  useEffect(() => {
+    if (!queryReady || !hydrated) return;
+    if (editId) {
+      setDraftMode("editing");
+      return;
+    }
+
+    const key = draftKeyRef.current;
+    if (!key) {
+      setDraftMode("active");
+      return;
+    }
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const draft = parseOnWardDraft(saved);
+        if (!draft) {
+          localStorage.removeItem(key);
+          toastError("The saved onWard draft was invalid and has been cleared.");
+        } else {
+          setTitle(draft.title);
+          setDate(draft.date);
+          setProject(draft.project);
+          setBody(draft.body);
+          setImpact(draft.impact);
+          setSkills(draft.skills);
+          setEvidence(draft.evidence);
+          setInPortfolio(draft.inPortfolio);
+          draft.evidence.forEach((item) => {
+            if (item.storagePath) uploadedPaths.current.add(item.storagePath);
+          });
+          keepUploads.current = true;
+          setDraftRestored(true);
+        }
+      }
+    } catch (error) {
+      toastError(
+        error instanceof Error
+          ? `Couldn't restore the saved onWard draft: ${error.message}`
+          : "Couldn't restore the saved onWard draft.",
+      );
+    }
+    setDraftMode("active");
+  }, [draftKey, editId, hydrated, queryReady]);
+
+  useEffect(() => {
+    if (draftMode !== "active" || !draftKey) return;
+    if (!hasDraftContent) {
+      try {
+        localStorage.removeItem(draftKey);
+        setDraftRestored(false);
+      } catch (error) {
+        if (!draftStorageErrorReported.current) {
+          draftStorageErrorReported.current = true;
+          toastError(
+            error instanceof Error
+              ? `Couldn't clear the onWard draft: ${error.message}`
+              : "Couldn't clear the onWard draft.",
+          );
+        }
+      }
+      return;
+    }
+    const draft = currentDraft;
+    const timer = window.setTimeout(() => {
+      try {
+        localStorage.setItem(draftKey, JSON.stringify(draft));
+        if (draft.evidence.some((item) => item.storagePath)) keepUploads.current = true;
+        setDraftRestored(true);
+      } catch (error) {
+        if (!draftStorageErrorReported.current) {
+          draftStorageErrorReported.current = true;
+          toastError(
+            error instanceof Error
+              ? `Couldn't save the onWard draft: ${error.message}`
+              : "Couldn't save the onWard draft.",
+          );
+        }
+      }
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [currentDraft, draftKey, draftMode, hasDraftContent]);
 
   const ward = editId ? onWards.find((w) => w.id === editId) : undefined;
 
@@ -258,9 +456,66 @@ export default function LogOnWardPage() {
       setWardGate(true);
       return;
     }
+    finalSaveRef.current = true;
     keepUploads.current = true;
+    if (draftKeyRef.current) {
+      try {
+        localStorage.removeItem(draftKeyRef.current);
+      } catch (error) {
+        toastError(
+          error instanceof Error
+            ? `The onWard was saved, but its local draft could not be cleared: ${error.message}`
+            : "The onWard was saved, but its local draft could not be cleared.",
+        );
+      }
+    }
     const id = addOnWard(data);
     router.push(`/onwards/${id}`);
+  };
+
+  const saveDraftAndExit = () => {
+    if (uploadingEvidence) {
+      toastError("Wait for the evidence upload to finish before saving this draft.");
+      return;
+    }
+    const key = draftKeyRef.current;
+    const draft = draftPayloadRef.current;
+    if (key && draft) {
+      try {
+        localStorage.setItem(key, JSON.stringify(draft));
+        if (draft.evidence.some((item) => item.storagePath)) keepUploads.current = true;
+      } catch (error) {
+        toastError(
+          error instanceof Error
+            ? `Couldn't save the onWard draft: ${error.message}`
+            : "Couldn't save the onWard draft.",
+        );
+        return;
+      }
+    }
+    finalSaveRef.current = true;
+    setShowExitPrompt(false);
+    router.push("/onwards");
+  };
+
+  const discardDraftAndExit = async () => {
+    const paths = new Set(uploadedPaths.current);
+    draftPayloadRef.current?.evidence.forEach((item) => {
+      if (item.storagePath) paths.add(item.storagePath);
+    });
+    try {
+      if (paths.size) await removeWardEvidenceFiles([...paths]);
+      if (draftKeyRef.current) localStorage.removeItem(draftKeyRef.current);
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : "Couldn't discard this onWard draft.");
+      return;
+    }
+    uploadedPaths.current.clear();
+    keepUploads.current = true;
+    finalSaveRef.current = true;
+    setDraftRestored(false);
+    setShowExitPrompt(false);
+    router.push("/onwards");
   };
 
   const suggestions = allSkills.filter((s) => !skills.includes(s)).slice(0, 4);
@@ -287,11 +542,31 @@ export default function LogOnWardPage() {
         <BackLink
           href={ward ? `/onwards/${ward.id}` : "/onwards"}
           label={ward ? "Back to the onWard" : "Back to onWards"}
+          onClick={
+            !ward && (hasDraftContent || uploadingEvidence)
+              ? () => setShowExitPrompt(true)
+              : undefined
+          }
         />
         <h1 className="text-[17px] font-bold tracking-tight text-ink">
           {ward ? "Edit this onWard" : "Log an onWard"}
         </h1>
       </div>
+
+      {draftRestored && !ward ? (
+        <div className="mb-4 flex items-center gap-3 rounded-xl border border-lime-deep/30 bg-lime-pale px-3 py-2.5">
+          <p className="min-w-0 flex-1 text-[10px] leading-[1.5] text-inksoft">
+            Draft saved on this device. It is not published until you save the onWard.
+          </p>
+          <button
+            type="button"
+            onClick={() => void discardDraftAndExit()}
+            className="shrink-0 text-[9px] font-bold text-lime-deep underline"
+          >
+            Discard
+          </button>
+        </div>
+      ) : null}
 
       {ward ? null : (
         <div className="mb-5 flex items-center gap-2 rounded-xl border border-lime-deep/40 bg-lime-soft px-3 py-2">
@@ -345,12 +620,12 @@ export default function LogOnWardPage() {
               ) : null}
             </div>
           </Field>
-          <Field label="Project">
+          <Field label="Project (optional)">
             <TextInput value={project} onChange={(e) => setProject(e.target.value)} placeholder="e.g. Atlas" />
           </Field>
         </div>
 
-        <Field label="What did you do?">
+        <Field label="What did you do? (optional)">
           <DictateTextArea
             value={body}
             onChange={setBody}
@@ -372,7 +647,7 @@ export default function LogOnWardPage() {
         </Field>
 
         <div>
-          <span className="label">Skills you used</span>
+          <span className="label">Skills you used (optional)</span>
           <div className="flex flex-wrap items-center gap-1.5">
             {skills.map((s) => (
               <span key={s} className="tag gap-1.5 py-1.5">
@@ -428,7 +703,7 @@ export default function LogOnWardPage() {
 
         <div>
           <div className="mb-2 flex items-end justify-between">
-            <h2 className="text-[13px] font-bold tracking-tight text-ink">Evidence</h2>
+            <h2 className="text-[13px] font-bold tracking-tight text-ink">Evidence (optional)</h2>
             {canAttach ? (
               <div className="flex items-center gap-2">
                 <button type="button" disabled={uploadingEvidence} onClick={() => fileRef.current?.click()} className="flex items-center gap-1 text-[10px] font-semibold text-muted underline disabled:opacity-50">
@@ -549,8 +824,8 @@ export default function LogOnWardPage() {
 
         <div>
           <div className="flex items-center justify-between">
-            <span className="text-[12px] font-bold text-ink">Include in my portfolio</span>
-            <Toggle checked={inPortfolio} onChange={setInPortfolio} label="Include in my portfolio" />
+            <span className="text-[12px] font-bold text-ink">Include in my portfolio (optional)</span>
+            <Toggle checked={inPortfolio} onChange={setInPortfolio} label="Include in my portfolio (optional)" />
           </div>
           <p className="mt-1.5 text-[9px] text-muted">
             The portfolio file is only ever something you download and send. To show this win to other people, write a post about it from its own page.
@@ -566,6 +841,40 @@ export default function LogOnWardPage() {
       <p className="mt-3 text-center text-[9px] text-faint">
         {canSave ? "Saved to your journal. Nothing is published yet." : "Add a title and the result to save."}
       </p>
+
+      <Modal
+        open={showExitPrompt}
+        onClose={() => setShowExitPrompt(false)}
+        title="Save your progress?"
+      >
+        <p className="mb-4 text-[11px] leading-[1.6] text-muted">
+          Keep a private draft on this device and return to it later, or discard your unsaved work.
+        </p>
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={saveDraftAndExit}
+            disabled={uploadingEvidence}
+            className="rounded-full bg-lime px-4 py-2.5 text-[11px] font-bold text-dark transition hover:bg-lime-deep disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Save draft and exit
+          </button>
+          <button
+            type="button"
+            onClick={() => void discardDraftAndExit()}
+            className="rounded-full border border-line px-4 py-2.5 text-[11px] font-semibold text-inksoft transition hover:bg-cream"
+          >
+            Discard and exit
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowExitPrompt(false)}
+            className="rounded-full px-4 py-2.5 text-[11px] font-semibold text-muted transition hover:bg-cream hover:text-ink"
+          >
+            Continue editing
+          </button>
+        </div>
+      </Modal>
 
       <UpgradeModal
         open={wardGate}
