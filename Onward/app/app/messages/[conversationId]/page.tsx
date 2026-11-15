@@ -21,7 +21,7 @@ import {
   type DirectMessage,
   type DirectMessageThread,
 } from "@/lib/db";
-import { CircleCheck, FileText, Loader2, Mic, Plus, Send, Square, X } from "lucide-react";
+import { Check, CircleCheck, FileText, Loader2, Mic, Plus, Send, Square, X } from "lucide-react";
 
 const MAX_VOICE_SECONDS = 5 * 60;
 
@@ -453,10 +453,14 @@ export default function DirectMessagePage() {
                           aria-label={message.readAt ? "Read" : "Delivered"}
                           title={message.readAt ? "Read" : "Delivered"}
                           className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
-                            message.readAt ? "bg-line text-inksoft" : "text-muted"
+                            message.readAt ? "bg-lime-deep text-dark" : "text-muted"
                           }`}
                         >
-                          <CircleCheck className="h-3.5 w-3.5" />
+                          {message.readAt ? (
+                            <Check className="h-3 w-3" strokeWidth={3} />
+                          ) : (
+                            <CircleCheck className="h-3.5 w-3.5" />
+                          )}
                         </span>
                       ) : null}
                       </header>
