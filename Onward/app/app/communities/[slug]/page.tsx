@@ -680,7 +680,7 @@ export default function CommunityHomePage() {
                   <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-lime-deep">Community feed</p>
                   <h2 className="mt-1 text-[17px] font-bold text-ink">A good place to begin</h2>
                 </div>
-                {community.isMember ? (
+                {community.isOwner ? (
                   <Link
                     href={`/feed/new?community=${community.id}`}
                     className="inline-flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-full bg-lime-deep px-4 text-[11px] font-bold text-dark hover:bg-dark hover:text-on-panel"
@@ -719,8 +719,10 @@ export default function CommunityHomePage() {
                   <p className="mt-2 text-[13px] font-semibold text-ink">Start the conversation</p>
                   <p className="mt-1 text-[11px] leading-[1.5] text-muted">
                     {community.isMember
-                      ? "Use the post composer to share something with this community."
-                      : "Join the community to share the first post."}
+                      ? community.isOwner
+                        ? "Use the post composer to share something with this community."
+                        : "Only the community owner can post here."
+                      : "Join the community to follow its posts. Only the owner can post here."}
                   </p>
                 </div>
               )}

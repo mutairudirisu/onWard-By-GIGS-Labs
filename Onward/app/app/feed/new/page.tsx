@@ -46,7 +46,7 @@ import {
   POST_TITLE_MAX,
   createPost,
   deletePost,
-  fetchMyCommunities,
+  fetchOwnedCommunities,
   fetchScheduledPosts,
   mediaProblem,
   removePostDocument,
@@ -165,7 +165,7 @@ function Composer() {
   const [postAudience, setPostAudience] = useState<PostAudience>("anyone");
   const [commentAudience, setCommentAudience] = useState<CommentAudience>("anyone");
   const [communityQuery, setCommunityQuery] = useState("");
-  const [myCommunities, setMyCommunities] = useState<Community[]>([]);
+  const [ownedCommunities, setOwnedCommunities] = useState<Community[]>([]);
   const [communitiesLoaded, setCommunitiesLoaded] = useState(false);
   const [communitiesLoadFailed, setCommunitiesLoadFailed] = useState(false);
   const [communityFetchAttempt, setCommunityFetchAttempt] = useState(0);
@@ -272,19 +272,19 @@ function Composer() {
     setCommunitiesLoaded(false);
     setCommunitiesLoadFailed(false);
     if (!user) {
-      setMyCommunities([]);
+      setOwnedCommunities([]);
       setCommunitiesLoaded(true);
       return;
     }
     let active = true;
-    void fetchMyCommunities()
+    void fetchOwnedCommunities()
       .then((items) => {
-        if (active) setMyCommunities(items);
+        if (active) setOwnedCommunities(items);
       })
       .catch((reason) => {
         if (active) {
           setCommunitiesLoadFailed(true);
-          toastError(reason instanceof Error ? reason.message : "Couldn't load your communities.");
+          toastError(reason instanceof Error ? reason.message : "Couldn't load communities you own.");
         }
       })
       .finally(() => {
@@ -297,10 +297,10 @@ function Composer() {
 
   useEffect(() => {
     if (!user || !communitiesLoaded || communitiesLoadFailed || !selectedCommunityId) return;
-    if (myCommunities.some((item) => item.id === selectedCommunityId)) return;
+    if (ownedCommunities.some((item) => item.id === selectedCommunityId)) return;
     setSelectedCommunityId(null);
-    toastError("Join that community before posting to it.");
-  }, [communitiesLoadFailed, communitiesLoaded, myCommunities, selectedCommunityId, user]);
+    toastError("Only the community owner can post to it.");
+  }, [communitiesLoadFailed, communitiesLoaded, ownedCommunities, selectedCommunityId, user]);
 
   useEffect(() => {
     const prompt = params.get("prompt");
@@ -341,8 +341,8 @@ function Composer() {
   );
   const initials = me.initials || (me.name.slice(0, 1).toUpperCase() || "?");
   const audienceLabel = postAudience === "connections" ? "Connections" : "Anyone";
-  const selectedCommunity = myCommunities.find((item) => item.id === selectedCommunityId) ?? null;
-  const matchingCommunities = myCommunities.filter((item) =>
+  const selectedCommunity = ownedCommunities.find((item) => item.id === selectedCommunityId) ?? null;
+  const matchingCommunities = ownedCommunities.filter((item) =>
     `${item.name} ${item.description} ${item.topic}`.toLowerCase().includes(communityQuery.trim().toLowerCase()),
   );
   const scheduleTimestamp =
@@ -810,7 +810,7 @@ function Composer() {
                     value={communityQuery}
                     onChange={(event) => setCommunityQuery(event.target.value)}
                     placeholder="Find a community you joined"
-                    aria-label="Search joined communities"
+                    aria-label="Search communities you own"
                     className="min-w-0 flex-1 bg-transparent text-[12px] text-ink outline-none placeholder:text-muted"
                   />
                 </label>
@@ -820,7 +820,7 @@ function Composer() {
                   </div>
                 ) : communitiesLoadFailed ? (
                   <div className="rounded-2xl bg-cream px-4 py-5 text-center">
-                    <p className="text-[12px] font-semibold text-ink">Couldn’t load your communities</p>
+                    <p className="text-[12px] font-semibold text-ink">Couldn’t load communities you own</p>
                     <button
                       type="button"
                       onClick={() => {
@@ -871,22 +871,22 @@ function Composer() {
                       );
                     })}
                   </div>
-                ) : myCommunities.length ? (
+                ) : ownedCommunities.length ? (
                   <p className="py-5 text-center text-[11px] text-muted">
-                    No joined communities match your search.
+                    No owned communities match your search.
                   </p>
                 ) : (
                   <div className="rounded-2xl bg-cream px-4 py-5 text-center">
-                    <p className="text-[12px] font-semibold text-ink">You haven’t joined a community yet</p>
+                    <p className="text-[12px] font-semibold text-ink">You don’t own a community yet</p>
                     <p className="mt-1 text-[10px] text-muted">
-                      Discover a community and join it to post there.
+                      Only community owners can post there. Create a community to share a post as its owner.
                     </p>
                     <Link
-                      href="/communities"
+                      href="/communities/new"
                       onClick={() => setComposerPage(null)}
                       className="mt-3 inline-flex rounded-full bg-lime-deep px-4 py-2 text-[10px] font-bold text-white hover:bg-ink"
                     >
-                      Discover communities
+                      Create community
                     </Link>
                   </div>
                 )}

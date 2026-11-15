@@ -2669,11 +2669,11 @@ export async function fetchCommunityTaxonomy(): Promise<CommunityTaxonomy> {
   return { topics, subcategories };
 }
 
-export async function fetchMyCommunities(): Promise<Community[]> {
+export async function fetchOwnedCommunities(): Promise<Community[]> {
   const { data, error } = await supabase
     .from("community_directory")
     .select("*")
-    .eq("is_member", true)
+    .eq("is_owner", true)
     .order("name", { ascending: true })
     .limit(100);
   if (error) throw new Error(error.message);
