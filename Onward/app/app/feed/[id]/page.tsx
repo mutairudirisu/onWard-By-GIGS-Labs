@@ -8,6 +8,8 @@ import { PhoneShell } from "@/components/phone-shell";
 import { BackLink } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { ExchangeShareSheet } from "@/components/exchange-share-sheet";
+import { CommentsSheet } from "@/components/comments-sheet";
+import { PostMediaPreview } from "@/components/post-media-preview";
 import { useAuth, useCurrentUser } from "@/components/auth";
 import { toastError, toastSuccess, toastUndoable } from "@/components/toast";
 import { Avatar, PostBlock } from "@/components/feed-post";
@@ -66,6 +68,7 @@ export default function PostPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [reposting, setReposting] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
 
   const id = params.id;
 
@@ -177,6 +180,10 @@ export default function PostPage() {
   );
 
   const isMine = Boolean(post?.mine);
+  const closeComments = useCallback(() => setCommentsOpen(false), []);
+  const updateCommentCount = useCallback((total: number) => {
+    setPost((current) => (current ? { ...current, comments: total } : current));
+  }, []);
 
   const toggleLike = useCallback(() => {
     if (!user) {
@@ -369,6 +376,55 @@ export default function PostPage() {
             </BackLink>
           </p>
         </div>
+      </PhoneShell>
+    );
+  }
+
+  if (searchParams.get("view") === "media" && post.media.length > 0) {
+    const requestedIndex = Number(searchParams.get("image"));
+    const initialIndex =
+      Number.isInteger(requestedIndex) && requestedIndex >= 0
+        ? Math.min(requestedIndex, post.media.length - 1)
+        : 0;
+
+    return (
+      <PhoneShell tab="feed">
+        <PostMediaPreview
+          post={post}
+          initialIndex={initialIndex}
+          liked={liked}
+          likes={likes}
+          reshared={reshared}
+          reshares={reshares}
+          commentsOpen={commentsOpen}
+          onLike={toggleLike}
+          onComment={() => setCommentsOpen(true)}
+          onReshare={tapReshare}
+          onShare={() => {
+            if (!user) {
+              router.push("/sign-in");
+              return;
+            }
+            setSharing(true);
+          }}
+        />
+        <CommentsSheet
+          postId={id}
+          open={commentsOpen}
+          onClose={closeComments}
+          onCountChange={updateCommentCount}
+        />
+        <ExchangeShareSheet
+          target={{ id: post.id, title: post.title, body: post.body, fullName: post.fullName }}
+          open={sharing}
+          onClose={() => setSharing(false)}
+        />
+        <ReshareSheet
+          target={{ id: post.id, title: post.title, body: post.body, fullName: post.fullName }}
+          open={reposting}
+          onClose={() => setReposting(false)}
+          onConfirm={(thought) => void confirmRepost(thought)}
+        />
       </PhoneShell>
     );
   }

@@ -80,7 +80,7 @@ function MediaStage({
   if (!media.length) return null;
   return (
     <div className={`relative overflow-hidden rounded-2xl bg-ink lg:h-[min(58vh,480px)] lg:bg-cream ${className}`}>
-      <Link href={href} className="block h-full">
+      <Link href={`${href}?view=media&image=${index}`} className="block h-full">
         <div
           ref={rail}
           className="wheel flex snap-x snap-mandatory overflow-x-auto lg:h-full"
