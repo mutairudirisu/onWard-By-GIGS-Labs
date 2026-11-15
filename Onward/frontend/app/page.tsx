@@ -12,6 +12,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { Starfield } from "@/components/starfield";
+import { WorkDemo } from "@/components/work-demo";
 import { APP_URL, SIGNUP_URL } from "@/lib/site";
 
 function ProductScreenshot({
@@ -74,16 +75,17 @@ export default function Home() {
       <section className="relative overflow-hidden bg-night pb-14 pt-[104px] text-paper sm:pb-20 sm:pt-[124px] lg:min-h-[760px] lg:pb-16 lg:pt-[118px]">
         <Starfield />
         <span className="pointer-events-none absolute -left-36 top-36 h-80 w-80 rounded-full bg-lime/10 blur-3xl" />
-        <div className="container-x relative grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.78fr)] lg:gap-16">
-          <div className="mx-auto max-w-2xl text-center lg:mx-0 lg:text-left">
+        <div className="container-x relative grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.78fr)] lg:items-start lg:gap-16">
+          <div className="mx-auto max-w-2xl text-center lg:mx-0 lg:pt-20 lg:text-left">
             <p className="eyebrow">A little more intention. A lot more progress.</p>
             <h1 className="h-display mt-5 text-balance">
               Your growth,
-              <br className="hidden sm:block" /> documented.
+              <br className="hidden sm:block" />{" "}
+              <span className="text-lime">documented.</span>
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-[clamp(15px,1.7vw,19px)] leading-relaxed text-paper/70 lg:mx-0">
-              Plan your day, remember the work you do and turn everyday effort
-              into a story you can share when it matters.
+              Plan your day, capture what changed, and build a story of your
+              work that is ready when opportunity comes.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
               <a href={SIGNUP_URL} className="btn-light">
@@ -91,10 +93,10 @@ export default function Home() {
                 <ArrowRight className="h-4 w-4" strokeWidth={2.4} />
               </a>
               <a
-                href="#features"
+                href="#how-it-works"
                 className="inline-flex items-center gap-2 rounded-full border border-paper/20 px-6 py-3 text-[14px] font-semibold text-paper/85 transition hover:border-lime hover:text-lime"
               >
-                Explore onWard
+                See how it works
               </a>
             </div>
             <p className="tiny mt-4 text-paper/45">
@@ -117,6 +119,18 @@ export default function Home() {
           <div className="relative mx-auto w-full max-w-[340px]">
             <span className="pointer-events-none absolute -right-10 top-16 h-40 w-40 rounded-full border border-lime/20 sm:-right-16 sm:h-56 sm:w-56" />
             <span className="pointer-events-none absolute -left-8 bottom-24 h-20 w-20 rounded-full bg-lime/10 blur-xl" />
+            <div className="absolute -left-12 top-[27%] z-10 hidden rounded-2xl border border-paper/10 bg-[#181911]/95 px-3.5 py-3 shadow-lift backdrop-blur sm:block">
+              <p className="flex items-center gap-1.5 text-[8px] font-bold uppercase tracking-[0.13em] text-lime">
+                <Check className="h-3 w-3" strokeWidth={3} /> Saved for later
+              </p>
+              <p className="mt-1 text-[10px] font-semibold text-paper">A win worth remembering.</p>
+            </div>
+            <div className="absolute -right-5 bottom-[17%] z-10 hidden items-center gap-2 rounded-full border border-ink/5 bg-paper px-3 py-2 shadow-lift sm:flex">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-lime-pale">
+                <Sprout className="h-3.5 w-3.5 text-lime-deep" />
+              </span>
+              <span className="text-[9px] font-semibold text-ink">Progress, in your own words</span>
+            </div>
             <div className="relative">
               <ProductScreenshot
                 src="/screenshots/onwards.png"
@@ -132,10 +146,10 @@ export default function Home() {
       <section id="features" className="container-x py-16 sm:py-20 lg:py-24">
         <div className="mx-auto max-w-2xl text-center">
           <p className="eyebrow">The whole journey, in one place</p>
-          <h2 className="h2 mt-4">Make the work you do easier to see.</h2>
+          <h2 className="h2 mt-4">Your work is more than a to-do list.</h2>
           <p className="lead mt-4">
-            onWard brings your plans, progress and professional story together
-            without asking you to do more than capture what already happened.
+            onWard helps you keep the small steps, the work behind them, and
+            the proof of how you are growing.
           </p>
         </div>
         <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:mt-14 lg:grid-cols-4">
@@ -156,44 +170,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section
-        id="how-it-works"
-        className="border-y border-line bg-[#F7F8F3] py-16 sm:py-20 lg:py-24"
-      >
-        <div className="container-x grid items-center gap-10 md:grid-cols-2 lg:gap-20">
-          <div className="order-2 md:order-1">
-            <ProductScreenshot
-              src="/screenshots/log-onward.png"
-              alt="onWard mobile form capturing a work achievement, its impact, skills and evidence"
-              caption="Log a win while the details are still fresh."
-            />
-          </div>
-          <div className="order-1 mx-auto max-w-xl md:order-2 md:mx-0">
-            <p className="eyebrow">Capture</p>
-            <h2 className="h2 mt-4">
-              Keep the details that disappear by Friday.
-            </h2>
-            <p className="lead mt-5">
-              Give a piece of work a title, write what you did and what changed.
-              Add the skills and evidence you will want to find again.
-            </p>
-            <ul className="mt-7 space-y-3">
-              {[
-                "A dated record of the work, not another task list",
-                "Voice dictation when talking is quicker than typing",
-                "Evidence and skills kept beside the achievement",
-              ].map((item) => (
-                <li key={item} className="flex items-start gap-3 text-[13px] text-ink/80">
-                  <span className="check">
-                    <Check className="h-3 w-3" strokeWidth={3} />
-                  </span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
+      <WorkDemo />
 
       <section className="container-x py-16 sm:py-20 lg:py-24">
         <div className="grid items-center gap-10 md:grid-cols-2 lg:gap-20">
