@@ -94,34 +94,34 @@ textarea::placeholder {
 
 @layer components {
   .eyebrow {
-    @apply text-[10px] font-semibold uppercase tracking-[0.14em] text-muted;
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-muted;
   }
   .h1 {
     @apply text-[28px] leading-[1.12] font-bold tracking-[-0.02em] text-ink;
   }
   .sub {
-    @apply text-[13px] leading-[1.45] text-muted;
+    @apply text-[14px] leading-[1.45] text-muted;
   }
   .tiny {
-    @apply text-[11px] leading-[1.45] text-muted;
+    @apply text-[12px] leading-[1.45] text-muted;
   }
   .label {
-    @apply mb-1.5 block text-[11px] font-semibold text-inksoft;
+    @apply mb-1.5 block text-[12px] font-semibold text-inksoft;
   }
   .card {
     @apply rounded-2xl border border-line bg-paper shadow-card;
   }
   .field-input {
-    @apply w-full rounded-xl border border-line bg-paper px-3.5 py-3 text-[13px] font-medium text-ink outline-none transition focus:border-lime-deep focus:ring-2 focus:ring-lime/40;
+    @apply w-full rounded-xl border border-line bg-paper px-3.5 py-3 text-[14px] font-medium text-ink outline-none transition focus:border-lime-deep focus:ring-2 focus:ring-lime/40;
   }
   .chip {
-    @apply inline-flex items-center gap-1 rounded-full border border-line bg-paper px-3 py-1.5 text-[11px] font-semibold text-inksoft;
+    @apply inline-flex items-center gap-1 rounded-full border border-line bg-paper px-3 py-1.5 text-[12px] font-semibold text-inksoft;
   }
   .chip-active {
     @apply border-ink/15 bg-paper text-ink shadow-card;
   }
   .tag {
-    @apply inline-flex items-center rounded-md px-2 py-1 text-[10px] font-semibold text-inksoft;
+    @apply inline-flex items-center rounded-md px-2 py-1 text-[11px] font-semibold text-inksoft;
     background-color: rgb(var(--tag-bg));
   }
   /* The block every skeleton is built from: a grey shape with light sweeping over it. */

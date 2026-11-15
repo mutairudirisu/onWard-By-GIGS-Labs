@@ -252,7 +252,7 @@ export function PageHeader({
         </div>
       ) : null}
       {subtitle ? (
-        <p className="col-start-1 row-start-3 mt-1 max-w-[42ch] text-[12px] leading-[1.45] text-muted lg:text-[14px]">
+        <p className="col-start-1 row-start-3 mt-1 max-w-[42ch] text-[13px] leading-[1.45] text-muted lg:text-[15px]">
           {subtitle}
         </p>
       ) : null}

@@ -76,8 +76,8 @@ export default function NetworkInvitationsPage() {
     return (
       <PhoneShell tab="network">
         <div className="card px-4 py-8 text-center">
-          <p className="text-[11px] text-muted">Sign in to manage connection invitations.</p>
-          <Link href="/sign-in" className="mt-3 inline-block text-[11px] font-semibold text-lime-deep">
+          <p className="text-[12px] text-muted">Sign in to manage connection invitations.</p>
+          <Link href="/sign-in" className="mt-3 inline-block text-[12px] font-semibold text-lime-deep">
             Sign in
           </Link>
         </div>
@@ -97,8 +97,8 @@ export default function NetworkInvitationsPage() {
       </div>
 
       <section className="mb-5 rounded-2xl border border-line bg-paper p-4">
-        <h2 className="text-[12px] font-bold text-ink">Invite someone to onWard</h2>
-        <p className="mt-1 text-[10px] leading-[1.5] text-muted">
+        <h2 className="text-[13px] font-bold text-ink">Invite someone to onWard</h2>
+        <p className="mt-1 text-[11px] leading-[1.5] text-muted">
           Share your network page with a colleague, classmate or friend.
         </p>
         <Button
@@ -124,7 +124,7 @@ export default function NetworkInvitationsPage() {
               type="button"
               onClick={() => setTab(item)}
               aria-current={selected ? "page" : undefined}
-              className={`cursor-pointer border-b-2 px-2 py-2.5 text-[11px] font-semibold transition ${
+              className={`cursor-pointer border-b-2 px-2 py-2.5 text-[12px] font-semibold transition ${
                 selected
                   ? "border-lime-deep text-ink"
                   : "border-transparent text-muted hover:text-ink"
@@ -137,7 +137,7 @@ export default function NetworkInvitationsPage() {
       </nav>
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 py-8 text-[10px] text-muted">
+        <div className="flex items-center justify-center gap-2 py-8 text-[11px] text-muted">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading invitations…
         </div>
       ) : (
@@ -148,10 +148,10 @@ export default function NetworkInvitationsPage() {
                   <Avatar initials={request.person.initials} src={request.person.avatarUrl} />
                 </Link>
                 <div className="min-w-0 flex-1">
-                  <Link href={`/people/${request.person.id}`} className="block truncate text-[11px] font-bold text-ink hover:underline">
+                  <Link href={`/people/${request.person.id}`} className="block truncate text-[12px] font-bold text-ink hover:underline">
                     {request.person.name || "onWard member"}
                   </Link>
-                  <p className="truncate text-[9px] text-muted">{request.person.role || "Connection request"}</p>
+                  <p className="truncate text-[10px] text-muted">{request.person.role || "Connection request"}</p>
                 </div>
                 {request.direction === "incoming" ? (
                   <>
@@ -175,13 +175,13 @@ export default function NetworkInvitationsPage() {
                     </button>
                   </>
                 ) : (
-                  <span className="rounded-full bg-cream px-2.5 py-1 text-[9px] font-semibold text-muted">
+                  <span className="rounded-full bg-cream px-2.5 py-1 text-[10px] font-semibold text-muted">
                     Pending
                   </span>
                 )}
               </article>
           )) : (
-            <p className="border-b border-line px-5 py-5 text-center text-[10px] text-muted">
+            <p className="border-b border-line px-5 py-5 text-center text-[11px] text-muted">
               {tab === "received"
                 ? "You have no received invitations."
                 : "No pending invitations sent."}

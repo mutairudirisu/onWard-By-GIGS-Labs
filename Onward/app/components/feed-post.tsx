@@ -164,7 +164,7 @@ function PostWords({
       {entry.body ? (
         <PostText
           text={entry.body}
-          className={`text-[12px] leading-[1.55] text-ink ${entry.title ? "mt-1" : ""} ${
+          className={`text-[13px] leading-[1.55] text-ink ${entry.title ? "mt-1" : ""} ${
             clamp ? "line-clamp-3" : ""
           }`}
         />
@@ -405,28 +405,28 @@ export function PostBlock({
             size="lg"
           />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[12px] font-bold tracking-tight text-ink group-hover:underline">
+            <span className="block truncate text-[13px] font-bold tracking-tight text-ink group-hover:underline">
               {name}
             </span>
             {communityPost ? (
               post.communityDescription ? (
-                <span className="block truncate text-[9px] text-muted">{post.communityDescription}</span>
+                <span className="block truncate text-[10px] text-muted">{post.communityDescription}</span>
               ) : null
             ) : post.role ? (
-              <span className="block truncate text-[9px] text-muted">{post.role}</span>
+              <span className="block truncate text-[10px] text-muted">{post.role}</span>
             ) : null}
-            <span className="flex items-center gap-1 text-[9px] text-muted">
+            <span className="flex items-center gap-1 text-[10px] text-muted">
               {timeAgo(post.createdAt)}
               <span aria-hidden="true">·</span>
               <Globe2 className="h-2.5 w-2.5" aria-label="Public post" />
             </span>
             {post.brandPartnership ? (
-              <span className="block truncate text-[9px] font-medium text-inksoft">
+              <span className="block truncate text-[10px] font-medium text-inksoft">
                 Paid partnership{post.brandPartnerName ? ` with ${post.brandPartnerName}` : ""}
               </span>
             ) : null}
             {post.collaborators?.length ? (
-              <span className="block truncate text-[9px] text-muted">
+              <span className="block truncate text-[10px] text-muted">
                 With {post.collaborators.map((person) => person.name).join(", ")}
               </span>
             ) : null}
@@ -438,7 +438,7 @@ export function PostBlock({
             aria-label={`Join ${post.communityName ?? "community"}`}
             onClick={() => onJoinCommunity(post.communityId!)}
             disabled={communityBusy}
-            className="flex h-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-lime-deep px-3 text-[10px] font-semibold text-white transition hover:bg-ink disabled:cursor-wait disabled:opacity-70"
+            className="flex h-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-lime-deep px-3 text-[11px] font-semibold text-white transition hover:bg-ink disabled:cursor-wait disabled:opacity-70"
           >
             {communityBusy ? "Joining…" : "Join"}
           </button>
@@ -451,7 +451,7 @@ export function PostBlock({
               if (post.authorId) onToggleFollow(post.authorId, followed);
             }}
             disabled={followBusy}
-            className={`flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-full px-2.5 text-[10px] font-semibold transition disabled:cursor-wait disabled:opacity-60 ${
+            className={`flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-full px-2.5 text-[11px] font-semibold transition disabled:cursor-wait disabled:opacity-60 ${
               followed
                 ? "text-inksoft hover:bg-cream"
                 : "bg-lime text-dark hover:bg-lime-deep"
@@ -494,7 +494,7 @@ export function PostBlock({
                     {carried.fullName || "Someone"}
                   </span>
                 )}
-                <span className="block truncate text-[9px] text-muted">
+                <span className="block truncate text-[10px] text-muted">
                   {timeAgo(carried.createdAt)}
                 </span>
               </span>
@@ -504,7 +504,7 @@ export function PostBlock({
             {carried.poll ? <CarriedPollBlock poll={carried.poll} /> : null}
             <Link
               href={`/feed/${carried.id}`}
-              className="mt-2 inline-flex cursor-pointer text-[10px] font-semibold text-lime-deep hover:underline"
+              className="mt-2 inline-flex cursor-pointer text-[11px] font-semibold text-lime-deep hover:underline"
             >
               View original post
             </Link>
@@ -554,7 +554,7 @@ export function PostBlock({
             className={`h-[22px] w-[22px] ${liked ? "fill-current text-lime-deep" : ""}`}
             strokeWidth={liked ? 2.2 : 1.9}
           />
-          {likes > 0 ? <span className="text-[11px] font-bold tabular-nums">{likes}</span> : null}
+          {likes > 0 ? <span className="text-[12px] font-bold tabular-nums">{likes}</span> : null}
         </button>
         {post.canComment !== false ? (
           <button
@@ -565,7 +565,7 @@ export function PostBlock({
           >
             <MessageCircle className="h-[22px] w-[22px] -scale-x-100" strokeWidth={1.9} />
             {post.comments > 0 ? (
-              <span className="text-[11px] font-bold tabular-nums">{post.comments}</span>
+              <span className="text-[12px] font-bold tabular-nums">{post.comments}</span>
             ) : null}
           </button>
         ) : null}
@@ -583,7 +583,7 @@ export function PostBlock({
           >
             <Repeat2 className="h-[22px] w-[22px]" strokeWidth={reshared ? 2.4 : 1.9} />
             {reshares > 0 ? (
-              <span className="text-[11px] font-bold tabular-nums">{reshares}</span>
+              <span className="text-[12px] font-bold tabular-nums">{reshares}</span>
             ) : null}
           </button>
         ) : null}
@@ -597,7 +597,7 @@ export function PostBlock({
             <Share2 className="h-[22px] w-[22px]" strokeWidth={1.9} />
           </button>
         ) : null}
-        <span className="ml-auto text-[9.5px] tracking-[0.06em] text-faint">
+        <span className="ml-auto text-[10.5px] tracking-[0.06em] text-faint">
           {timeAgo(post.createdAt)}
         </span>
       </div>
@@ -608,7 +608,7 @@ export function PostBlock({
             <button
               type="button"
               onClick={() => onOpen(post.id)}
-              className="block cursor-pointer text-[11px] text-muted hover:text-ink"
+              className="block cursor-pointer text-[12px] text-muted hover:text-ink"
             >
               View all {post.comments} comments
             </button>
@@ -616,7 +616,7 @@ export function PostBlock({
           {post.recentComments.map((comment) => (
             <p
               key={comment.id}
-              className="text-[11.5px] leading-[1.5] text-ink [overflow-wrap:anywhere]"
+              className="text-[12.5px] leading-[1.5] text-ink [overflow-wrap:anywhere]"
             >
               <span className="font-bold">{comment.fullName || "Someone"}</span> {comment.body}
             </p>
@@ -627,7 +627,7 @@ export function PostBlock({
       {!signedIn ? (
         <Link
           href="/sign-in"
-          className="mt-2.5 inline-block cursor-pointer text-[10.5px] font-semibold text-lime-deep hover:underline"
+          className="mt-2.5 inline-block cursor-pointer text-[11.5px] font-semibold text-lime-deep hover:underline"
         >
           Sign in to upvote, comment or reshare
         </Link>

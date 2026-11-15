@@ -66,20 +66,20 @@ function CatchupEventCard({ event }: { event: NetworkEvent }) {
         <Avatar initials={event.initials} src={event.avatarUrl} />
       </Link>
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] leading-[1.55] text-ink">
+        <p className="text-[12px] leading-[1.55] text-ink">
           <Link href={`/people/${event.userId}`} className="font-bold hover:underline">
             {event.fullName || "Someone in your network"}
           </Link>{" "}
           {description}
         </p>
         {event.role && event.type === "job_change" ? (
-          <p className="mt-1 text-[10px] text-muted">{event.role}</p>
+          <p className="mt-1 text-[11px] text-muted">{event.role}</p>
         ) : null}
-        <p className="mt-1 text-[9px] text-faint">{date}</p>
+        <p className="mt-1 text-[10px] text-faint">{date}</p>
       </div>
       <Link
         href={href}
-        className="flex h-8 shrink-0 items-center gap-1 rounded-full border border-line px-2.5 text-[9px] font-semibold text-inksoft transition hover:bg-cream"
+        className="flex h-8 shrink-0 items-center gap-1 rounded-full border border-line px-2.5 text-[10px] font-semibold text-inksoft transition hover:bg-cream"
       >
         <MessageCircle className="h-3 w-3" />
         Say hello
@@ -102,11 +102,11 @@ function PostCatchupCard({ post }: { post: FeedPost }) {
         <div className="min-w-0 flex-1">
           <Link
             href={post.authorId ? `/people/${post.authorId}` : "/network"}
-            className="block truncate text-[11px] font-bold text-ink hover:underline"
+            className="block truncate text-[12px] font-bold text-ink hover:underline"
           >
             {post.fullName || "Someone in your network"}
           </Link>
-          <p className="truncate text-[9px] text-muted">
+          <p className="truncate text-[10px] text-muted">
             {post.role || "onWard member"} ·{" "}
             {new Date(post.createdAt).toLocaleDateString(undefined, {
               month: "short",
@@ -115,10 +115,10 @@ function PostCatchupCard({ post }: { post: FeedPost }) {
           </p>
         </div>
       </div>
-      {post.title ? <h3 className="mt-3 text-[12px] font-bold text-ink">{post.title}</h3> : null}
+      {post.title ? <h3 className="mt-3 text-[13px] font-bold text-ink">{post.title}</h3> : null}
       {post.body ? (
         <p
-          className={`mt-1 whitespace-pre-wrap text-[10px] leading-[1.6] text-inksoft ${
+          className={`mt-1 whitespace-pre-wrap text-[11px] leading-[1.6] text-inksoft ${
             isLongPost && !expanded ? "line-clamp-4" : ""
           }`}
         >
@@ -130,7 +130,7 @@ function PostCatchupCard({ post }: { post: FeedPost }) {
           type="button"
           onClick={() => setExpanded((current) => !current)}
           aria-expanded={expanded}
-          className="mt-1 text-[9px] font-semibold text-lime-deep hover:underline"
+          className="mt-1 text-[10px] font-semibold text-lime-deep hover:underline"
         >
           {expanded ? "See less" : "See more"}
         </button>
@@ -141,7 +141,7 @@ function PostCatchupCard({ post }: { post: FeedPost }) {
             ? `/feed/${post.id}?focus=comments#comments`
             : `/feed/${post.id}`
         }
-        className="mt-3 inline-flex items-center gap-1 text-[9px] font-semibold text-lime-deep hover:underline"
+        className="mt-3 inline-flex items-center gap-1 text-[10px] font-semibold text-lime-deep hover:underline"
       >
         {canComment ? "Comment" : "Open post"} <ArrowRight className="h-3 w-3" />
       </Link>
@@ -168,17 +168,17 @@ function PersonCard({
         <Avatar initials={person.initials} src={person.avatarUrl} />
       </Link>
       <div className="min-w-0 flex-1">
-        <Link href={`/people/${person.id}`} className="block truncate text-[11px] font-bold text-ink hover:underline">
+        <Link href={`/people/${person.id}`} className="block truncate text-[12px] font-bold text-ink hover:underline">
           {person.name || "onWard member"}
         </Link>
-        <p className="truncate text-[9px] text-muted">{person.role || "onWard member"}</p>
-        <p className="mt-0.5 truncate text-[8px] font-medium text-lime-deep">{reason}</p>
+        <p className="truncate text-[10px] text-muted">{person.role || "onWard member"}</p>
+        <p className="mt-0.5 truncate text-[9px] font-medium text-lime-deep">{reason}</p>
       </div>
       <button
         type="button"
         onClick={onConnect}
         disabled={busy || requested}
-        className="flex h-8 shrink-0 items-center gap-1 rounded-full border border-lime-deep px-2.5 text-[9px] font-bold text-lime-deep transition hover:bg-lime-pale disabled:cursor-not-allowed disabled:opacity-60"
+        className="flex h-8 shrink-0 items-center gap-1 rounded-full border border-lime-deep px-2.5 text-[10px] font-bold text-lime-deep transition hover:bg-lime-pale disabled:cursor-not-allowed disabled:opacity-60"
       >
         {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : requested ? "Requested" : "Connect"}
       </button>
@@ -201,10 +201,10 @@ function RequestCard({
         <Avatar initials={request.person.initials} src={request.person.avatarUrl} />
       </Link>
       <div className="min-w-0 flex-1">
-        <Link href={`/people/${request.person.id}`} className="block truncate text-[11px] font-bold text-ink hover:underline">
+        <Link href={`/people/${request.person.id}`} className="block truncate text-[12px] font-bold text-ink hover:underline">
           {request.person.name || "onWard member"}
         </Link>
-        <p className="truncate text-[9px] text-muted">{request.person.role || "Connection request"}</p>
+        <p className="truncate text-[10px] text-muted">{request.person.role || "Connection request"}</p>
       </div>
       {request.direction === "incoming" ? (
         <div className="flex shrink-0 gap-1.5">
@@ -228,7 +228,7 @@ function RequestCard({
           </button>
         </div>
       ) : (
-        <span className="rounded-full bg-cream px-2.5 py-1 text-[9px] font-semibold text-muted">
+        <span className="rounded-full bg-cream px-2.5 py-1 text-[10px] font-semibold text-muted">
           Pending
         </span>
       )}
@@ -428,8 +428,8 @@ export default function NetworkPage() {
         <div className="card px-4 py-8 text-center">
           <UsersRound className="mx-auto h-6 w-6 text-lime-deep" />
           <h1 className="mt-2 text-[14px] font-bold text-ink">My Network</h1>
-          <p className="mt-1 text-[11px] text-muted">Sign in to grow your network.</p>
-          <Link href="/sign-in" className="mt-4 inline-flex items-center gap-1 rounded-full bg-lime px-4 py-2 text-[11px] font-bold text-dark">
+          <p className="mt-1 text-[12px] text-muted">Sign in to grow your network.</p>
+          <Link href="/sign-in" className="mt-4 inline-flex items-center gap-1 rounded-full bg-lime px-4 py-2 text-[12px] font-bold text-dark">
             Sign in <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
@@ -455,7 +455,7 @@ export default function NetworkPage() {
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search people"
               aria-label="Search people"
-              className="h-full min-w-0 border-0 bg-transparent px-0 py-0 text-[11px] focus:border-0 focus:ring-0"
+              className="h-full min-w-0 border-0 bg-transparent px-0 py-0 text-[12px] focus:border-0 focus:ring-0"
             />
             {searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
           </div>
@@ -470,12 +470,12 @@ export default function NetworkPage() {
                 >
                   <Avatar initials={person.initials} src={person.avatarUrl} size="sm" />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[10px] font-semibold text-ink">{person.name}</span>
-                    <span className="block truncate text-[9px] text-muted">{person.role || "onWard member"}</span>
+                    <span className="block truncate text-[11px] font-semibold text-ink">{person.name}</span>
+                    <span className="block truncate text-[10px] text-muted">{person.role || "onWard member"}</span>
                   </span>
                 </Link>
               )) : (
-                <p className="px-3 py-4 text-center text-[10px] text-muted">
+                <p className="px-3 py-4 text-center text-[11px] text-muted">
                   {searching ? "Searching…" : "No people found."}
                 </p>
               )}
@@ -494,7 +494,7 @@ export default function NetworkPage() {
       <div className="mb-4 flex items-end justify-between gap-3">
         <div>
           <h1 className="text-[20px] font-bold tracking-tight text-ink">My Network</h1>
-          <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-dashed border-lime-deep/50 bg-lime-pale px-3 py-1 text-[10px] font-semibold text-lime-deep">
+          <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-dashed border-lime-deep/50 bg-lime-pale px-3 py-1 text-[11px] font-semibold text-lime-deep">
             <Star className="h-3 w-3 fill-current" aria-hidden="true" />
             <span>{connectionCount} {connectionCount === 1 ? "connection" : "connections"}</span>
             <Star className="h-3 w-3 fill-current" aria-hidden="true" />
@@ -512,7 +512,7 @@ export default function NetworkPage() {
             type="button"
             onClick={() => setTab(item)}
             aria-current={tab === item ? "page" : undefined}
-            className={`cursor-pointer border-b-2 px-2 py-2.5 text-[11px] font-semibold transition ${
+            className={`cursor-pointer border-b-2 px-2 py-2.5 text-[12px] font-semibold transition ${
               tab === item
                 ? "border-lime-deep text-ink"
                 : "border-transparent text-muted hover:text-ink"
@@ -525,7 +525,7 @@ export default function NetworkPage() {
 
       <Link
         href="/network/invitations"
-        className="-mx-5 mb-5 flex min-h-10 items-center justify-between border-b border-line px-3 text-[11px] font-medium text-ink transition hover:bg-paper/50 md:mx-0"
+        className="-mx-5 mb-5 flex min-h-10 items-center justify-between border-b border-line px-3 text-[12px] font-medium text-ink transition hover:bg-paper/50 md:mx-0"
       >
         Invitations <ArrowRight className="h-4 w-4 text-muted" />
       </Link>
@@ -533,7 +533,7 @@ export default function NetworkPage() {
       {tab === "grow" ? (
         <div className="space-y-5">
           {growError ? (
-            <div className="-mx-5 flex items-center justify-between gap-3 border-y border-line px-5 py-4 text-[10px] text-red-700 md:mx-0">
+            <div className="-mx-5 flex items-center justify-between gap-3 border-y border-line px-5 py-4 text-[11px] text-red-700 md:mx-0">
               <span>{growError}</span>
               <button
                 type="button"
@@ -547,15 +547,15 @@ export default function NetworkPage() {
           <section className="-mx-5 md:mx-0">
             <header className="flex items-center justify-between border-b border-line px-5 py-3">
               <div>
-                <h2 className="text-[12px] font-bold text-ink">Connection requests</h2>
-                <p className="mt-0.5 text-[9px] text-muted">Accept or decline invitations to connect.</p>
+                <h2 className="text-[13px] font-bold text-ink">Connection requests</h2>
+                <p className="mt-0.5 text-[10px] text-muted">Accept or decline invitations to connect.</p>
               </div>
-              <Link href="/network/invitations" className="text-[9px] font-semibold text-lime-deep">
+              <Link href="/network/invitations" className="text-[10px] font-semibold text-lime-deep">
                 View all
               </Link>
             </header>
             {loadingGrow ? (
-              <p className="border-b border-line px-5 py-5 text-center text-[10px] text-muted">Loading requests…</p>
+              <p className="border-b border-line px-5 py-5 text-center text-[11px] text-muted">Loading requests…</p>
             ) : incomingRequests.length ? (
               incomingRequests.slice(0, 4).map((request) => (
                 <RequestCard
@@ -566,7 +566,7 @@ export default function NetworkPage() {
                 />
               ))
             ) : (
-              <p className="border-b border-line px-5 py-5 text-center text-[10px] text-muted">No new connection requests.</p>
+              <p className="border-b border-line px-5 py-5 text-center text-[11px] text-muted">No new connection requests.</p>
             )}
           </section>
 
@@ -576,12 +576,12 @@ export default function NetworkPage() {
                 <UsersRound className="h-4 w-4" />
               </span>
               <span>
-                <h2 className="text-[12px] font-bold text-ink">People you may know</h2>
-                <p className="mt-0.5 text-[9px] text-muted">Based on your school, role and shared connections.</p>
+                <h2 className="text-[13px] font-bold text-ink">People you may know</h2>
+                <p className="mt-0.5 text-[10px] text-muted">Based on your school, role and shared connections.</p>
               </span>
             </header>
             {loadingGrow ? (
-              <p className="border-b border-line px-5 py-5 text-center text-[10px] text-muted">Finding people…</p>
+              <p className="border-b border-line px-5 py-5 text-center text-[11px] text-muted">Finding people…</p>
             ) : suggestions.length ? (
               <div>
                 {suggestions.map((person) => (
@@ -597,8 +597,8 @@ export default function NetworkPage() {
               </div>
             ) : (
               <div className="border-b border-line px-5 py-6 text-center">
-                <p className="text-[10px] text-muted">No suggestions yet. Add your school or role to your profile to get better matches.</p>
-                <Link href="/profile/edit" className="mt-2 inline-flex items-center gap-1 text-[9px] font-semibold text-lime-deep">
+                <p className="text-[11px] text-muted">No suggestions yet. Add your school or role to your profile to get better matches.</p>
+                <Link href="/profile/edit" className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-lime-deep">
                   Update profile <ArrowRight className="h-3 w-3" />
                 </Link>
               </div>
@@ -616,7 +616,7 @@ export default function NetworkPage() {
                   type="button"
                   onClick={() => setCatchupFilter(filter.id)}
                   aria-pressed={catchupFilter === filter.id}
-                  className={`shrink-0 rounded-full px-3 py-1.5 text-[9px] font-semibold transition ${
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-[10px] font-semibold transition ${
                     catchupFilter === filter.id
                       ? "bg-lime text-dark"
                       : "border border-line text-muted hover:bg-cream"
@@ -627,9 +627,9 @@ export default function NetworkPage() {
               ))}
             </div>
             {catchupError ? (
-              <p className="px-4 py-5 text-center text-[10px] text-red-700">{catchupError}</p>
+              <p className="px-4 py-5 text-center text-[11px] text-red-700">{catchupError}</p>
             ) : loadingCatchup ? (
-              <div className="flex items-center justify-center gap-2 px-4 py-8 text-[10px] text-muted">
+              <div className="flex items-center justify-center gap-2 px-4 py-8 text-[11px] text-muted">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading Catch up…
               </div>
             ) : catchupItems.length ? (
@@ -647,8 +647,8 @@ export default function NetworkPage() {
                 ) : (
                   <UsersRound className="mx-auto h-5 w-5 text-lime-deep" />
                 )}
-                <p className="mt-2 text-[10px] font-semibold text-ink">You’re all caught up</p>
-                <p className="mt-1 text-[9px] text-muted">New connection posts and milestones will show here.</p>
+                <p className="mt-2 text-[11px] font-semibold text-ink">You’re all caught up</p>
+                <p className="mt-1 text-[10px] text-muted">New connection posts and milestones will show here.</p>
               </div>
             )}
           </section>
