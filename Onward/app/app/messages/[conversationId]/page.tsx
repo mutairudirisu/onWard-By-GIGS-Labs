@@ -12,18 +12,27 @@ import { toastError } from "@/components/toast";
 import {
   fetchDirectMessageInbox,
   fetchDirectMessages,
+  markDirectMessagesRead,
   sendDirectMessage,
   subscribeToDirectConversationPresence,
   subscribeToDirectMessages,
   type DirectMessage,
   type DirectMessageThread,
 } from "@/lib/db";
-import { Loader2, Mic, Plus, Send } from "lucide-react";
+import { CircleCheck, Loader2, Mic, Plus, Send } from "lucide-react";
 
 function mergeMessages(current: DirectMessage[], incoming: DirectMessage[]) {
   const unique = new Map(current.map((message) => [message.id, message]));
   for (const message of incoming) unique.set(message.id, message);
   return [...unique.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+function reportReadStatusError(error: unknown) {
+  toastError(
+    error instanceof Error
+      ? `Couldn't update read status: ${error.message}`
+      : "Couldn't update read status.",
+  );
 }
 
 export default function DirectMessagePage() {
@@ -39,6 +48,21 @@ export default function DirectMessagePage() {
   const [otherOnline, setOtherOnline] = useState<boolean | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  const markMessagesRead = useCallback(async () => {
+    if (!user) return;
+    const readAt = await markDirectMessagesRead(conversationId);
+    const readTime = Date.parse(readAt);
+    setMessages((current) =>
+      current.map((message) =>
+        message.senderId !== user.id &&
+        !message.readAt &&
+        Date.parse(message.createdAt) <= readTime
+          ? { ...message, readAt }
+          : message,
+      ),
+    );
+  }, [conversationId, user]);
+
   const loadMessages = useCallback(async () => {
     const [rows, inbox] = await Promise.all([
       fetchDirectMessages(conversationId),
@@ -46,7 +70,10 @@ export default function DirectMessagePage() {
     ]);
     setMessages((current) => mergeMessages(current, rows));
     setThread(inbox.find((item) => item.conversationId === conversationId) ?? null);
-  }, [conversationId]);
+    if (user && rows.some((message) => message.senderId !== user.id && !message.readAt)) {
+      void markMessagesRead().catch(reportReadStatusError);
+    }
+  }, [conversationId, markMessagesRead, user]);
 
   useEffect(() => {
     if (!ready || !user) return;
@@ -57,6 +84,9 @@ export default function DirectMessagePage() {
       conversationId,
       (message) => {
         setMessages((current) => mergeMessages(current, [message]));
+        if (message.senderId !== user.id && !message.readAt) {
+          void markMessagesRead().catch(reportReadStatusError);
+        }
       },
       () => {
         void loadMessages().catch((loadError: unknown) => {
@@ -82,7 +112,7 @@ export default function DirectMessagePage() {
       cancelled = true;
       unsubscribe();
     };
-  }, [conversationId, loadMessages, ready, user]);
+  }, [conversationId, loadMessages, markMessagesRead, ready, user]);
 
   useEffect(() => {
     if (!ready || !user) return;
@@ -211,6 +241,17 @@ export default function DirectMessagePage() {
                           minute: "2-digit",
                         })}
                       </time>
+                      {mine ? (
+                        <span
+                          aria-label={message.readAt ? "Read" : "Delivered"}
+                          title={message.readAt ? "Read" : "Delivered"}
+                          className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
+                            message.readAt ? "bg-line text-inksoft" : "text-muted"
+                          }`}
+                        >
+                          <CircleCheck className="h-3.5 w-3.5" />
+                        </span>
+                      ) : null}
                       </header>
                       <p className="whitespace-pre-wrap break-words text-[13px] leading-[1.5] text-ink">
                         {message.body}

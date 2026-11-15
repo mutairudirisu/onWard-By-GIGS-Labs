@@ -1053,6 +1053,7 @@ export type DirectMessage = {
   senderId: string;
   body: string;
   createdAt: string;
+  readAt: string | null;
 };
 
 export type DirectMessageThread = {
@@ -1339,7 +1340,7 @@ export async function openDirectConversation(userId: string): Promise<string> {
 export async function fetchDirectMessages(conversationId: string): Promise<DirectMessage[]> {
   const { data, error } = await supabase
     .from("direct_messages")
-    .select("id, conversation_id, sender_id, body, created_at")
+    .select("id, conversation_id, sender_id, body, created_at, read_at")
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: true })
     .limit(500);
@@ -1350,13 +1351,24 @@ export async function fetchDirectMessages(conversationId: string): Promise<Direc
     sender_id: string;
     body: string;
     created_at: string;
+    read_at: string | null;
   }[] | null) ?? []).map((row) => ({
     id: row.id,
     conversationId: row.conversation_id,
     senderId: row.sender_id,
     body: row.body,
     createdAt: row.created_at,
+    readAt: row.read_at,
   }));
+}
+
+export async function markDirectMessagesRead(conversationId: string): Promise<string> {
+  const { data, error } = await supabase.rpc("mark_direct_messages_read", {
+    p_conversation_id: conversationId,
+  });
+  fail(error);
+  if (typeof data !== "string") throw new Error("Couldn't update message read status.");
+  return data;
 }
 
 export async function sendDirectMessage(
@@ -1367,7 +1379,7 @@ export async function sendDirectMessage(
   const { data, error } = await supabase
     .from("direct_messages")
     .insert({ conversation_id: conversationId, sender_id: senderId, body: body.trim() })
-    .select("id, conversation_id, sender_id, body, created_at")
+    .select("id, conversation_id, sender_id, body, created_at, read_at")
     .single();
   fail(error);
   if (!data) throw new Error("The message was not saved.");
@@ -1377,6 +1389,7 @@ export async function sendDirectMessage(
     senderId: data.sender_id,
     body: data.body,
     createdAt: data.created_at,
+    readAt: data.read_at,
   };
 }
 
@@ -1403,6 +1416,7 @@ export function subscribeToDirectMessages(
           sender_id: string;
           body: string;
           created_at: string;
+          read_at: string | null;
         };
         onMessage({
           id: row.id,
@@ -1410,6 +1424,34 @@ export function subscribeToDirectMessages(
           senderId: row.sender_id,
           body: row.body,
           createdAt: row.created_at,
+          readAt: row.read_at,
+        });
+      },
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "direct_messages",
+        filter: `conversation_id=eq.${conversationId}`,
+      },
+      (payload) => {
+        const row = payload.new as {
+          id: string;
+          conversation_id: string;
+          sender_id: string;
+          body: string;
+          created_at: string;
+          read_at: string | null;
+        };
+        onMessage({
+          id: row.id,
+          conversationId: row.conversation_id,
+          senderId: row.sender_id,
+          body: row.body,
+          createdAt: row.created_at,
+          readAt: row.read_at,
         });
       },
     )
