@@ -395,7 +395,7 @@ export default function DirectMessagePage() {
           )}
         </div>
 
-        <section className="-mx-5 flex min-h-0 flex-1 flex-col border-y border-line md:mx-0">
+        <section className="-mx-5 flex min-h-0 flex-1 flex-col md:mx-0">
           <div className="wheel min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4 pb-28 md:pb-4">
             {loading ? (
               <div className="flex items-center justify-center gap-2 py-10 text-[10px] text-muted">
