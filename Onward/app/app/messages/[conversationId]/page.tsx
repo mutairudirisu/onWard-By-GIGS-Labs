@@ -480,7 +480,7 @@ export default function DirectMessagePage() {
           </div>
           <form
             onSubmit={submit}
-            className="fixed inset-x-0 bottom-7 z-50 mx-auto flex w-full max-w-[400px] shrink-0 flex-wrap items-center gap-2 border-t border-line bg-page px-4 py-3 shadow-lift md:relative md:inset-auto md:bottom-auto md:z-auto md:w-auto md:max-w-none md:bg-transparent md:shadow-none"
+            className="fixed inset-x-0 bottom-7 z-50 mx-auto flex w-full max-w-[400px] shrink-0 flex-wrap items-center gap-2 bg-page px-4 py-3 shadow-lift md:relative md:inset-auto md:bottom-auto md:z-auto md:w-auto md:max-w-none md:bg-transparent md:shadow-none"
           >
             <input
               ref={mediaInputRef}
