@@ -30,6 +30,7 @@ import { Avatar } from "@/components/feed-post";
 import { Modal } from "@/components/modal";
 import { CommunityTopicIcon } from "@/components/community-card";
 import { PostEditor } from "@/components/post-editor";
+import type { Evidence } from "@/lib/data";
 import {
   PollComposer,
   newPollDraft,
@@ -50,6 +51,7 @@ import {
   mediaProblem,
   removePostDocument,
   searchPeople,
+  signedWardEvidenceUrl,
   uploadPostDocument,
   type ExchangePerson,
   type Community,
@@ -81,6 +83,49 @@ function localTimeValue(date: Date) {
   return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
+const MIME_BY_EXTENSION: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  gif: "image/gif",
+};
+
+function attachmentLabel(label: string) {
+  return label.replace(/[\[\]()\r\n]/g, "").slice(0, 120) || "Attachment";
+}
+
+function postAttachmentLink(label: string, url: string) {
+  const parsed = new URL(url);
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    throw new Error("OnWard attachments must use an http:// or https:// link.");
+  }
+  const safeUrl = parsed.toString().replace(/\(/g, "%28").replace(/\)/g, "%29");
+  return `[${attachmentLabel(label)}](${safeUrl})`;
+}
+
+function appendPostLines(body: string, lines: string[]) {
+  if (!lines.length) return body;
+  const next = [body, ...lines].filter(Boolean).join("\n\n");
+  if (next.length > POST_BODY_MAX) {
+    throw new Error("The post text and attachments exceed the text limit. Shorten the text before posting.");
+  }
+  return next;
+}
+
+async function downloadWardEvidenceFile(item: Evidence): Promise<File> {
+  if (!item.storagePath) throw new Error(`“${item.label}” has no stored file.`);
+  const url = await signedWardEvidenceUrl(item.storagePath);
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Could not download “${item.label}”.`);
+  const blob = await response.blob();
+  const extension = item.storagePath.split(".").pop()?.toLowerCase() ?? "";
+  const filename = item.label || item.storagePath.split("/").pop() || "onWard-attachment";
+  return new File([blob], filename, {
+    type: blob.type || MIME_BY_EXTENSION[extension] || "",
+  });
+}
+
 const POST_CATEGORIES = [
   { id: "media", label: "Media", Icon: ImagePlus },
   { id: "event", label: "Event", Icon: CalendarDays },
@@ -96,12 +141,15 @@ type CommentAudience = "anyone" | "connections" | "off";
 function Composer() {
   const router = useRouter();
   const params = useSearchParams();
+  const wardId = params.get("ward");
   const { onWards } = useStore();
   const { user, ready } = useAuth();
   const me = useCurrentUser();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [picks, setPicks] = useState<Pick[]>([]);
+  const [wardDocumentFiles, setWardDocumentFiles] = useState<File[]>([]);
+  const [wardLinkEvidence, setWardLinkEvidence] = useState<Evidence[]>([]);
   // Post and Poll are two modes of one composer, so switching between them keeps
   // whatever is already written in either of them. The chooser can ask for the poll
   // straight away.
@@ -158,20 +206,66 @@ function Composer() {
   const [showHeadline, setShowHeadline] = useState(false);
   const mediaRef = useRef<HTMLInputElement>(null);
   const documentRef = useRef<HTMLInputElement>(null);
+  const prefilledWardId = useRef<string | null>(null);
   const picksRef = useRef(picks);
   const keyboard = useKeyboardInset(Boolean(user));
   const actionBarBottom = keyboard > 0 ? keyboard + 8 : 104;
   const actionBarHeight = 69;
 
-  // Opening this from an onWard carries its words over; the entry itself stays private.
+  // Opening this from an onWard carries its text and evidence over; it stays private.
   useEffect(() => {
-    const fromQuery = onWards.find((w) => w.id === params.get("ward"));
-    if (!fromQuery) return;
+    const fromQuery = onWards.find((w) => w.id === wardId);
+    if (!fromQuery || prefilledWardId.current === fromQuery.id) return;
+    prefilledWardId.current = fromQuery.id;
     setTitle(fromQuery.title.slice(0, POST_TITLE_MAX));
     setBody([fromQuery.impact, fromQuery.body].filter((line) => line && line.trim()).join("\n\n"));
-    // Only on the way in: retyping must not be undone by a store refresh.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const evidence = fromQuery.evidence ?? [];
+    setWardLinkEvidence(evidence.filter((item) => item.kind === "url" && Boolean(item.url)));
+
+    let active = true;
+    void Promise.all(
+      evidence
+        .filter((item) => item.kind !== "url")
+        .map(async (item) => {
+          try {
+            return { item, file: await downloadWardEvidenceFile(item), error: null };
+          } catch (error) {
+            return { item, file: null, error };
+          }
+        }),
+    ).then((results) => {
+      if (!active) return;
+      const failures = results.filter((result) => result.error);
+      if (failures.length) {
+        toastError(
+          `${failures.length} onWard attachment${failures.length === 1 ? "" : "s"} could not be added.`,
+        );
+      }
+      const imageFiles = results.flatMap(({ item, file }) =>
+        item.kind === "image" && file ? [file] : [],
+      );
+      const documentFiles = results.flatMap(({ item, file }) =>
+        item.kind === "file" && file ? [file] : [],
+      );
+      if (imageFiles.length > POST_MEDIA_MAX_PER_POST) {
+        toastError(`Only the first ${POST_MEDIA_MAX_PER_POST} onWard images can be attached to a post.`);
+      }
+      setPicks(
+        imageFiles.slice(0, POST_MEDIA_MAX_PER_POST).map((file) => ({
+          file,
+          url: URL.createObjectURL(file),
+        })),
+      );
+      setWardDocumentFiles(documentFiles);
+    }).catch((error: unknown) => {
+      if (active) {
+        toastError(error instanceof Error ? error.message : "Could not load onWard attachments.");
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [onWards, wardId]);
 
   useEffect(() => {
     if (!ready) return;
@@ -233,12 +327,17 @@ function Composer() {
   // so it needs no headline, no words and no picture alongside it.
   const empty = isPoll
     ? !pollWanted
-    : !title.trim() && !body.trim() && !picks.length && !documentFile;
+    : !title.trim() &&
+      !body.trim() &&
+      !picks.length &&
+      !documentFile &&
+      !wardDocumentFiles.length &&
+      !wardLinkEvidence.length;
   // The ring counts the words that are actually going into the post, so a poll does not
   // inherit the count of the text left behind when the poll form came up.
   const ward = useMemo(
-    () => onWards.find((w) => w.id === params.get("ward")),
-    [onWards, params],
+    () => onWards.find((w) => w.id === wardId),
+    [onWards, wardId],
   );
   const initials = me.initials || (me.name.slice(0, 1).toUpperCase() || "?");
   const audienceLabel = postAudience === "connections" ? "Connections" : "Anyone";
@@ -316,6 +415,13 @@ function Composer() {
   function chooseCategory(category: "media" | "event" | "celebration" | "job" | "poll" | "document") {
     if ((category === "media" || category === "document") && postAudience !== "anyone") {
       toastError("Set the post audience to Anyone before adding media or a document.");
+      return;
+    }
+    if (
+      category === "poll" &&
+      (picks.length || documentFile || wardDocumentFiles.length || wardLinkEvidence.length)
+    ) {
+      toastError("Remove attachments before switching this post to a poll.");
       return;
     }
     setShowCategoryModal(false);
@@ -435,7 +541,7 @@ function Composer() {
       toastError("Choose a destination again after your communities finish loading.");
       return;
     }
-    if (postAudience !== "anyone" && (picks.length || documentFile)) {
+    if (postAudience !== "anyone" && (picks.length || documentFile || wardDocumentFiles.length)) {
       toastError("Connections-only posts can’t include media or documents yet.");
       return;
     }
@@ -444,7 +550,7 @@ function Composer() {
       return;
     }
     setBusy(
-      documentFile
+      documentFile || wardDocumentFiles.length
         ? "Uploading your files…"
         : scheduledAt
           ? "Scheduling your post…"
@@ -452,21 +558,30 @@ function Composer() {
     );
     setProgress(null);
     let uploadedDocumentPath: string | null = null;
+    const uploadedWardDocumentPaths: string[] = [];
     try {
       let postBody = isPoll ? "" : body.trim();
       let postTitle = isPoll ? "" : title.trim();
+      postBody = appendPostLines(
+        postBody,
+        wardLinkEvidence.map((item) => `Link: ${postAttachmentLink(item.label, item.url ?? "")}`),
+      );
       if (documentFile) {
         const uploaded = await uploadPostDocument(user.id, documentFile);
         uploadedDocumentPath = uploaded.path;
-        const label = (documentTitle.trim() || documentFile.name)
-          .replace(/[\[\]()\r\n]/g, "")
-          .slice(0, 120);
+        const label = attachmentLabel(documentTitle.trim() || documentFile.name);
         const attachment = `[${label}](${uploaded.url})`;
         const documentLine = `Document: ${attachment}`;
         const context = [postBody, documentCaption.trim()].filter(Boolean).join("\n\n");
-        const remaining = Math.max(0, POST_BODY_MAX - documentLine.length - (context ? 2 : 0));
-        postBody = [context.slice(0, remaining), documentLine].filter(Boolean).join("\n\n");
+        postBody = appendPostLines(context, [documentLine]);
         if (!postTitle) postTitle = documentTitle.trim().slice(0, POST_TITLE_MAX);
+      }
+      for (const file of wardDocumentFiles) {
+        const uploaded = await uploadPostDocument(user.id, file);
+        uploadedWardDocumentPaths.push(uploaded.path);
+        postBody = appendPostLines(postBody, [
+          `Attachment: ${postAttachmentLink(file.name, uploaded.url)}`,
+        ]);
       }
       await createPost({
         title: postTitle,
@@ -492,6 +607,7 @@ function Composer() {
         onProgress: (done, total) => setProgress({ done, total }),
       });
       uploadedDocumentPath = null;
+      uploadedWardDocumentPaths.length = 0;
       toastSuccess(
         scheduledAt
           ? "Post scheduled"
@@ -505,17 +621,27 @@ function Composer() {
       setBusy(null);
       setProgress(null);
       const message = error instanceof Error ? error.message : "Couldn't post that";
-      if (uploadedDocumentPath) {
+      const cleanupPaths = [
+        ...(uploadedDocumentPath ? [uploadedDocumentPath] : []),
+        ...uploadedWardDocumentPaths,
+      ];
+      const cleanupErrors: unknown[] = [];
+      for (const path of cleanupPaths) {
         try {
-          await removePostDocument(uploadedDocumentPath);
+          await removePostDocument(path);
         } catch (cleanupError) {
-          toastError(
-            `${message}. The uploaded document could not be removed: ${
-              cleanupError instanceof Error ? cleanupError.message : "unknown cleanup error"
-            }`,
-          );
-          return;
+          cleanupErrors.push(cleanupError);
         }
+      }
+      if (cleanupErrors.length) {
+        const detail =
+          cleanupErrors[0] instanceof Error
+            ? cleanupErrors[0].message
+            : "unknown cleanup error";
+        toastError(
+          `${message}. ${cleanupErrors.length} uploaded document${cleanupErrors.length === 1 ? "" : "s"} could not be removed: ${detail}`,
+        );
+        return;
       }
       toastError(message);
     }
@@ -1048,6 +1174,79 @@ function Composer() {
                       ))}
                     </div>
                   ) : null}
+                  {documentFile || wardDocumentFiles.length ? (
+                    <div className="mt-3 space-y-2" aria-label="Attached documents">
+                      {documentFile ? (
+                        <div className="flex items-center gap-2 rounded-xl bg-cream px-3 py-2 text-[10px] text-inksoft">
+                          <FileText className="h-4 w-4 shrink-0 text-lime-deep" />
+                          <span className="min-w-0 flex-1 truncate">
+                            {documentTitle.trim() || documentFile.name}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setDocumentFile(null)}
+                            aria-label={`Remove ${documentFile.name}`}
+                            className="shrink-0 text-lime-deep"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : null}
+                      {wardDocumentFiles.map((file, index) => (
+                        <div
+                          key={`${file.name}-${index}`}
+                          className="flex items-center gap-2 rounded-xl bg-cream px-3 py-2 text-[10px] text-inksoft"
+                        >
+                          <FileText className="h-4 w-4 shrink-0 text-lime-deep" />
+                          <span className="min-w-0 flex-1 truncate">{file.name}</span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setWardDocumentFiles((current) =>
+                                current.filter((_, itemIndex) => itemIndex !== index),
+                              )
+                            }
+                            aria-label={`Remove ${file.name}`}
+                            className="shrink-0 text-lime-deep"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  {wardLinkEvidence.length ? (
+                    <div className="mt-3 space-y-2" aria-label="Attached links">
+                      {wardLinkEvidence.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center gap-2 rounded-xl bg-cream px-3 py-2 text-[10px] text-inksoft"
+                        >
+                          <Globe className="h-4 w-4 shrink-0 text-lime-deep" />
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="min-w-0 flex-1 truncate text-lime-deep"
+                          >
+                            {item.label}
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setWardLinkEvidence((current) =>
+                                current.filter((evidence) => evidence.id !== item.id),
+                              )
+                            }
+                            aria-label={`Remove ${item.label}`}
+                            className="shrink-0 text-lime-deep"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </>
               )}
             </div>
@@ -1280,7 +1479,7 @@ function Composer() {
             </button>
             <button
               type="button"
-              disabled={Boolean(picks.length || documentFile)}
+              disabled={Boolean(picks.length || documentFile || wardDocumentFiles.length)}
               onClick={() => {
                 setPostAudience("connections");
                 setAudiencePanel("overview");
@@ -1294,7 +1493,7 @@ function Composer() {
               </span>
               {postAudience === "connections" ? <Check className="h-5 w-5 text-lime-deep" /> : null}
             </button>
-            {picks.length || documentFile ? (
+            {picks.length || documentFile || wardDocumentFiles.length ? (
               <p className="px-2 pt-2 text-[10px] leading-relaxed text-muted">
                 Private audiences are not available with media or document attachments yet.
               </p>
