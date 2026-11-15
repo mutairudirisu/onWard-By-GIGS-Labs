@@ -263,43 +263,45 @@ export default function OnWardsPage() {
         actions={<NewButton href="/onwards/new">Log an onWard</NewButton>}
       />
 
-      <div className="mb-5 grid gap-4 lg:mb-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-faint lg:h-[18px] lg:w-[18px]" />
-          <input
-            className="field-input pl-9 pr-9 lg:h-11 lg:text-[14px]"
-            placeholder="Search onWards, skills, results"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search onWards"
-          />
-          {query ? (
-            <button
-              type="button"
-              aria-label="Clear search"
-              onClick={() => setQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          ) : null}
-        </div>
+      {(!hydrated || onWards.length > 0) && (
+        <div className="mb-5 grid gap-4 lg:mb-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-faint lg:h-[18px] lg:w-[18px]" />
+            <input
+              className="field-input pl-9 pr-9 lg:h-11 lg:text-[14px]"
+              placeholder="Search onWards, skills, results"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="Search onWards"
+            />
+            {query ? (
+              <button
+                type="button"
+                aria-label="Clear search"
+                onClick={() => setQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : null}
+          </div>
 
-        <div className="grid w-full grid-cols-3 gap-1 rounded-xl border border-line bg-paper p-1 lg:w-auto lg:min-w-[360px]">
-          {TABS.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className={`rounded-lg py-1.5 text-[11px] font-semibold transition lg:px-5 lg:text-[13px] ${
-                tab === t ? "border border-line bg-cream text-ink shadow-card" : "text-muted"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
+          <div className="grid w-full grid-cols-3 gap-1 rounded-xl border border-line bg-paper p-1 lg:w-auto lg:min-w-[360px]">
+            {TABS.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTab(t)}
+                className={`rounded-lg py-1.5 text-[11px] font-semibold transition lg:px-5 lg:text-[13px] ${
+                  tab === t ? "border border-line bg-cream text-ink shadow-card" : "text-muted"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {!hydrated ? (
         <div className={GRID}>
@@ -307,6 +309,22 @@ export default function OnWardsPage() {
             <WardSkeleton key={i} />
           ))}
         </div>
+      ) : onWards.length === 0 ? (
+        <section className="card px-5 py-10 text-center sm:px-8 lg:py-14">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-lime-soft text-lime-deep">
+            <Trophy className="h-7 w-7" />
+          </div>
+          <h2 className="mt-4 text-[17px] font-bold tracking-tight text-ink lg:text-[20px]">
+            No onWards logged yet
+          </h2>
+          <p className="mx-auto mt-2 max-w-md text-[12px] leading-[1.7] text-muted lg:text-[14px]">
+            Your wins, achievements, and milestones deserve to be remembered. Log your first one to
+            start building your story.
+          </p>
+          <div className="mt-5 flex justify-center">
+            <NewButton href="/onwards/new">Add your first win</NewButton>
+          </div>
+        </section>
       ) : filtered.length === 0 ? (
         <p className="py-10 text-center text-[13px] text-muted lg:text-[15px]">
           No onWards match &ldquo;{query.trim()}&rdquo;.
