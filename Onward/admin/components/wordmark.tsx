@@ -30,7 +30,7 @@ export function Wordmark({
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-[0.16em] font-bold tracking-tight ${
+      className={`inline-flex items-center gap-[0.16em] font-brand font-bold tracking-tight ${
         tone === "paper" ? "text-paper" : "text-ink"
       } ${className}`}
     >

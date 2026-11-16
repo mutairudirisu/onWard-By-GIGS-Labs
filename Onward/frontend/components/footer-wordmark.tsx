@@ -118,7 +118,7 @@ export function FooterWordmark() {
       <span className="pointer-events-none absolute inset-x-0 bottom-0 h-[58%] bg-[radial-gradient(46%_120%_at_74%_116%,rgba(180,225,58,0.26),transparent_68%)] blur-[46px]" />
       {/* 29vw, not a 130px floor: "onWard" is about 3.3em wide, so the old clamp
           only stopped cropping above 406px and sliced both ends on every phone. */}
-      <span className="relative block whitespace-nowrap text-[clamp(48px,29vw,700px)] font-bold leading-[0.8] tracking-[-0.045em]">
+      <span className="relative block whitespace-nowrap font-brand text-[clamp(48px,29vw,700px)] font-bold leading-[0.8] tracking-[-0.045em]">
         <span className="relative left-1/2 inline-block -translate-x-1/2 translate-y-[20%]">
           {WORD.split("").map((ch, i) => {
             // The brand mark leads the word: dotted, lime, and it ripples with the rest.

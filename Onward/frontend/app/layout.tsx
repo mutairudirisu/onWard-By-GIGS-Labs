@@ -1,8 +1,16 @@
 import type { Metadata, Viewport } from "next";
+import { Comfortaa } from "next/font/google";
 import { headers } from "next/headers";
 import { SiteNav } from "@/components/site-nav";
 import { SiteFooter } from "@/components/site-footer";
 import "./globals.css";
+
+const comfortaa = Comfortaa({
+  subsets: ["latin"],
+  weight: ["500", "700"],
+  display: "swap",
+  variable: "--font-comfortaa",
+});
 
 export const metadata: Metadata = {
   title: "onWard — Your growth, documented",
@@ -26,7 +34,7 @@ export default async function RootLayout({
 }) {
   await headers();
   return (
-    <html lang="en">
+    <html lang="en" className={comfortaa.variable}>
       <body>
         <SiteNav />
         {children}

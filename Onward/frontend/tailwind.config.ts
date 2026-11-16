@@ -22,6 +22,7 @@ export default {
         },
       },
       fontFamily: {
+        brand: ["var(--font-comfortaa)", "Comfortaa", "cursive"],
         sans: [
           "Inter",
           "-apple-system",

@@ -33,6 +33,7 @@ export default {
         bad: "#B4483C",
       },
       fontFamily: {
+        brand: ["var(--font-comfortaa)", "Comfortaa", "cursive"],
         sans: [
           "Inter",
           "-apple-system",

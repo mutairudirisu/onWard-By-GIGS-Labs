@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Comfortaa } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
 import { AuthGate, AuthProvider } from "@/components/auth";
@@ -13,6 +14,13 @@ import { StoreProvider } from "@/components/store";
 import { ThemeManager } from "@/components/theme-manager";
 import { ToastHost } from "@/components/toast";
 import { UpdatePrompt } from "@/components/update-prompt";
+
+const comfortaa = Comfortaa({
+  subsets: ["latin"],
+  weight: ["500", "700"],
+  display: "swap",
+  variable: "--font-comfortaa",
+});
 
 export const metadata: Metadata = {
   title: "onWard — your everyday, going places",
@@ -46,7 +54,7 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   await headers();
   return (
-    <html lang="en">
+    <html lang="en" className={comfortaa.variable}>
       <body>
         <AuthProvider>
           <StoreProvider>
