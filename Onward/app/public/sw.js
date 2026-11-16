@@ -1,4 +1,4 @@
-const CACHE = "onward-shell-v2";
+const CACHE = "onward-shell-v3";
 const SHELL = ["/offline.html", "/manifest.webmanifest", "/icons/icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -40,7 +40,7 @@ self.addEventListener("fetch", (event) => {
           const offlinePage = await caches.match("/offline.html");
           return (
             offlinePage ||
-            new Response("You're offline. Reconnect to continue using onWard.", {
+            new Response("Your internet went for a walk. Reconnect and try again.", {
               status: 503,
               headers: { "Content-Type": "text/plain; charset=utf-8" },
             })
