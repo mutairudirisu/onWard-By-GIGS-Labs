@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, MessageCircle } from "lucide-react";
 import { Starfield } from "@/components/starfield";
 import { ComparisonTable, PricingBlock } from "@/components/pricing-plans";
+import { FaqAccordion } from "@/components/faq-accordion";
 
 export const metadata: Metadata = {
   title: "Pricing — onWard by GIGS Labs",
@@ -85,19 +86,10 @@ export default function Pricing() {
         <div className="mx-auto max-w-2xl">
           <p className="eyebrow text-center">Questions</p>
           <h2 className="h2 mt-4 text-center">Everything else you might ask.</h2>
-          <div className="mt-10 divide-y divide-line border-y border-line">
-            {FAQS.map((f) => (
-              <details key={f.q} className="group py-5">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[15.5px] font-bold tracking-tight text-ink">
-                  {f.q}
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line text-muted transition group-open:rotate-45 group-open:border-lime-deep group-open:text-lime-deep">
-                    +
-                  </span>
-                </summary>
-                <p className="lead mt-3 max-w-xl text-[14.5px]">{f.a}</p>
-              </details>
-            ))}
-          </div>
+          <FaqAccordion
+            variant="pricing"
+            items={FAQS.map(({ q, a }) => ({ question: q, answer: a }))}
+          />
         </div>
       </section>
 

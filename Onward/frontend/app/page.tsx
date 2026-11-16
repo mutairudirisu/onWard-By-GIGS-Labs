@@ -13,6 +13,7 @@ import {
 import { WorkDemo } from "@/components/work-demo";
 import { StepsShowcase } from "@/components/steps-showcase";
 import { ProductPhone } from "@/components/product-phone";
+import { FaqAccordion } from "@/components/faq-accordion";
 import { APP_URL, SIGNUP_URL } from "@/lib/site";
 
 function ProductScreenshot({
@@ -412,24 +413,7 @@ export default function Home() {
               Good questions.
             </h2>
           </div>
-          <div className="mt-10 divide-y divide-line border-y border-line">
-            {FAQS.map(({ question, answer }) => (
-              <details key={question} className="group py-5 sm:py-6">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-5 text-left text-[16px] font-semibold text-ink marker:hidden sm:text-[18px] [&::-webkit-details-marker]:hidden">
-                  {question}
-                  <span
-                    aria-hidden="true"
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line text-[20px] font-normal text-ink/60 transition-transform group-open:rotate-45"
-                  >
-                    +
-                  </span>
-                </summary>
-                <p className="max-w-2xl pr-10 pt-4 text-[14px] leading-relaxed text-muted sm:text-[16px]">
-                  {answer}
-                </p>
-              </details>
-            ))}
-          </div>
+          <FaqAccordion items={FAQS} />
         </div>
       </section>
 

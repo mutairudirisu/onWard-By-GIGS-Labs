@@ -2,8 +2,6 @@
 
 import { useEffect, useRef } from "react";
 
-import { LogoMark } from "./logo";
-
 const WORD = "onWard";
 
 /**
@@ -116,13 +114,10 @@ export function FooterWordmark() {
         }}
       />
       <span className="pointer-events-none absolute inset-x-0 bottom-0 h-[58%] bg-[radial-gradient(46%_120%_at_74%_116%,rgba(180,225,58,0.26),transparent_68%)] blur-[46px]" />
-      {/* 29vw, not a 130px floor: "onWard" is about 3.3em wide, so the old clamp
-          only stopped cropping above 406px and sliced both ends on every phone. */}
-      <span className="relative block whitespace-nowrap font-brand text-[clamp(48px,29vw,700px)] font-bold leading-[0.8] tracking-[-0.045em]">
-        <span className="relative left-1/2 inline-block -translate-x-1/2 translate-y-[20%]">
+      <span className="relative block whitespace-nowrap font-brand text-[clamp(48px,22vw,700px)] font-bold leading-[0.95] tracking-[-0.045em]">
+        <span className="relative left-1/2 inline-block -translate-x-1/2">
           {WORD.split("").map((ch, i) => {
-            // The brand mark leads the word: dotted, lime, and it ripples with the rest.
-            const mark = i === 0;
+            const accent = i === 0;
             return (
               <span
                 key={`${ch}-${i}`}
@@ -130,23 +125,19 @@ export function FooterWordmark() {
                   letterRefs.current[i] = el;
                 }}
                 className={`inline-block will-change-transform ${
-                  mark ? "text-lime" : "bg-clip-text text-transparent"
+                  accent ? "text-lime" : "bg-clip-text text-transparent"
                 }`}
                 style={
-                  mark
+                  accent
                     ? undefined
                     : {
                         backgroundImage:
-                          "linear-gradient(180deg, rgba(255,255,255,0.24), rgba(255,255,255,0.07))",
+                          "linear-gradient(180deg, rgba(255,255,255,0.42), rgba(255,255,255,0.18))",
                         WebkitBackgroundClip: "text",
                       }
                 }
               >
-                {mark ? (
-                  <LogoMark className="inline-block h-[0.7em] w-[0.7em] align-baseline" />
-                ) : (
-                  ch
-                )}
+                {ch}
               </span>
             );
           })}
