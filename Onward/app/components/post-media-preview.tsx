@@ -7,10 +7,12 @@ import {
   Repeat2,
   Send,
   ThumbsUp,
+  X,
 } from "lucide-react";
 import { Avatar } from "@/components/feed-post";
 import { BackLink } from "@/components/ui";
 import { useSmartBack } from "@/components/navigation-history";
+import { useSheetDrag } from "@/components/sheet-drag";
 import { PostMediaCarousel } from "@/components/post-media-carousel";
 import {
   communityMediaUrl,
@@ -45,8 +47,9 @@ export function PostMediaPreview({
   onShare: () => void;
 }) {
   const [index, setIndex] = useState(initialIndex);
-  const [captionExpanded, setCaptionExpanded] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const goBack = useSmartBack("/feed");
+  const { gripProps, shellStyle } = useSheetDrag(detailsOpen, () => setDetailsOpen(false));
   const isCommunityPost = Boolean(post.communityId);
   const authorName = isCommunityPost
     ? post.communityName || post.fullName || "Community"
@@ -76,7 +79,8 @@ export function PostMediaPreview({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        if (!commentsOpen) goBack();
+        if (detailsOpen) setDetailsOpen(false);
+        else if (!commentsOpen) goBack();
         return;
       }
       const target = event.target;
@@ -93,7 +97,7 @@ export function PostMediaPreview({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [commentsOpen, goBack, post.media.length]);
+  }, [commentsOpen, detailsOpen, goBack, post.media.length]);
 
   if (!post.media.length) return null;
 
@@ -218,25 +222,68 @@ export function PostMediaPreview({
         {caption ? (
           <div className="mt-3 flex items-end gap-2">
             <p
-              className={`min-w-0 flex-1 whitespace-pre-wrap text-[14px] leading-relaxed text-white/90 ${
-                captionExpanded ? "" : "line-clamp-2"
-              }`}
+              className="line-clamp-2 min-w-0 flex-1 whitespace-pre-wrap text-[14px] leading-relaxed text-white/90"
             >
               {caption}
             </p>
             {caption.length > 140 ? (
               <button
                 type="button"
-                aria-expanded={captionExpanded}
-                onClick={() => setCaptionExpanded((expanded) => !expanded)}
+                aria-haspopup="dialog"
+                aria-expanded={detailsOpen}
+                onClick={() => setDetailsOpen(true)}
                 className="shrink-0 cursor-pointer pb-0.5 text-[13px] text-white/55 hover:text-white"
               >
-                {captionExpanded ? "less" : "more"}
+                more
               </button>
             ) : null}
           </div>
         ) : null}
       </footer>
+
+      {detailsOpen ? (
+        <div
+          className="fixed inset-0 z-[80] flex items-end justify-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Full post details"
+        >
+          <button
+            type="button"
+            aria-label="Close post details"
+            onClick={() => setDetailsOpen(false)}
+            className="absolute inset-0 cursor-default bg-black/15"
+          />
+          <section
+            className="relative flex w-full max-w-[680px] flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-[#17191d]/80 text-white shadow-2xl backdrop-blur-xl"
+            style={shellStyle}
+          >
+            <div
+              {...gripProps()}
+              className="shrink-0 cursor-grab touch-none px-4 pb-2 pt-3 active:cursor-grabbing"
+              aria-label="Drag down to close post details"
+            >
+              <span className="mx-auto block h-1 w-12 rounded-full bg-white/55" />
+            </div>
+            <header className="flex shrink-0 items-center gap-3 border-b border-white/10 px-5 pb-3">
+              <h2 className="flex-1 text-[14px] font-semibold tracking-tight">Post details</h2>
+              <button
+                type="button"
+                aria-label="Close post details"
+                onClick={() => setDetailsOpen(false)}
+                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-white/65 transition hover:bg-white/10 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </header>
+            <div className="wheel min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-[calc(20px+env(safe-area-inset-bottom))] pt-4">
+              <p className="whitespace-pre-wrap text-[14px] leading-[1.7] text-white/90">
+                {caption}
+              </p>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 }
