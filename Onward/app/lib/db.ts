@@ -874,9 +874,10 @@ export async function fetchPost(id: string): Promise<FeedPost | null> {
 }
 
 export async function fetchComments(postId: string): Promise<PostComment[]> {
+  // The live feed_comments view predates author_id, so selecting it breaks the thread.
   const { data, error } = await supabase
     .from("feed_comments")
-    .select("id, author_id, body, full_name, initials, created_at, mine, likes, liked")
+    .select("id, body, full_name, initials, created_at, mine, likes, liked")
     .eq("post_id", postId)
     .order("created_at");
   if (error) throw new Error(error.message);

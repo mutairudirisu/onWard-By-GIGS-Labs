@@ -30,6 +30,7 @@ import { Avatar } from "@/components/feed-post";
 import { Modal } from "@/components/modal";
 import { CommunityTopicIcon } from "@/components/community-card";
 import { PostEditor } from "@/components/post-editor";
+import { mediaAspectRatio, PostMediaFrame } from "@/components/post-media-carousel";
 import type { Evidence } from "@/lib/data";
 import {
   PollComposer,
@@ -148,6 +149,7 @@ function Composer() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [picks, setPicks] = useState<Pick[]>([]);
+  const [pickRatios, setPickRatios] = useState<Record<string, number>>({});
   const [wardDocumentFiles, setWardDocumentFiles] = useState<File[]>([]);
   const [wardLinkEvidence, setWardLinkEvidence] = useState<Evidence[]>([]);
   // Post and Poll are two modes of one composer, so switching between them keeps
@@ -1152,13 +1154,31 @@ function Composer() {
                       {picks.map((pick, index) => (
                         <div
                           key={pick.url}
-                          className="relative aspect-square overflow-hidden rounded-xl bg-lime-pale"
+                          className="relative min-w-0 overflow-hidden rounded-xl bg-ink"
+                          style={{
+                            aspectRatio: String(pickRatios[pick.url] ?? 4 / 5),
+                            maxHeight: "min(60dvh, 480px)",
+                          }}
                         >
-                          {pick.file.type.startsWith("video/") ? (
-                            <video src={pick.url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
-                          ) : (
-                            <img src={pick.url} alt="" className="h-full w-full object-cover" />
-                          )}
+                          <PostMediaFrame
+                            src={pick.url}
+                            kind={pick.file.type.startsWith("video/") ? "video" : "image"}
+                            alt={`Selected media ${index + 1}`}
+                            loading="eager"
+                            preload="metadata"
+                            controls={false}
+                            muted
+                            onDimensions={(width, height) => {
+                              const ratio = mediaAspectRatio(width, height);
+                              if (ratio !== null) {
+                                setPickRatios((current) =>
+                                  current[pick.url] === ratio
+                                    ? current
+                                    : { ...current, [pick.url]: ratio },
+                                );
+                              }
+                            }}
+                          />
                           <span className="pointer-events-none absolute left-1.5 top-1.5 rounded-full bg-ink/55 px-1.5 text-[9.5px] font-bold tabular-nums text-paper">
                             {index + 1}
                           </span>

@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  ChevronLeft,
-  ChevronRight,
   MessageCircle,
   Repeat2,
   Send,
@@ -13,10 +11,10 @@ import {
 import { Avatar } from "@/components/feed-post";
 import { BackLink } from "@/components/ui";
 import { useSmartBack } from "@/components/navigation-history";
+import { PostMediaCarousel } from "@/components/post-media-carousel";
 import {
   communityMediaUrl,
   initialsFor,
-  mediaUrl,
   type FeedPost,
 } from "@/lib/db";
 import { timeAgo } from "@/lib/dates";
@@ -49,7 +47,6 @@ export function PostMediaPreview({
   const [index, setIndex] = useState(initialIndex);
   const [captionExpanded, setCaptionExpanded] = useState(false);
   const goBack = useSmartBack("/feed");
-  const media = post.media[index] ?? post.media[0];
   const isCommunityPost = Boolean(post.communityId);
   const authorName = isCommunityPost
     ? post.communityName || post.fullName || "Community"
@@ -98,7 +95,7 @@ export function PostMediaPreview({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [commentsOpen, goBack, post.media.length]);
 
-  if (!media) return null;
+  if (!post.media.length) return null;
 
   return (
     <main
@@ -126,46 +123,13 @@ export function PostMediaPreview({
       </header>
 
       <section className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden px-2 py-3 sm:px-8">
-        {media.kind === "video" ? (
-          <video
-            src={mediaUrl(media.path)}
-            controls
-            playsInline
-            preload="metadata"
-            className="h-full w-full object-contain"
-          />
-        ) : (
-          <img
-            src={mediaUrl(media.path)}
-            alt={`Photo shared by ${authorName}`}
-            className="h-full w-full object-contain"
-          />
-        )}
-
-        {post.media.length > 1 ? (
-          <>
-            <button
-              type="button"
-              aria-label="Previous image"
-              disabled={index === 0}
-              onClick={() => setIndex((current) => Math.max(0, current - 1))}
-              className="absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-black/50 text-white shadow-lg transition hover:bg-black/75 disabled:cursor-default disabled:opacity-30 sm:left-6"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              aria-label="Next image"
-              disabled={index === post.media.length - 1}
-              onClick={() =>
-                setIndex((current) => Math.min(post.media.length - 1, current + 1))
-              }
-              className="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-black/50 text-white shadow-lg transition hover:bg-black/75 disabled:cursor-default disabled:opacity-30 sm:right-6"
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          </>
-        ) : null}
+        <PostMediaCarousel
+          media={post.media}
+          index={index}
+          onIndexChange={setIndex}
+          mode="viewer"
+          alt={`Photo shared by ${authorName}`}
+        />
 
         <div className="absolute bottom-5 right-3 z-10 flex flex-col items-center gap-4 sm:bottom-7 sm:right-8">
           <button

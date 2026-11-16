@@ -29,7 +29,10 @@ export function PostOptionsSheet({
   onReshare: (id: string) => void;
   onDelete: (post: FeedPost) => void;
 }) {
-  const { gripProps, shellStyle } = useSheetDrag(open, onClose);
+  const actionCount =
+    2 + (post && !post.reshare ? 1 : 0) + (post?.authorId ? 1 : 0) + (post?.mine ? 1 : 0);
+  const initialHeight = post ? 64 + actionCount * 48 : undefined;
+  const { gripProps, shellStyle } = useSheetDrag(open, onClose, initialHeight);
 
   useEffect(() => {
     if (!open) return;

@@ -17,7 +17,7 @@ const clamp = (value: number, min: number, max: number) =>
  * down past the threshold and it closes. Kept in one place so the thread, the share
  * drawer and the repost composer all answer the same drag the same way.
  */
-export function useSheetDrag(open: boolean, onClose: () => void) {
+export function useSheetDrag(open: boolean, onClose: () => void, initialHeight?: number) {
   const [viewport, setViewport] = useState(0);
   const [height, setHeight] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -27,11 +27,15 @@ export function useSheetDrag(open: boolean, onClose: () => void) {
     if (!open) return;
     const base = window.innerHeight;
     setViewport(base);
-    setHeight(Math.round(base * HALF));
+    setHeight(
+      initialHeight === undefined
+        ? Math.round(base * HALF)
+        : Math.min(initialHeight, Math.max(240, base - 24)),
+    );
     const onResize = () => setViewport(window.innerHeight);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, [open]);
+  }, [open, initialHeight]);
 
   const release = useCallback(() => {
     const d = drag.current;
@@ -73,7 +77,8 @@ export function useSheetDrag(open: boolean, onClose: () => void) {
     // The frame before the effect has measured anything still has to land at the
     // halfway mark, so a sheet never flashes at zero height.
     shellStyle: {
-      height: height ? `${height}px` : "58vh",
+      height: height ? `${height}px` : initialHeight === undefined ? "58vh" : `${initialHeight}px`,
+      maxHeight: initialHeight === undefined ? undefined : "calc(100dvh - 24px)",
       transition: dragging ? "none" : "height 0.22s ease-out",
       animation: "onward-sheet 0.22s ease-out",
     } as React.CSSProperties,

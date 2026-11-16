@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   ChevronLeft,
@@ -16,6 +16,7 @@ import {
   Share2,
   ThumbsUp,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   communityMediaUrl,
   initialsFor,
@@ -25,6 +26,7 @@ import {
   type PostPoll,
 } from "@/lib/db";
 import { CarriedPollBlock, PollBlock } from "@/components/post-poll";
+import { PostMediaCarousel } from "@/components/post-media-carousel";
 import { PostText } from "@/components/post-text";
 import { timeAgo } from "@/lib/dates";
 
@@ -68,82 +70,31 @@ export function Avatar({
 /** The photos and clips of one post, swiped in place the way a social app does it. */
 function MediaStage({
   media,
-  href,
+  postId,
   className = "",
+  rounded = true,
 }: {
   media: PostMedia[];
-  href: string;
+  postId: string;
   className?: string;
+  rounded?: boolean;
 }) {
   const [index, setIndex] = useState(0);
-  const rail = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   if (!media.length) return null;
   return (
-    <div className={`relative overflow-hidden rounded-2xl bg-ink lg:h-[min(58vh,480px)] lg:bg-cream ${className}`}>
-      <Link href={`${href}?view=media&image=${index}`} className="block h-full">
-        <div
-          ref={rail}
-          className="wheel flex snap-x snap-mandatory overflow-x-auto lg:h-full"
-          onScroll={(e) => {
-            const el = e.currentTarget;
-            if (el.clientWidth) setIndex(Math.round(el.scrollLeft / el.clientWidth));
-          }}
-        >
-          {media.map((item) => (
-            <div key={item.id} className="aspect-[4/5] w-full shrink-0 snap-center lg:aspect-auto lg:h-full">
-              {item.kind === "video" ? (
-                <video
-                  src={mediaUrl(item.path)}
-                  controls
-                  playsInline
-                  preload="metadata"
-                  className="h-full w-full bg-ink object-contain"
-                />
-              ) : (
-                <img
-                  src={mediaUrl(item.path)}
-                  alt=""
-                  loading="lazy"
-                  className="h-full w-full object-cover lg:object-contain"
-                />
-              )}
-            </div>
-          ))}
-        </div>
-      </Link>
-      {media.length > 1 ? (
-        <>
-          <button
-            type="button"
-            aria-label="Previous image"
-            disabled={index === 0}
-            onClick={() => rail.current?.scrollBy({ left: -rail.current.clientWidth, behavior: "smooth" })}
-            className="absolute left-3 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-ink/60 text-white shadow-sm transition hover:bg-ink/80 disabled:cursor-default disabled:opacity-40 md:flex"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            aria-label="Next image"
-            disabled={index >= media.length - 1}
-            onClick={() => rail.current?.scrollBy({ left: rail.current.clientWidth, behavior: "smooth" })}
-            className="absolute right-3 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-ink/60 text-white shadow-sm transition hover:bg-ink/80 disabled:cursor-default disabled:opacity-40 md:flex"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
-          <span className="pointer-events-none absolute right-2.5 top-2.5 rounded-full bg-ink/55 px-2 py-0.5 text-[10px] font-bold tabular-nums text-paper">
-            {Math.min(index + 1, media.length)}/{media.length}
-          </span>
-          <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
-            {media.map((item, i) => (
-              <span
-                key={item.id}
-                className={`h-1.5 w-1.5 rounded-full ${i === index ? "bg-paper" : "bg-paper/40"}`}
-              />
-            ))}
-          </div>
-        </>
-      ) : null}
+    <div className={className}>
+      <PostMediaCarousel
+        media={media}
+        index={index}
+        onIndexChange={setIndex}
+        mode="feed"
+        alt="Post media"
+        rounded={rounded}
+        onOpen={(selectedIndex) =>
+          router.push(`/feed/${postId}?view=media&image=${selectedIndex}`)
+        }
+      />
     </div>
   );
 }
@@ -294,7 +245,7 @@ function PostBody({
       <PostWords entry={words} clamp={clamp} />
       <MediaStage
         media={entry.media}
-        href={`/feed/${entry.id}`}
+        postId={entry.id}
         className={entry.title || entry.body ? "mt-2.5" : ""}
       />
       {document ? <DocumentStage document={document} /> : null}
@@ -520,10 +471,11 @@ export function PostBlock({
           {post.media.length ? (
             <MediaStage
               media={post.media}
-              href={`/feed/${post.id}`}
+              postId={post.id}
               className={`${post.title || parsedPost.body ? "mt-2.5" : ""} ${
                 edgeToEdge ? "rounded-none" : ""
               }`}
+              rounded={!edgeToEdge}
             />
           ) : null}
           {parsedPost.document ? (
