@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Download, Mail, MessageSquareQuote } from "lucide-react";
 import { PageHero } from "@/components/page-hero";
+import { ProductPhone } from "@/components/product-phone";
 import { CopyButton } from "@/components/copy-button";
 import { ColorSwatches } from "@/components/color-swatches";
 import { emailFor, mailto } from "@/lib/site";
@@ -43,10 +44,14 @@ const COLORS: [string, string, string][] = [
   ["Muted", "#86877B", "text-paper"],
 ];
 
-const SHOTS: [string, string][] = [
-  ["onWards timeline", "/app-onwards.png"],
-  ["Log an onWard", "/app-log-onward.png"],
-  ["Insights", "/app-insights.png"],
+const SHOTS = [
+  { label: "Home · light theme", src: "/app-screens/home-light.jpg" },
+  { label: "Home · dark theme", src: "/app-screens/home-dark.jpg" },
+  { label: "onWards timeline", src: "/app-screens/onwards-light.jpg" },
+  { label: "Exchange · light theme", src: "/app-screens/exchange-light.jpg" },
+  { label: "Exchange · dark theme", src: "/app-screens/exchange-dark.jpg" },
+  { label: "My Network · light theme", src: "/app-screens/network-light.jpg" },
+  { label: "My Network · dark theme", src: "/app-screens/network-dark.jpg" },
 ];
 
 export default function Press() {
@@ -184,16 +189,11 @@ export default function Press() {
           <p className="eyebrow text-lime">Screenshots</p>
           <h2 className="h2 mt-4 max-w-lg text-paper">onWard, on the phone.</h2>
           <p className="lead mt-4 max-w-lg text-paper/55">
-            Captured 29 October — the app has moved since, so these are the
-            closest we have to current. Right-click to save or tap to open full
-            size, and{" "}
-            <a href={mailto("press")} className="text-lime hover:underline">
-              ask us
-            </a>{" "}
-            if you need today&apos;s screens.
+            Current onWard screens in light and dark themes. Tap any phone to
+            open the full-size image.
           </p>
           <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-            {SHOTS.map(([label, src]) => (
+            {SHOTS.map(({ label, src }) => (
               <a
                 key={label}
                 href={src}
@@ -201,14 +201,13 @@ export default function Press() {
                 rel="noreferrer"
                 className="group"
               >
-                <div className="overflow-hidden rounded-2xl border border-paper/12 bg-paper/5">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={src}
-                    alt={`onWard ${label} screen`}
-                    className="aspect-[9/19] w-full object-cover object-top transition group-hover:scale-[1.03]"
-                  />
-                </div>
+                <ProductPhone
+                  src={src}
+                  alt={`onWard ${label} screen`}
+                  compact
+                  sizes="(min-width: 1024px) 140px, (min-width: 640px) 180px, 42vw"
+                  className="max-w-[180px] transition group-hover:scale-[1.03]"
+                />
                 <p className="mt-2.5 text-[12.5px] font-semibold text-paper/70">
                   {label}
                 </p>

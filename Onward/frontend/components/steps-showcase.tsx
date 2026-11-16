@@ -1,37 +1,36 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  InsightsScreen,
-  LogWardScreen,
-  PortfolioScreen,
-  TodayScreen,
-} from "@/components/screens";
+import { ProductPhone } from "@/components/product-phone";
 
 const STEPS = [
   {
     n: "1",
-    title: "Tap + and log what happened.",
-    body: "One screen: what you did, what changed because of it, and the skills you used. Dictate the title when typing is the slower option.",
-    screen: <LogWardScreen />,
+    title: "Start with what matters today.",
+    body: "Keep your day moving with a clear view of your tasks, focus sessions, checklist and recent work.",
+    image: "/app-screens/home-light.jpg",
+    alt: "onWard home screen with calendar, focus timer, checklist and recent onWards",
   },
   {
     n: "2",
-    title: "It files itself on the day.",
-    body: "Every capture is dated the moment you save it, so the record reads back as a timeline you can move through — not a pile to re-sort later.",
-    screen: <TodayScreen />,
+    title: "Keep your work remembered.",
+    body: "Bring your onWards together in one timeline, with the skills, results and evidence connected to each win.",
+    image: "/app-screens/onwards-light.jpg",
+    alt: "onWard timeline showing saved work wins and their impact",
   },
   {
     n: "3",
-    title: "Read it back when you need to.",
-    body: "Insights adds the captures up, the heatmap keeps six months of the days you turned up, and the skills listed are the ones your own entries used.",
-    screen: <InsightsScreen />,
+    title: "Share ideas in the Exchange.",
+    body: "See community posts, take part in conversations and learn from other people’s work and ideas.",
+    image: "/app-screens/exchange-light.jpg",
+    alt: "onWard Exchange feed with community posts and reactions",
   },
   {
     n: "4",
-    title: "Compile the proof.",
-    body: "Flag the onWards that matter and they gather on one page — the wins with their impact, the skills they show — which downloads as a PDF you can send.",
-    screen: <PortfolioScreen />,
+    title: "Grow your network.",
+    body: "Find people and keep up with your connections in My Network.",
+    image: "/app-screens/network-light.jpg",
+    alt: "onWard My Network screen with connections and people suggestions",
   },
 ];
 
@@ -143,13 +142,13 @@ export function StepsShowcase() {
             </div>
 
             <div className="flex h-full min-w-0 items-center justify-center">
-              <div
+              <ProductPhone
                 key={current.n}
-                className="motion-safe:animate-[onward-fade_420ms_ease-out] max-h-[min(74svh,740px)] w-full max-w-[330px] overflow-hidden rounded-[36px]"
-                aria-label={`Product screen, step ${current.n}`}
-              >
-                {current.screen}
-              </div>
+                src={current.image}
+                alt={current.alt}
+                sizes="(min-width: 1024px) 260px, (min-width: 768px) 220px, 84vw"
+                className="motion-safe:animate-[onward-fade_420ms_ease-out] max-w-[min(260px,34svh)]"
+              />
             </div>
 
             <div
@@ -217,7 +216,12 @@ export function StepsShowcase() {
               </div>
             </div>
             <div className="flex flex-col items-center pt-8">
-              {step.screen}
+              <ProductPhone
+                src={step.image}
+                alt={step.alt}
+                sizes="(min-width: 768px) 260px, 84vw"
+                className="max-w-[260px]"
+              />
               <p className="mt-4 text-[11px] font-medium text-paper/35">
                 Step {step.n} · sample entries
               </p>

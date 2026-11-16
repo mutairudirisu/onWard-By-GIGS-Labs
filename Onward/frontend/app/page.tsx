@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -13,6 +12,7 @@ import {
 } from "lucide-react";
 import { WorkDemo } from "@/components/work-demo";
 import { StepsShowcase } from "@/components/steps-showcase";
+import { ProductPhone } from "@/components/product-phone";
 import { APP_URL, SIGNUP_URL } from "@/lib/site";
 
 function ProductScreenshot({
@@ -27,18 +27,13 @@ function ProductScreenshot({
   priority?: boolean;
 }) {
   return (
-    <figure className="relative z-10 mx-auto w-full max-w-[270px] sm:max-w-[300px]">
-      <div className="overflow-hidden rounded-[34px] border-[7px] border-[#171813] bg-[#171813] p-[2px] shadow-[0_32px_80px_rgba(0,0,0,0.2)]">
-        <Image
-          src={src}
-          alt={alt}
-          width={390}
-          height={1080}
-          priority={priority}
-          sizes="(min-width: 640px) 300px, 270px"
-          className="h-auto w-full rounded-[25px]"
-        />
-      </div>
+    <figure className="relative z-10 mx-auto w-full max-w-[250px] sm:max-w-[270px]">
+      <ProductPhone
+        src={src}
+        alt={alt}
+        priority={priority}
+        sizes="(min-width: 640px) 270px, 84vw"
+      />
       <figcaption className="mt-4 text-center text-[12px] font-medium text-muted">
         {caption}
       </figcaption>
@@ -208,9 +203,9 @@ export default function Home() {
             </div>
 
             <ProductScreenshot
-              src="/screenshots/onwards.png"
-              alt="onWard mobile screen showing a timeline of work wins and their impact"
-              caption="A real onWard screen · sample entries"
+              src="/app-screens/home-light.jpg"
+              alt="onWard home screen showing the weekly calendar, focus timer, checklist and logged work"
+              caption="Your day, work and progress in one place"
               priority
             />
           </div>

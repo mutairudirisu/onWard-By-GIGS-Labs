@@ -48,7 +48,7 @@ export function AuthShell({
           <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-lime">
             <Sprout className="h-5 w-5 text-dark" strokeWidth={2.2} />
           </span>
-          <Wordmark tone="paper" className="text-[19px]" />
+          <Wordmark tone="paper" showMark={false} className="text-[19px]" />
         </Link>
 
         <p className="relative mb-24 mt-auto max-w-[20ch] self-center text-balance text-center font-serif text-[clamp(29px,2.6vw,43px)] leading-[1.16] tracking-[-0.01em] text-on-panel xl:mb-32">
