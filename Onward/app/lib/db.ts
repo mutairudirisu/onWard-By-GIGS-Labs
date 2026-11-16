@@ -546,6 +546,7 @@ export type PostComment = {
   id: string;
   authorId: string | null;
   body: string;
+  media: PostCommentMedia[];
   fullName: string;
   initials: string;
   createdAt: string;
@@ -553,6 +554,13 @@ export type PostComment = {
   likes: number;
   liked: boolean;
 };
+
+export type PostCommentMedia = {
+  kind: "image" | "gif";
+  path: string;
+};
+
+export type PostReaction = "like" | "love";
 
 /** The poll a reshare carries: a question and its counts to read, never a vote to cast
  *  from inside somebody else's card. Tapping the box opens the post that holds it. */
@@ -596,6 +604,7 @@ export type FeedPost = {
   authorId: string | null;
   media: PostMedia[];
   likes: number;
+  loves: number;
   comments: number;
   recentComments: PostComment[];
   reshares: number;
@@ -622,6 +631,7 @@ type CommentJson = {
   id: string;
   author_id?: string | null;
   body: string;
+  media?: PostCommentMedia[] | null;
   full_name: string | null;
   initials: string | null;
   created_at: string;
@@ -697,6 +707,7 @@ function commentFromJson(row: CommentJson): PostComment {
     id: row.id,
     authorId: row.author_id ?? null,
     body: row.body,
+    media: row.media ?? [],
     fullName: row.full_name ?? "",
     initials: row.initials ?? "",
     createdAt: row.created_at,
@@ -751,6 +762,7 @@ function postFromRow(row: FeedRow): FeedPost {
     authorId: row.author_id ?? null,
     media: row.media ?? [],
     likes: row.likes ?? 0,
+    loves: 0,
     comments: row.comments ?? 0,
     recentComments: (row.recent_comments ?? []).map(commentFromJson),
     reshares: row.reshares ?? 0,
@@ -779,6 +791,31 @@ function postFromRow(row: FeedRow): FeedPost {
     communityAvatarPath: row.community_avatar_path ?? null,
     communityIsMember: row.community_is_member ?? false,
   };
+}
+
+async function withPostReactionCounts(posts: FeedPost[]): Promise<FeedPost[]> {
+  if (!posts.length) return posts;
+  const { data, error } = await supabase
+    .from("post_reaction_counts")
+    .select("post_id, reaction, total")
+    .in("post_id", posts.map((post) => post.id));
+  if (error) throw new Error(error.message);
+
+  const counts = new Map<string, { like: number; love: number }>();
+  for (const row of (data ?? []) as {
+    post_id: string;
+    reaction: PostReaction;
+    total: number;
+  }[]) {
+    const current = counts.get(row.post_id) ?? { like: 0, love: 0 };
+    current[row.reaction] = row.total;
+    counts.set(row.post_id, current);
+  }
+
+  return posts.map((post) => {
+    const row = counts.get(post.id) ?? { like: 0, love: 0 };
+    return { ...post, likes: row.like, loves: row.love };
+  });
 }
 
 const FEED_COLUMNS =
@@ -833,7 +870,7 @@ export async function fetchFeed(limit = 40): Promise<FeedPost[]> {
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw new Error(error.message);
-  return (data as FeedRow[] | null ?? []).map(postFromRow);
+  return withPostReactionCounts((data as FeedRow[] | null ?? []).map(postFromRow));
 }
 
 export async function fetchConnectionPosts(
@@ -849,7 +886,7 @@ export async function fetchConnectionPosts(
     .order("created_at", { ascending: false })
     .limit(100);
   if (error) throw new Error(error.message);
-  return (data as FeedRow[] | null ?? []).map(postFromRow);
+  return withPostReactionCounts((data as FeedRow[] | null ?? []).map(postFromRow));
 }
 
 /** What the Exchange tab badge needs: a number, not another page of rows. */
@@ -870,14 +907,14 @@ export async function fetchPost(id: string): Promise<FeedPost | null> {
     .eq("id", id)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  return data ? postFromRow(data as FeedRow) : null;
+  return data ? (await withPostReactionCounts([postFromRow(data as FeedRow)]))[0] : null;
 }
 
 export async function fetchComments(postId: string): Promise<PostComment[]> {
   // The live feed_comments view predates author_id, so selecting it breaks the thread.
   const { data, error } = await supabase
     .from("feed_comments")
-    .select("id, body, full_name, initials, created_at, mine, likes, liked")
+    .select("id, body, media, full_name, initials, created_at, mine, likes, liked")
     .eq("post_id", postId)
     .order("created_at");
   if (error) throw new Error(error.message);
@@ -894,10 +931,21 @@ export async function fetchMyLikes(): Promise<Set<string>> {
   return new Set((data as { post_id: string }[] | null ?? []).map((row) => row.post_id));
 }
 
+export async function fetchMyPostReactions(): Promise<Record<string, PostReaction>> {
+  const { data, error } = await supabase.from("post_reactions").select("post_id, reaction");
+  if (error) throw new Error(error.message);
+  return Object.fromEntries(
+    ((data ?? []) as { post_id: string; reaction: PostReaction }[]).map((row) => [
+      row.post_id,
+      row.reaction,
+    ]),
+  );
+}
+
 export type FeedInteraction = {
   id: string;
   postId: string;
-  kind: "like" | "comment";
+  kind: "like" | "love" | "comment";
   body: string;
   createdAt: string;
 };
@@ -909,10 +957,10 @@ export type FeedInteraction = {
  * only ever show things that really happened.
  */
 export async function fetchMyInteractions(limit = 6): Promise<FeedInteraction[]> {
-  const [liked, mine] = await Promise.all([
+  const [reactions, mine] = await Promise.all([
     supabase
-      .from("post_likes")
-      .select("post_id, created_at")
+      .from("post_reactions")
+      .select("post_id, reaction, created_at")
       .order("created_at", { ascending: false })
       .limit(limit),
     supabase
@@ -922,14 +970,14 @@ export async function fetchMyInteractions(limit = 6): Promise<FeedInteraction[]>
       .order("created_at", { ascending: false })
       .limit(limit),
   ]);
-  if (liked.error) throw new Error(liked.error.message);
+  if (reactions.error) throw new Error(reactions.error.message);
   if (mine.error) throw new Error(mine.error.message);
 
   const rows: FeedInteraction[] = (
-    (liked.data as { post_id: string; created_at: string }[] | null ?? []).map((row) => ({
-      id: `like:${row.post_id}`,
+    (reactions.data as { post_id: string; reaction: PostReaction; created_at: string }[] | null ?? []).map((row) => ({
+      id: `${row.reaction}:${row.post_id}`,
       postId: row.post_id,
-      kind: "like" as const,
+      kind: row.reaction,
       body: "",
       createdAt: row.created_at,
     }) as FeedInteraction).concat(
@@ -956,12 +1004,21 @@ export async function fetchMyInteractions(limit = 6): Promise<FeedInteraction[]>
 }
 
 export async function likePost(postId: string) {
-  const { error } = await supabase.from("post_likes").insert({ post_id: postId });
-  if (error) throw new Error(error.message);
+  await setPostReaction(postId, "like");
 }
 
 export async function unlikePost(postId: string) {
-  const { error } = await supabase.from("post_likes").delete().eq("post_id", postId);
+  await setPostReaction(postId, null);
+}
+
+export async function setPostReaction(
+  postId: string,
+  reaction: PostReaction | null,
+): Promise<void> {
+  const { error } = await supabase.rpc("set_post_reaction", {
+    p_post_id: postId,
+    p_reaction: reaction,
+  });
   if (error) throw new Error(error.message);
 }
 
@@ -1747,18 +1804,75 @@ export async function unlikeComment(commentId: string) {
 export async function addComment(
   postId: string,
   body: string,
-): Promise<{ id: string; createdAt: string }> {
-  const { data, error } = await supabase
-    .from("post_comments")
-    .insert({ post_id: postId, body })
-    .select("id, created_at")
-    .single();
-  fail(error);
-  if (!data) throw new Error("The comment did not land");
-  return { id: data.id as string, createdAt: data.created_at as string };
+  files: File[] = [],
+): Promise<{ id: string; createdAt: string; media: PostCommentMedia[] }> {
+  const trimmed = body.trim();
+  if (trimmed.length > POST_COMMENT_MAX) throw new Error("Keep comments under 500 characters.");
+  if (!trimmed && !files.length) throw new Error("Write a comment or attach a file.");
+  if (files.length > 4) throw new Error("Attach up to four images or GIFs.");
+
+  const extensions: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+  };
+  const userId = await signedInUserId();
+  const media: PostCommentMedia[] = [];
+
+  try {
+    for (const file of files) {
+      const extension = extensions[file.type];
+      if (!extension) throw new Error("Choose a JPG, PNG, WebP or GIF image.");
+      if (file.size > POST_MEDIA_MAX_BYTES) {
+        throw new Error(`"${file.name}" is over the 25MB limit.`);
+      }
+
+      const path = `${userId}/comments/${uuid()}.${extension}`;
+      const { error } = await supabase.storage
+        .from(POST_MEDIA_BUCKET)
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (error) throw new Error(error.message);
+      media.push({ kind: file.type === "image/gif" ? "gif" : "image", path });
+    }
+
+    const { data, error } = await supabase
+      .from("post_comments")
+      .insert({ post_id: postId, body: trimmed, media })
+      .select("id, created_at")
+      .single();
+    fail(error);
+    if (!data) throw new Error("The comment did not land");
+    return { id: data.id as string, createdAt: data.created_at as string, media };
+  } catch (error) {
+    if (media.length) {
+      const { error: cleanupError } = await supabase.storage
+        .from(POST_MEDIA_BUCKET)
+        .remove(media.map((item) => item.path));
+      if (cleanupError) {
+        console.error("Could not remove uploaded files after a failed comment", cleanupError);
+      }
+    }
+    throw error;
+  }
 }
 
 export async function deleteComment(id: string) {
+  const { data: comment, error: readError } = await supabase
+    .from("post_comments")
+    .select("media")
+    .eq("id", id)
+    .maybeSingle();
+  if (readError) throw new Error(readError.message);
+
+  const media = (comment?.media ?? []) as PostCommentMedia[];
+  if (media.length) {
+    const { error: removeError } = await supabase.storage
+      .from(POST_MEDIA_BUCKET)
+      .remove(media.map((item) => item.path));
+    if (removeError) throw new Error(removeError.message);
+  }
+
   const { error } = await supabase.from("post_comments").delete().eq("id", id);
   if (error) throw new Error(error.message);
 }
@@ -2313,7 +2427,7 @@ export async function fetchPersonPosts(id: string, limit = 40): Promise<FeedPost
     .order("created_at", { ascending: false })
     .limit(limit);
   fail(error);
-  return (data as FeedRow[] | null ?? []).map(postFromRow);
+  return withPostReactionCounts((data as FeedRow[] | null ?? []).map(postFromRow));
 }
 
 export type ScheduledPost = {
@@ -2792,7 +2906,7 @@ export async function fetchCommunityPosts(communityId: string): Promise<FeedPost
     .order("created_at", { ascending: false })
     .limit(40);
   if (error) throw new Error(error.message);
-  return ((data ?? []) as FeedRow[]).map(postFromRow);
+  return withPostReactionCounts(((data ?? []) as FeedRow[]).map(postFromRow));
 }
 
 export async function updateCommunityDescription(

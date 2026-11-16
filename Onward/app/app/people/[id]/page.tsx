@@ -21,7 +21,7 @@ import { useAuth } from "@/components/auth";
 import { toastError, toastSuccess } from "@/components/toast";
 import {
   deletePost,
-  fetchMyLikes,
+  fetchMyPostReactions,
   fetchPolls,
   fetchFollowList,
   fetchPersonComments,
@@ -29,13 +29,13 @@ import {
   fetchProfileCard,
   followPerson,
   getConnectionStatus,
-  likePost,
+  setPostReaction,
   sendConnectionRequest,
-  unlikePost,
   unfollowPerson,
   type ExchangePerson,
   type FeedPost,
   type PostPoll,
+  type PostReaction,
   type ProfileCard,
   type ProfileComment,
 } from "@/lib/db";
@@ -195,8 +195,10 @@ export default function PersonPage() {
   const [comments, setComments] = useState<ProfileComment[] | null>(null);
   const [polls, setPolls] = useState<Record<string, PostPoll>>({});
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [lovedPosts, setLovedPosts] = useState<Set<string>>(new Set());
   const [likesLoaded, setLikesLoaded] = useState(false);
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
+  const [loveCounts, setLoveCounts] = useState<Record<string, number>>({});
   const [likeBusyIds, setLikeBusyIds] = useState<Set<string>>(new Set());
   const [sheet, setSheet] = useState<"followers" | "following" | null>(null);
   const [people, setPeople] = useState<ExchangePerson[] | null>(null);
@@ -228,6 +230,8 @@ export default function PersonPage() {
         if (cancelled) return;
         setCard(found);
         setPosts(written);
+        setLikeCounts(Object.fromEntries(written.map((post) => [post.id, post.likes])));
+        setLoveCounts(Object.fromEntries(written.map((post) => [post.id, post.loves])));
         void fetchPolls(written.map((post) => post.id))
           .then((foundPolls) => {
             if (!cancelled) setPolls(foundPolls);
@@ -275,14 +279,20 @@ export default function PersonPage() {
     let cancelled = false;
     if (!user) {
       setLikedPosts(new Set());
+      setLovedPosts(new Set());
       setLikesLoaded(true);
       return;
     }
     setLikesLoaded(false);
-    void fetchMyLikes()
-      .then((liked) => {
+    void fetchMyPostReactions()
+      .then((reactions) => {
         if (!cancelled) {
-          setLikedPosts(liked);
+          setLikedPosts(
+            new Set(Object.entries(reactions).filter(([, value]) => value === "like").map(([postId]) => postId)),
+          );
+          setLovedPosts(
+            new Set(Object.entries(reactions).filter(([, value]) => value === "love").map(([postId]) => postId)),
+          );
           setLikesLoaded(true);
         }
       })
@@ -373,33 +383,53 @@ export default function PersonPage() {
     }
   }
 
-  const toggleLike = useCallback(
-    (postId: string) => {
+  const toggleReaction = useCallback(
+    (postId: string, selected: PostReaction) => {
       if (!user) {
         router.push("/sign-in");
         return;
       }
       if (!likesLoaded || likeBusyIds.has(postId)) return;
-      const wasLiked = likedPosts.has(postId);
-      const previousCount = likeCounts[postId] ?? posts?.find((post) => post.id === postId)?.likes ?? 0;
-      const nextLiked = new Set(likedPosts);
-      if (wasLiked) nextLiked.delete(postId);
-      else nextLiked.add(postId);
-      setLikedPosts(nextLiked);
-      setLikeCounts((current) => ({
-        ...current,
-        [postId]: Math.max(0, previousCount + (wasLiked ? -1 : 1)),
-      }));
+      const current: PostReaction | null = likedPosts.has(postId)
+        ? "like"
+        : lovedPosts.has(postId)
+          ? "love"
+          : null;
+      const next = current === selected ? null : selected;
+      const post = posts?.find((item) => item.id === postId);
+      const apply = (from: PostReaction | null, to: PostReaction | null) => {
+        setLikedPosts((value) => {
+          const updated = new Set(value);
+          if (to === "like") updated.add(postId);
+          else updated.delete(postId);
+          return updated;
+        });
+        setLovedPosts((value) => {
+          const updated = new Set(value);
+          if (to === "love") updated.add(postId);
+          else updated.delete(postId);
+          return updated;
+        });
+        setLikeCounts((value) => ({
+          ...value,
+          [postId]: Math.max(
+            0,
+            (value[postId] ?? post?.likes ?? 0) + (to === "like" ? 1 : 0) - (from === "like" ? 1 : 0),
+          ),
+        }));
+        setLoveCounts((value) => ({
+          ...value,
+          [postId]: Math.max(
+            0,
+            (value[postId] ?? post?.loves ?? 0) + (to === "love" ? 1 : 0) - (from === "love" ? 1 : 0),
+          ),
+        }));
+      };
+      apply(current, next);
       setLikeBusyIds((current) => new Set(current).add(postId));
-      void (wasLiked ? unlikePost(postId) : likePost(postId))
+      void setPostReaction(postId, next)
         .catch(() => {
-          setLikedPosts((current) => {
-            const reverted = new Set(current);
-            if (wasLiked) reverted.add(postId);
-            else reverted.delete(postId);
-            return reverted;
-          });
-          setLikeCounts((current) => ({ ...current, [postId]: previousCount }));
+          apply(next, current);
           toastError("Couldn't save that reaction.");
         })
         .finally(() => {
@@ -410,7 +440,7 @@ export default function PersonPage() {
           });
         });
     },
-    [likeBusyIds, likeCounts, likesLoaded, likedPosts, posts, router, user],
+    [likeBusyIds, likesLoaded, likedPosts, lovedPosts, posts, router, user],
   );
 
   async function confirmDeletePost() {
@@ -645,12 +675,15 @@ export default function PersonPage() {
                   post={post}
                   liked={likedPosts.has(post.id)}
                   likes={likeCounts[post.id] ?? post.likes}
+                  loved={lovedPosts.has(post.id)}
+                  loves={loveCounts[post.id] ?? post.loves}
                   reshares={post.reshares}
                   reshared={post.reshared}
                   signedIn={Boolean(user)}
                   poll={polls[post.id] ?? null}
                   onVote={(postId) => router.push(`/feed/${postId}`)}
-                  onLike={toggleLike}
+                  onLike={(postId) => toggleReaction(postId, "like")}
+                  onLove={(postId) => toggleReaction(postId, "love")}
                   onReshare={(postId) => router.push(`/feed/${postId}`)}
                   onShare={(postId) => router.push(`/feed/${postId}`)}
                   onOpen={(postId) => router.push(`/feed/${postId}`)}

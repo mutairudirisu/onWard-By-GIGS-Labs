@@ -31,16 +31,15 @@ import { withVote } from "@/components/post-poll";
 import {
   COMMUNITY_TYPE_OPTIONS,
   communityMediaUrl,
-  fetchMyLikes,
+  fetchMyPostReactions,
   fetchPolls,
   fetchCommunity,
   fetchCommunityPosts,
-  likePost,
+  setPostReaction,
   joinCommunity,
   leaveCommunity,
   reshare as resharePost,
   removeCommunityImage,
-  unlikePost,
   unreshare as unresharePost,
   updateCommunityAppearance,
   updateCommunityDescription,
@@ -48,6 +47,7 @@ import {
   type Community,
   type FeedPost,
   type PostPoll,
+  type PostReaction,
   voteInPoll,
 } from "@/lib/db";
 
@@ -66,7 +66,9 @@ export default function CommunityHomePage() {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [polls, setPolls] = useState<Record<string, PostPoll>>({});
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [lovedPosts, setLovedPosts] = useState<Set<string>>(new Set());
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
+  const [loveCounts, setLoveCounts] = useState<Record<string, number>>({});
   const [resharedPosts, setResharedPosts] = useState<Set<string>>(new Set());
   const [reshareCounts, setReshareCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -97,6 +99,7 @@ export default function CommunityHomePage() {
         const nextPosts = await fetchCommunityPosts(current.id);
         setPosts(nextPosts);
         setLikeCounts(Object.fromEntries(nextPosts.map((post) => [post.id, post.likes])));
+        setLoveCounts(Object.fromEntries(nextPosts.map((post) => [post.id, post.loves])));
         setResharedPosts(new Set(nextPosts.filter((post) => post.reshared).map((post) => post.id)));
         setReshareCounts(Object.fromEntries(nextPosts.map((post) => [post.id, post.reshares])));
         const [nextPolls, nextLikes] = await Promise.all([
@@ -105,14 +108,19 @@ export default function CommunityHomePage() {
             return {};
           }),
           user
-            ? fetchMyLikes().catch((reason: unknown) => {
-                toastError(reason instanceof Error ? reason.message : "Could not load your upvotes.");
-                return new Set<string>();
+            ? fetchMyPostReactions().catch((reason: unknown) => {
+                toastError(reason instanceof Error ? reason.message : "Could not load your reactions.");
+                return {} as Record<string, PostReaction>;
               })
-            : Promise.resolve(new Set<string>()),
+            : Promise.resolve({} as Record<string, PostReaction>),
         ]);
         setPolls(nextPolls);
-        setLikedPosts(nextLikes);
+        setLikedPosts(
+          new Set(Object.entries(nextLikes).filter(([, value]) => value === "like").map(([id]) => id)),
+        );
+        setLovedPosts(
+          new Set(Object.entries(nextLikes).filter(([, value]) => value === "love").map(([id]) => id)),
+        );
       } else {
         setPosts([]);
         setPolls({});
@@ -174,25 +182,49 @@ export default function CommunityHomePage() {
     if (await updateMembership(false)) setLeaveDialogOpen(false);
   };
 
-  const toggleLike = (postId: string) => {
+  const toggleReaction = (postId: string, selected: PostReaction) => {
     if (!user) {
       router.push("/sign-in");
       return;
     }
-    const turningOn = !likedPosts.has(postId);
-    const count = likeCounts[postId] ?? posts.find((post) => post.id === postId)?.likes ?? 0;
-    const update = (on: boolean) => {
+    const current: PostReaction | null = likedPosts.has(postId)
+      ? "like"
+      : lovedPosts.has(postId)
+        ? "love"
+        : null;
+    const next = current === selected ? null : selected;
+    const post = posts.find((item) => item.id === postId);
+    const update = (from: PostReaction | null, to: PostReaction | null) => {
       setLikedPosts((current) => {
         const next = new Set(current);
-        if (on) next.add(postId);
+        if (to === "like") next.add(postId);
         else next.delete(postId);
         return next;
       });
-      setLikeCounts((current) => ({ ...current, [postId]: Math.max(0, count + (on ? 1 : -1)) }));
+      setLovedPosts((current) => {
+        const next = new Set(current);
+        if (to === "love") next.add(postId);
+        else next.delete(postId);
+        return next;
+      });
+      setLikeCounts((current) => ({
+        ...current,
+        [postId]: Math.max(
+          0,
+          (current[postId] ?? post?.likes ?? 0) + (to === "like" ? 1 : 0) - (from === "like" ? 1 : 0),
+        ),
+      }));
+      setLoveCounts((current) => ({
+        ...current,
+        [postId]: Math.max(
+          0,
+          (current[postId] ?? post?.loves ?? 0) + (to === "love" ? 1 : 0) - (from === "love" ? 1 : 0),
+        ),
+      }));
     };
-    update(turningOn);
-    void (turningOn ? likePost(postId) : unlikePost(postId)).catch(() => {
-      update(!turningOn);
+    update(current, next);
+    void setPostReaction(postId, next).catch(() => {
+      update(next, current);
       toastError("Couldn't save that");
     });
   };
@@ -698,12 +730,15 @@ export default function CommunityHomePage() {
                         post={post}
                         liked={likedPosts.has(post.id)}
                         likes={likeCounts[post.id] ?? post.likes}
+                        loved={lovedPosts.has(post.id)}
+                        loves={loveCounts[post.id] ?? post.loves}
                         reshared={resharedPosts.has(post.id)}
                         reshares={reshareCounts[post.id] ?? post.reshares}
                         signedIn={Boolean(user)}
                         poll={polls[post.id] ?? null}
                         onVote={votePoll}
-                        onLike={toggleLike}
+                        onLike={(id) => toggleReaction(id, "like")}
+                        onLove={(id) => toggleReaction(id, "love")}
                         onReshare={toggleReshare}
                         onShare={sharePost}
                         onOpen={(id) => router.push(`/feed/${id}`)}

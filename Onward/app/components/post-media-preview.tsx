@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
+  Heart,
   MessageCircle,
   Repeat2,
   Send,
@@ -26,10 +27,13 @@ export function PostMediaPreview({
   initialIndex,
   liked,
   likes,
+  loved,
+  loves,
   reshared,
   reshares,
   commentsOpen,
   onLike,
+  onLove,
   onComment,
   onReshare,
   onShare,
@@ -38,10 +42,13 @@ export function PostMediaPreview({
   initialIndex: number;
   liked: boolean;
   likes: number;
+  loved: boolean;
+  loves: number;
   reshared: boolean;
   reshares: number;
   commentsOpen: boolean;
   onLike: () => void;
+  onLove: () => void;
   onComment: () => void;
   onReshare: () => void;
   onShare: () => void;
@@ -143,17 +150,36 @@ export function PostMediaPreview({
           <button
             type="button"
             aria-pressed={liked}
-            aria-label={liked ? "Remove your upvote" : "Upvote this post"}
+            aria-label={liked ? "Remove your like" : "Like this post"}
+            title={liked ? "Unlike" : "Like"}
             onClick={onLike}
             className="flex min-h-12 min-w-12 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-full bg-black/35 text-white shadow-lg backdrop-blur-sm transition hover:bg-black/60"
           >
             <ThumbsUp
-              className={`h-6 w-6 drop-shadow ${liked ? "fill-lime text-lime" : ""}`}
+              className={`h-6 w-6 drop-shadow ${liked ? "fill-[#1877f2] text-[#1877f2]" : ""}`}
               strokeWidth={2}
             />
             {likes > 0 ? (
               <span className="text-[11px] font-semibold tabular-nums drop-shadow">
                 {likes}
+              </span>
+            ) : null}
+          </button>
+          <button
+            type="button"
+            aria-pressed={loved}
+            aria-label={loved ? "Remove your love" : "Love this post"}
+            title={loved ? "Remove love" : "Love"}
+            onClick={onLove}
+            className="flex min-h-12 min-w-12 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-full bg-black/35 text-white shadow-lg backdrop-blur-sm transition hover:bg-black/60"
+          >
+            <Heart
+              className={`h-6 w-6 drop-shadow ${loved ? "fill-rose-500 text-rose-500" : ""}`}
+              strokeWidth={2}
+            />
+            {loves > 0 ? (
+              <span className="text-[11px] font-semibold tabular-nums drop-shadow">
+                {loves}
               </span>
             ) : null}
           </button>

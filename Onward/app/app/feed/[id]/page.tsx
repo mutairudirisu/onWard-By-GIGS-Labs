@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { Loader2, Send, ThumbsUp, Trash2 } from "lucide-react";
+import { ThumbsUp, Trash2 } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { BackLink } from "@/components/ui";
 import { Modal } from "@/components/modal";
 import { ExchangeShareSheet } from "@/components/exchange-share-sheet";
 import { CommentsSheet } from "@/components/comments-sheet";
+import { CommentComposer } from "@/components/comment-composer";
 import { PostMediaPreview } from "@/components/post-media-preview";
 import { useAuth, useCurrentUser } from "@/components/auth";
 import { toastError, toastSuccess, toastUndoable } from "@/components/toast";
@@ -22,22 +23,22 @@ import {
   deletePost,
   fetchComments,
   fetchFollowList,
-  fetchMyLikes,
+  fetchMyPostReactions,
   fetchPolls,
   fetchPost,
   followPerson,
   joinCommunity,
   likeComment,
-  likePost,
+  mediaUrl,
   reshare,
   unlikeComment,
-  unlikePost,
+  setPostReaction,
   unreshare,
   unfollowPerson,
   voteInPoll,
-  POST_COMMENT_MAX,
   type FeedPost,
   type PostComment,
+  type PostReaction,
   type PostPoll,
 } from "@/lib/db";
 import { timeAgo } from "@/lib/dates";
@@ -56,6 +57,8 @@ export default function PostPage() {
   const [unreachable, setUnreachable] = useState(false);
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(0);
+  const [loved, setLoved] = useState(false);
+  const [loves, setLoves] = useState(0);
   const [reshared, setReshared] = useState(false);
   const [reshares, setReshares] = useState(0);
   const [followingAuthor, setFollowingAuthor] = useState(false);
@@ -64,6 +67,7 @@ export default function PostPage() {
   const [communityBusy, setCommunityBusy] = useState(false);
   const [poll, setPoll] = useState<PostPoll | null>(null);
   const [draft, setDraft] = useState("");
+  const [commentFiles, setCommentFiles] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -87,10 +91,12 @@ export default function PostPage() {
     let cancelled = false;
     void (async () => {
       try {
-        const [next, thread, likedSet, found] = await Promise.all([
+        const [next, thread, reactions, found] = await Promise.all([
           fetchPost(id),
           fetchComments(id).catch(() => [] as PostComment[]),
-          user ? fetchMyLikes().catch(() => new Set<string>()) : Promise.resolve(new Set<string>()),
+          user
+            ? fetchMyPostReactions().catch(() => ({} as Record<string, PostReaction>))
+            : Promise.resolve({} as Record<string, PostReaction>),
           // A page with no polls in the database is still a page, so this one failure
           // is swallowed rather than shown as a post that cannot be reached.
           fetchPolls([id]).catch(() => ({}) as Record<string, PostPoll>),
@@ -98,8 +104,10 @@ export default function PostPage() {
         if (cancelled) return;
         setPost(next);
         setComments(thread);
-        setLiked(likedSet.has(id));
+        setLiked(reactions[id] === "like");
         setLikes(next?.likes ?? 0);
+        setLoved(reactions[id] === "love");
+        setLoves(next?.loves ?? 0);
         setReshared(Boolean(next?.reshared));
         setReshares(next?.reshares ?? 0);
         setPoll(found[id] ?? null);
@@ -185,22 +193,28 @@ export default function PostPage() {
     setPost((current) => (current ? { ...current, comments: total } : current));
   }, []);
 
-  const toggleLike = useCallback(() => {
+  const toggleReaction = useCallback((selected: PostReaction) => {
     if (!user) {
       router.push("/sign-in");
       return;
     }
-    const turningOn = !liked;
-    const apply = (on: boolean) => {
-      setLiked(on);
-      setLikes((n) => Math.max(0, n + (on ? 1 : -1)));
+    const current: PostReaction | null = liked ? "like" : loved ? "love" : null;
+    const next = current === selected ? null : selected;
+    const apply = (from: PostReaction | null, to: PostReaction | null) => {
+      setLiked(to === "like");
+      setLoved(to === "love");
+      setLikes((count) => Math.max(0, count + (to === "like" ? 1 : 0) - (from === "like" ? 1 : 0)));
+      setLoves((count) => Math.max(0, count + (to === "love" ? 1 : 0) - (from === "love" ? 1 : 0)));
     };
-    apply(turningOn);
-    void (turningOn ? likePost(id) : unlikePost(id)).catch(() => {
-      apply(!turningOn);
+    apply(current, next);
+    void setPostReaction(id, next).catch(() => {
+      apply(next, current);
       toastError("Couldn't save that");
     });
-  }, [id, liked, router, user]);
+  }, [id, liked, loved, router, user]);
+
+  const toggleLike = useCallback(() => toggleReaction("like"), [toggleReaction]);
+  const toggleLove = useCallback(() => toggleReaction("love"), [toggleReaction]);
 
   const applyReshare = useCallback((on: boolean) => {
     setReshared(on);
@@ -265,16 +279,17 @@ export default function PostPage() {
 
   async function send() {
     const body = draft.trim();
-    if (!body || sending || post?.canComment === false) return;
+    if ((!body && !commentFiles.length) || sending || post?.canComment === false) return;
     setSending(true);
     try {
-      const created = await addComment(id, body);
+      const created = await addComment(id, body, commentFiles);
       setComments((prev) => [
         ...prev,
         {
           id: created.id,
           authorId: user?.id ?? null,
           body,
+          media: created.media,
           fullName: me.name.trim() || "Someone",
           initials: me.initials || (me.name.slice(0, 1).toUpperCase() || "?"),
           createdAt: created.createdAt,
@@ -284,6 +299,7 @@ export default function PostPage() {
         },
       ]);
       setDraft("");
+      setCommentFiles([]);
       setPost((prev) => (prev ? { ...prev, comments: prev.comments + 1 } : prev));
     } catch (error) {
       toastError(error instanceof Error ? error.message : "Couldn't post that comment");
@@ -394,10 +410,13 @@ export default function PostPage() {
           initialIndex={initialIndex}
           liked={liked}
           likes={likes}
+          loved={loved}
+          loves={loves}
           reshared={reshared}
           reshares={reshares}
           commentsOpen={commentsOpen}
           onLike={toggleLike}
+          onLove={toggleLove}
           onComment={() => setCommentsOpen(true)}
           onReshare={tapReshare}
           onShare={() => {
@@ -448,6 +467,8 @@ export default function PostPage() {
             post={post}
             liked={liked}
             likes={likes}
+            loved={loved}
+            loves={loves}
             reshared={reshared}
             reshares={reshares}
             signedIn={Boolean(user)}
@@ -460,6 +481,7 @@ export default function PostPage() {
             poll={poll}
             onVote={votePoll}
             onLike={toggleLike}
+            onLove={toggleLove}
             onReshare={tapReshare}
             onShare={() => {
               if (!user) {
@@ -502,6 +524,23 @@ export default function PostPage() {
                   <p className="text-[11.5px] leading-[1.55] text-ink [overflow-wrap:anywhere]">
                     <span className="font-bold">{comment.fullName || "Someone"}</span> {comment.body}
                   </p>
+                  {comment.media.length ? (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {comment.media.map((media) => (
+                        <img
+                          key={media.path}
+                          src={mediaUrl(media.path)}
+                          alt={
+                            media.kind === "gif"
+                              ? "GIF attached to comment"
+                              : "Image attached to comment"
+                          }
+                          className="max-h-48 max-w-full rounded-xl object-contain"
+                          loading="lazy"
+                        />
+                      ))}
+                    </div>
+                  ) : null}
                   <div className="mt-0.5 flex items-center gap-3 text-[9.5px] text-faint">
                     <span>{timeAgo(comment.createdAt)}</span>
                     {user ? (
@@ -540,42 +579,15 @@ export default function PostPage() {
           </section>
 
           {user && post.canComment !== false ? (
-            <div className="mt-4 flex items-end gap-2.5 border-t border-line pt-3">
-              <Link href={`/people/${user.id}`} aria-label="View your profile" className="shrink-0">
-                <Avatar
-                  initials={me.initials || (me.name.slice(0, 1).toUpperCase() || "?")}
-                  src={me.avatarUrl}
-                />
-              </Link>
-              <input
-                id="comment-box"
-                value={draft}
-                onChange={(e) => setDraft(e.target.value.slice(0, POST_COMMENT_MAX))}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") void send();
-                }}
-                placeholder="Add a comment…"
-                aria-label="Add a comment"
-                className="field-input flex-1 rounded-full px-4 py-2.5 text-[12px]"
-              />
-              <button
-                type="button"
-                onClick={() => void send()}
-                disabled={!draft.trim() || sending}
-                aria-label="Post comment"
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition ${
-                  draft.trim() && !sending
-                    ? "cursor-pointer bg-lime text-dark hover:bg-lime-deep"
-                    : "cursor-not-allowed bg-line text-muted"
-                }`}
-              >
-                {sending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </button>
-            </div>
+            <CommentComposer
+              className="mt-4 border-t border-line pt-3"
+              value={draft}
+              onChange={setDraft}
+              files={commentFiles}
+              onFilesChange={setCommentFiles}
+              onSubmit={() => void send()}
+              sending={sending}
+            />
           ) : user ? (
             <p className="mt-4 border-t border-line pt-3 text-[11px] text-muted">
               {post.commentAudience === "off"

@@ -74,7 +74,7 @@ export function markSeen() {
   if (last && now - last >= AWAY) requestFeedback("return");
 }
 
-/** The upvote is the moment someone is enjoying the app, so it is the moment to ask. */
+/** A like is the moment someone is enjoying the app, so it is the moment to ask. */
 export function askAfterUpvote() {
   const s = store();
   if (!s) return;

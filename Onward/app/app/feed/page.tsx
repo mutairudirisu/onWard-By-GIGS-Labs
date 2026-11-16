@@ -43,19 +43,19 @@ import {
   fetchFeed,
   fetchFollowList,
   fetchMyInteractions,
-  fetchMyLikes,
+  fetchMyPostReactions,
   fetchPolls,
   fetchSharedWithMe,
   followPerson,
   joinCommunity,
-  likePost,
   reshare,
-  unlikePost,
+  setPostReaction,
   unreshare,
   unfollowPerson,
   voteInPoll,
   type FeedInteraction,
   type FeedPost,
+  type PostReaction,
   type PostPoll,
   type SharedPost,
 } from "@/lib/db";
@@ -79,7 +79,8 @@ function mergeNumberMap(current: Record<string, number>, updates: Record<string,
 function interactionLine(item: FeedInteraction, post: FeedPost) {
   const who = post.mine ? "your" : `${post.fullName || "someone"}'s`;
   const target = post.media.length ? `${who} photo` : `${who} post`;
-  if (item.kind === "like") return `You upvoted ${target}`;
+  if (item.kind === "like") return `You liked ${target}`;
+  if (item.kind === "love") return `You loved ${target}`;
   return item.body ? `You said: ${item.body}` : `You commented on ${target}`;
 }
 
@@ -152,7 +153,9 @@ export default function FeedPage() {
   const [pendingPosts, setPendingPosts] = useState<FeedPost[]>([]);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [liked, setLiked] = useState<Set<string>>(new Set());
+  const [loved, setLoved] = useState<Set<string>>(new Set());
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [loveCounts, setLoveCounts] = useState<Record<string, number>>({});
   const [reshared, setReshared] = useState<Set<string>>(new Set());
   const [reshareCounts, setReshareCounts] = useState<Record<string, number>>({});
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
@@ -247,20 +250,24 @@ export default function FeedPage() {
       fetchFeed(),
       // A visitor has nothing of their own to read, and those tables would refuse
       // the query anyway.
-      user ? fetchMyLikes().catch(() => new Set<string>()) : Promise.resolve(new Set<string>()),
+      user
+        ? fetchMyPostReactions().catch(() => ({} as Record<string, PostReaction>))
+        : Promise.resolve({} as Record<string, PostReaction>),
       user ? fetchMyInteractions().catch(() => [] as FeedInteraction[]) : Promise.resolve([]),
       user ? fetchSharedWithMe().catch(() => [] as SharedPost[]) : Promise.resolve([]),
       user
         ? fetchFollowList(user.id, "following").catch(() => null)
         : Promise.resolve([]),
     ])
-      .then(([next, likedSet, interactions, shared, following]) => {
+      .then(([next, reactions, interactions, shared, following]) => {
         if (token !== inflight.current) return;
         postsRef.current = next;
         setPosts(next);
         setPendingPosts([]);
-        setLiked(likedSet);
+        setLiked(new Set(Object.entries(reactions).filter(([, value]) => value === "like").map(([id]) => id)));
+        setLoved(new Set(Object.entries(reactions).filter(([, value]) => value === "love").map(([id]) => id)));
         setCounts(Object.fromEntries(next.map((post) => [post.id, post.likes])));
+        setLoveCounts(Object.fromEntries(next.map((post) => [post.id, post.loves])));
         setReshared(new Set(next.filter((post) => post.reshared).map((post) => post.id)));
         setReshareCounts(Object.fromEntries(next.map((post) => [post.id, post.reshares])));
         setEngaged(interactions);
@@ -430,35 +437,56 @@ export default function FeedPage() {
     };
   }, [refresh, state]);
 
-  const toggleLike = useCallback(
-    (id: string) => {
+  const toggleReaction = useCallback(
+    (id: string, selected: PostReaction) => {
       if (!user) {
         router.push("/sign-in");
         return;
       }
-      const turningOn = !liked.has(id);
-      const apply = (on: boolean) => {
+      const current: PostReaction | null = liked.has(id) ? "like" : loved.has(id) ? "love" : null;
+      const next = current === selected ? null : selected;
+      const post = postsRef.current.find((item) => item.id === id);
+      const apply = (from: PostReaction | null, to: PostReaction | null) => {
         setLiked((prev) => {
           const next = new Set(prev);
-          if (on) next.add(id);
+          if (to === "like") next.add(id);
           else next.delete(id);
           return next;
         });
-        setCounts((prev) => ({ ...prev, [id]: Math.max(0, (prev[id] ?? 0) + (on ? 1 : -1)) }));
+        setLoved((prev) => {
+          const next = new Set(prev);
+          if (to === "love") next.add(id);
+          else next.delete(id);
+          return next;
+        });
+        setCounts((prev) => ({
+          ...prev,
+          [id]: Math.max(
+            0,
+            (prev[id] ?? post?.likes ?? 0) + (to === "like" ? 1 : 0) - (from === "like" ? 1 : 0),
+          ),
+        }));
+        setLoveCounts((prev) => ({
+          ...prev,
+          [id]: Math.max(
+            0,
+            (prev[id] ?? post?.loves ?? 0) + (to === "love" ? 1 : 0) - (from === "love" ? 1 : 0),
+          ),
+        }));
       };
-      apply(turningOn);
-      void (turningOn ? likePost(id) : unlikePost(id))
-        // An upvote is the moment someone is enjoying the app, so it is the moment to
+      apply(current, next);
+      void setPostReaction(id, next)
+        // A like is the moment someone is enjoying the app, so it is the moment to
         // ask - but only once the tap is actually saved, not on a failure.
         .then(() => {
-          if (turningOn) askAfterUpvote();
+          if (next === "like" && current !== "like") askAfterUpvote();
         })
         .catch(() => {
-          apply(!turningOn);
+          apply(next, current);
           toastError("Couldn't save that");
         });
     },
-    [liked, router, user],
+    [liked, loved, router, user],
   );
 
   const applyReshare = useCallback((id: string, on: boolean) => {
@@ -889,6 +917,8 @@ export default function FeedPage() {
                 post={post}
                 liked={liked.has(post.id)}
                 likes={counts[post.id] ?? post.likes}
+                loved={loved.has(post.id)}
+                loves={loveCounts[post.id] ?? post.loves}
                 reshared={reshared.has(post.id)}
                 reshares={reshareCounts[post.id] ?? post.reshares}
                 signedIn={Boolean(user)}
@@ -902,7 +932,8 @@ export default function FeedPage() {
                 onJoinCommunity={joinCommunityFromPost}
                 poll={polls[post.id] ?? null}
                 onVote={votePoll}
-                onLike={toggleLike}
+                onLike={(id) => toggleReaction(id, "like")}
+                onLove={(id) => toggleReaction(id, "love")}
                 onReshare={tapReshare}
                 onShare={openShare}
                 onOpen={setThread}

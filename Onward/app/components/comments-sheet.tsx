@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Loader2, Send, ThumbsUp, X } from "lucide-react";
+import { ThumbsUp, X } from "lucide-react";
 import { useAuth, useCurrentUser } from "@/components/auth";
+import { CommentComposer } from "@/components/comment-composer";
 import { Avatar } from "@/components/feed-post";
 import { useSheetDrag } from "@/components/sheet-drag";
 import { ThreadSkeleton } from "@/components/skeleton";
@@ -13,8 +14,8 @@ import {
   deleteComment,
   fetchComments,
   likeComment,
+  mediaUrl,
   unlikeComment,
-  POST_COMMENT_MAX,
   type PostComment,
 } from "@/lib/db";
 import { timeAgo } from "@/lib/dates";
@@ -44,6 +45,7 @@ export function CommentsSheet({
 
   const [comments, setComments] = useState<PostComment[] | undefined>(undefined);
   const [draft, setDraft] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
 
   const keyboard = useKeyboardInset(open);
@@ -59,6 +61,8 @@ export function CommentsSheet({
     if (!open) return;
     setComments(undefined);
     setDraft("");
+    setFiles([]);
+    fieldRef.current?.focus();
 
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -94,16 +98,17 @@ export function CommentsSheet({
 
   async function send() {
     const body = draft.trim();
-    if (!body || sending) return;
+    if ((!body && !files.length) || sending) return;
     setSending(true);
     try {
-      const created = await addComment(postId, body);
+      const created = await addComment(postId, body, files);
       setTotal([
         ...(comments ?? []),
         {
           id: created.id,
           authorId: user?.id ?? null,
           body,
+          media: created.media,
           fullName: me.name.trim() || "Someone",
           initials: me.initials || (me.name.slice(0, 1).toUpperCase() || "?"),
           createdAt: created.createdAt,
@@ -113,7 +118,7 @@ export function CommentsSheet({
         },
       ]);
       setDraft("");
-      fieldRef.current?.focus();
+      setFiles([]);
     } catch (error) {
       toastError(error instanceof Error ? error.message : "Couldn't post that comment");
     } finally {
@@ -238,6 +243,23 @@ export function CommentsSheet({
                       )}{" "}
                       {comment.body}
                     </p>
+                    {comment.media.length ? (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {comment.media.map((media) => (
+                          <img
+                            key={media.path}
+                            src={mediaUrl(media.path)}
+                            alt={
+                              media.kind === "gif"
+                                ? "GIF attached to comment"
+                                : "Image attached to comment"
+                            }
+                            className="max-h-48 max-w-full rounded-xl object-contain"
+                            loading="lazy"
+                          />
+                        ))}
+                      </div>
+                    ) : null}
                     <div className="mt-1 flex items-center gap-3 text-[9.5px] text-faint">
                       <span>{timeAgo(comment.createdAt)}</span>
                       {canType ? (
@@ -289,52 +311,15 @@ export function CommentsSheet({
 
         <div className="shrink-0 border-t border-line px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           {canType ? (
-            <div className="flex items-end gap-2.5">
-              {user ? (
-                <Link href={`/people/${user.id}`} aria-label="View your profile" className="shrink-0">
-                  <Avatar initials={me.initials || (me.name.slice(0, 1).toUpperCase() || "?")} src={me.avatarUrl} />
-                </Link>
-              ) : null}
-              <label className="flex min-w-0 flex-1 items-end rounded-full border border-line bg-paper px-3.5 py-2 focus-within:border-dash">
-                <textarea
-                  ref={fieldRef}
-                  value={draft}
-                  rows={1}
-                  onChange={(event) => {
-                    const box = event.currentTarget;
-                    box.style.height = "auto";
-                    box.style.height = `${Math.min(96, box.scrollHeight)}px`;
-                    setDraft(event.target.value.slice(0, POST_COMMENT_MAX));
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && !event.shiftKey) {
-                      event.preventDefault();
-                      void send();
-                    }
-                  }}
-                  placeholder="Add a comment…"
-                  aria-label="Add a comment"
-                  className="wheel max-h-[96px] min-w-0 flex-1 resize-none bg-transparent text-[16px] leading-[1.4] text-ink outline-none placeholder:text-faint md:text-[12px] md:leading-[1.5]"
-                />
-              </label>
-              <button
-                type="button"
-                onClick={() => void send()}
-                disabled={!draft.trim() || sending}
-                aria-label="Post comment"
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition ${
-                  draft.trim() && !sending
-                    ? "cursor-pointer bg-lime text-dark hover:bg-lime-deep"
-                    : "cursor-not-allowed bg-line text-muted"
-                }`}
-              >
-                {sending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </button>
-            </div>
+            <CommentComposer
+              value={draft}
+              onChange={setDraft}
+              files={files}
+              onFilesChange={setFiles}
+              onSubmit={() => void send()}
+              sending={sending}
+              inputRef={fieldRef}
+            />
           ) : (
             <p className="text-center text-[11px] text-muted">
               <Link
