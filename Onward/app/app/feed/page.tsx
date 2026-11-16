@@ -917,8 +917,6 @@ export default function FeedPage() {
                 post={post}
                 liked={liked.has(post.id)}
                 likes={counts[post.id] ?? post.likes}
-                loved={loved.has(post.id)}
-                loves={loveCounts[post.id] ?? post.loves}
                 reshared={reshared.has(post.id)}
                 reshares={reshareCounts[post.id] ?? post.reshares}
                 signedIn={Boolean(user)}
@@ -933,7 +931,6 @@ export default function FeedPage() {
                 poll={polls[post.id] ?? null}
                 onVote={votePoll}
                 onLike={(id) => toggleReaction(id, "like")}
-                onLove={(id) => toggleReaction(id, "love")}
                 onReshare={tapReshare}
                 onShare={openShare}
                 onOpen={setThread}

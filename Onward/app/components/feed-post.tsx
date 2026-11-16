@@ -8,7 +8,6 @@ import {
   Check,
   ExternalLink,
   FileText,
-  Heart,
   Globe2,
   MessageCircle,
   MoreHorizontal,
@@ -263,15 +262,12 @@ export function PostBlock({
   post,
   liked,
   likes,
-  loved,
-  loves,
   reshares,
   reshared,
   signedIn,
   poll = null,
   onVote,
   onLike,
-  onLove,
   onReshare,
   onShare,
   onOpen,
@@ -288,8 +284,6 @@ export function PostBlock({
   post: FeedPost;
   liked: boolean;
   likes: number;
-  loved: boolean;
-  loves: number;
   reshares: number;
   reshared: boolean;
   signedIn: boolean;
@@ -300,7 +294,6 @@ export function PostBlock({
   onVote: (postId: string, optionId: string) => void;
   voting?: boolean;
   onLike: (id: string) => void;
-  onLove: (id: string) => void;
   onReshare: (id: string) => void;
   /** Opens the drawer that hands the post to a person, or to anywhere outside onWard. */
   onShare: (id: string) => void;
@@ -504,6 +497,22 @@ export function PostBlock({
       ) : null}
 
       <div className={`flex items-center gap-4 pb-1 pt-2.5 ${edgeToEdge ? "px-4" : ""}`}>
+        <button
+          type="button"
+          aria-pressed={liked}
+          aria-label={liked ? "Remove your upvote" : "Upvote this post"}
+          title={liked ? "Remove upvote" : "Upvote"}
+          onClick={() => onLike(post.id)}
+          className={`flex cursor-pointer items-center gap-1 text-[11px] font-semibold transition ${
+            liked ? "text-[#1877f2]" : "text-muted hover:text-[#1877f2]"
+          }`}
+        >
+          <ThumbsUp
+            className={`h-[18px] w-[18px] ${liked ? "fill-current" : ""}`}
+            strokeWidth={liked ? 2.2 : 1.9}
+          />
+          {likes > 0 ? <span className="tabular-nums">{likes}</span> : null}
+        </button>
         {post.canComment !== false ? (
           <button
             type="button"
@@ -548,40 +557,6 @@ export function PostBlock({
         <span className="ml-auto text-[10.5px] tracking-[0.06em] text-faint">
           {timeAgo(post.createdAt)}
         </span>
-        <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            aria-pressed={liked}
-            aria-label={liked ? "Remove your like" : "Like this post"}
-            title={liked ? "Unlike" : "Like"}
-            onClick={() => onLike(post.id)}
-            className={`flex cursor-pointer items-center gap-1 text-[11px] font-semibold transition ${
-              liked ? "text-[#1877f2]" : "text-muted hover:text-[#1877f2]"
-            }`}
-          >
-            <ThumbsUp
-              className={`h-[18px] w-[18px] ${liked ? "fill-current" : ""}`}
-              strokeWidth={liked ? 2.2 : 1.9}
-            />
-            {likes > 0 ? <span className="tabular-nums">{likes}</span> : null}
-          </button>
-          <button
-            type="button"
-            aria-pressed={loved}
-            aria-label={loved ? "Remove your love" : "Love this post"}
-            title={loved ? "Remove love" : "Love"}
-            onClick={() => onLove(post.id)}
-            className={`flex cursor-pointer items-center gap-1 text-[11px] font-semibold transition ${
-              loved ? "text-rose-600" : "text-muted hover:text-rose-600"
-            }`}
-          >
-            <Heart
-              className={`h-[18px] w-[18px] ${loved ? "fill-current" : ""}`}
-              strokeWidth={loved ? 2.2 : 1.9}
-            />
-            {loves > 0 ? <span className="tabular-nums">{loves}</span> : null}
-          </button>
-        </div>
       </div>
 
       {previewThread && post.comments > 0 ? (
@@ -611,7 +586,7 @@ export function PostBlock({
           href="/sign-in"
           className="mt-2.5 inline-block cursor-pointer text-[11.5px] font-semibold text-lime-deep hover:underline"
         >
-          Sign in to like, comment or reshare
+          Sign in to upvote, comment or reshare
         </Link>
       ) : null}
     </article>

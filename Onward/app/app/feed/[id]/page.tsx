@@ -214,7 +214,6 @@ export default function PostPage() {
   }, [id, liked, loved, router, user]);
 
   const toggleLike = useCallback(() => toggleReaction("like"), [toggleReaction]);
-  const toggleLove = useCallback(() => toggleReaction("love"), [toggleReaction]);
 
   const applyReshare = useCallback((on: boolean) => {
     setReshared(on);
@@ -410,13 +409,10 @@ export default function PostPage() {
           initialIndex={initialIndex}
           liked={liked}
           likes={likes}
-          loved={loved}
-          loves={loves}
           reshared={reshared}
           reshares={reshares}
           commentsOpen={commentsOpen}
           onLike={toggleLike}
-          onLove={toggleLove}
           onComment={() => setCommentsOpen(true)}
           onReshare={tapReshare}
           onShare={() => {
@@ -467,8 +463,6 @@ export default function PostPage() {
             post={post}
             liked={liked}
             likes={likes}
-            loved={loved}
-            loves={loves}
             reshared={reshared}
             reshares={reshares}
             signedIn={Boolean(user)}
@@ -481,7 +475,6 @@ export default function PostPage() {
             poll={poll}
             onVote={votePoll}
             onLike={toggleLike}
-            onLove={toggleLove}
             onReshare={tapReshare}
             onShare={() => {
               if (!user) {

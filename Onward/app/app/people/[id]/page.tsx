@@ -677,15 +677,12 @@ export default function PersonPage() {
                   post={post}
                   liked={likedPosts.has(post.id)}
                   likes={likeCounts[post.id] ?? post.likes}
-                  loved={lovedPosts.has(post.id)}
-                  loves={loveCounts[post.id] ?? post.loves}
                   reshares={post.reshares}
                   reshared={post.reshared}
                   signedIn={Boolean(user)}
                   poll={polls[post.id] ?? null}
                   onVote={(postId) => router.push(`/feed/${postId}`)}
                   onLike={(postId) => toggleReaction(postId, "like")}
-                  onLove={(postId) => toggleReaction(postId, "love")}
                   onReshare={(postId) => router.push(`/feed/${postId}`)}
                   onShare={(postId) => router.push(`/feed/${postId}`)}
                   onOpen={(postId) => router.push(`/feed/${postId}`)}

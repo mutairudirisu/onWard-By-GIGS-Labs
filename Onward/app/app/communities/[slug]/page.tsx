@@ -730,15 +730,12 @@ export default function CommunityHomePage() {
                         post={post}
                         liked={likedPosts.has(post.id)}
                         likes={likeCounts[post.id] ?? post.likes}
-                        loved={lovedPosts.has(post.id)}
-                        loves={loveCounts[post.id] ?? post.loves}
                         reshared={resharedPosts.has(post.id)}
                         reshares={reshareCounts[post.id] ?? post.reshares}
                         signedIn={Boolean(user)}
                         poll={polls[post.id] ?? null}
                         onVote={votePoll}
                         onLike={(id) => toggleReaction(id, "like")}
-                        onLove={(id) => toggleReaction(id, "love")}
                         onReshare={toggleReshare}
                         onShare={sharePost}
                         onOpen={(id) => router.push(`/feed/${id}`)}

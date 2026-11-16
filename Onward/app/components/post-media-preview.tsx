@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  Heart,
   MessageCircle,
   Repeat2,
   Send,
@@ -27,13 +26,10 @@ export function PostMediaPreview({
   initialIndex,
   liked,
   likes,
-  loved,
-  loves,
   reshared,
   reshares,
   commentsOpen,
   onLike,
-  onLove,
   onComment,
   onReshare,
   onShare,
@@ -42,13 +38,10 @@ export function PostMediaPreview({
   initialIndex: number;
   liked: boolean;
   likes: number;
-  loved: boolean;
-  loves: number;
   reshared: boolean;
   reshares: number;
   commentsOpen: boolean;
   onLike: () => void;
-  onLove: () => void;
   onComment: () => void;
   onReshare: () => void;
   onShare: () => void;
@@ -146,12 +139,12 @@ export function PostMediaPreview({
           alt={`Photo shared by ${authorName}`}
         />
 
-        <div className="absolute bottom-5 right-3 z-10 flex flex-col items-center gap-4 sm:bottom-7 sm:right-8">
+        <div className="absolute bottom-5 left-3 z-10 flex flex-col items-center gap-4 sm:bottom-7 sm:left-8">
           <button
             type="button"
             aria-pressed={liked}
-            aria-label={liked ? "Remove your like" : "Like this post"}
-            title={liked ? "Unlike" : "Like"}
+            aria-label={liked ? "Remove your upvote" : "Upvote this post"}
+            title={liked ? "Remove upvote" : "Upvote"}
             onClick={onLike}
             className="flex min-h-12 min-w-12 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-full bg-black/35 text-white shadow-lg backdrop-blur-sm transition hover:bg-black/60"
           >
@@ -162,24 +155,6 @@ export function PostMediaPreview({
             {likes > 0 ? (
               <span className="text-[11px] font-semibold tabular-nums drop-shadow">
                 {likes}
-              </span>
-            ) : null}
-          </button>
-          <button
-            type="button"
-            aria-pressed={loved}
-            aria-label={loved ? "Remove your love" : "Love this post"}
-            title={loved ? "Remove love" : "Love"}
-            onClick={onLove}
-            className="flex min-h-12 min-w-12 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-full bg-black/35 text-white shadow-lg backdrop-blur-sm transition hover:bg-black/60"
-          >
-            <Heart
-              className={`h-6 w-6 drop-shadow ${loved ? "fill-rose-500 text-rose-500" : ""}`}
-              strokeWidth={2}
-            />
-            {loves > 0 ? (
-              <span className="text-[11px] font-semibold tabular-nums drop-shadow">
-                {loves}
               </span>
             ) : null}
           </button>
