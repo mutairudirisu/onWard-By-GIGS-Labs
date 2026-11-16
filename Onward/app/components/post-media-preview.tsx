@@ -65,6 +65,10 @@ export function PostMediaPreview({
     : post.avatarUrl;
   const avatarInitials = isCommunityPost ? initialsFor(authorName) : post.initials;
   const caption = [post.title, post.body].filter(Boolean).join("\n");
+  const hasMoreCaption = caption.length > 140;
+  const captionPreview = hasMoreCaption
+    ? `${caption.slice(0, 76).trimEnd()}…`
+    : caption;
   const publicPost = (post.audience ?? "anyone") === "anyone";
   const canReshare = publicPost && !post.reshare;
 
@@ -220,23 +224,24 @@ export function PostMediaPreview({
           <span className="shrink-0 text-[11px] text-white/45">{timeAgo(post.createdAt)}</span>
         </div>
         {caption ? (
-          <div className="mt-3 flex items-end gap-2">
-            <p
-              className="line-clamp-2 min-w-0 flex-1 whitespace-pre-wrap text-[14px] leading-relaxed text-white/90"
-            >
-              {caption}
+          <div className="mt-3">
+            <p className="whitespace-pre-wrap text-[14px] leading-relaxed text-white/90 [overflow-wrap:anywhere]">
+              {captionPreview}
+              {hasMoreCaption ? (
+                <>
+                  {" "}
+                  <button
+                    type="button"
+                    aria-haspopup="dialog"
+                    aria-expanded={detailsOpen}
+                    onClick={() => setDetailsOpen(true)}
+                    className="cursor-pointer text-[13px] text-white/55 transition hover:text-white"
+                  >
+                    more
+                  </button>
+                </>
+              ) : null}
             </p>
-            {caption.length > 140 ? (
-              <button
-                type="button"
-                aria-haspopup="dialog"
-                aria-expanded={detailsOpen}
-                onClick={() => setDetailsOpen(true)}
-                className="shrink-0 cursor-pointer pb-0.5 text-[13px] text-white/55 hover:text-white"
-              >
-                more
-              </button>
-            ) : null}
           </div>
         ) : null}
       </footer>

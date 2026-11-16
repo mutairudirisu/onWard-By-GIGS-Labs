@@ -128,7 +128,7 @@ const FAQS = [
 
 export default function Home() {
   return (
-    <main className="overflow-hidden bg-paper">
+    <main className="overflow-x-clip bg-paper">
       <div className="flex min-h-10 items-center justify-center gap-2 bg-[#173e31] px-4 py-2 text-center text-[11px] font-medium text-paper sm:text-[13px]">
         <span>Small steps add up. Give your progress a place to live.</span>
         <a
