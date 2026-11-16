@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth";
@@ -125,6 +125,7 @@ export default function LogOnWardPage() {
 
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [urlDraft, setUrlDraft] = useState("");
+  const [evidenceDragOver, setEvidenceDragOver] = useState(false);
   const [pendingUploadCount, setPendingUploadCount] = useState(0);
   const uploadingEvidence = pendingUploadCount > 0;
   const [queryReady, setQueryReady] = useState(false);
@@ -392,8 +393,8 @@ export default function LogOnWardPage() {
     }
   };
 
-  const addUrl = () => {
-    const raw = urlDraft.trim();
+  const addUrl = (value = urlDraft) => {
+    const raw = value.trim();
     if (!raw) return;
     if (evidenceFull()) return;
     try {
@@ -409,6 +410,43 @@ export default function LogOnWardPage() {
     } catch {
       toastError("Enter a valid http:// or https:// link.");
     }
+  };
+
+  const handleEvidenceDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setEvidenceDragOver(false);
+    if (!canAttach) {
+      setEvidenceGate(true);
+      return;
+    }
+    if (uploadingEvidence) {
+      toastError("Wait for the current evidence upload to finish.");
+      return;
+    }
+    const files = Array.from(event.dataTransfer.files);
+    if (files.length) {
+      void Promise.all(files.map(addFileLike));
+      return;
+    }
+    const uriList = event.dataTransfer
+      .getData("text/uri-list")
+      .split(/\r?\n/)
+      .find((line) => line.trim() && !line.trim().startsWith("#"));
+    const link = uriList?.trim() || event.dataTransfer.getData("text/plain").trim();
+    if (link) {
+      addUrl(link);
+      return;
+    }
+    toastError("Drop a file, image, or web link to attach it as evidence.");
+  };
+
+  const handleEvidenceClick = (event: MouseEvent<HTMLDivElement>) => {
+    if (event.target instanceof Element && event.target.closest("button, input")) return;
+    if (!canAttach) {
+      setEvidenceGate(true);
+      return;
+    }
+    if (!uploadingEvidence) fileRef.current?.click();
   };
 
   const removeEvidence = (id: string) => {
@@ -704,19 +742,7 @@ export default function LogOnWardPage() {
         <div>
           <div className="mb-2 flex items-end justify-between">
             <h2 className="text-[13px] font-bold tracking-tight text-ink">Evidence (optional)</h2>
-            {canAttach ? (
-              <div className="flex items-center gap-2">
-                <button type="button" disabled={uploadingEvidence} onClick={() => fileRef.current?.click()} className="flex items-center gap-1 text-[10px] font-semibold text-muted underline disabled:opacity-50">
-                  File
-                </button>
-                <button type="button" disabled={uploadingEvidence} onClick={() => imageRef.current?.click()} className="flex items-center gap-1 text-[10px] font-semibold text-muted underline disabled:opacity-50">
-                  Image
-                </button>
-                <button type="button" disabled={uploadingEvidence} onClick={() => setShowUrlInput((v) => !v)} className="flex items-center gap-1 text-[10px] font-semibold text-muted underline disabled:opacity-50">
-                  <Link2 className="h-3 w-3" /> URL
-                </button>
-              </div>
-            ) : (
+            {!canAttach ? (
               <button
                 type="button"
                 onClick={() => setEvidenceGate(true)}
@@ -724,7 +750,7 @@ export default function LogOnWardPage() {
               >
                 <ProBadge /> Pro feature
               </button>
-            )}
+            ) : null}
           </div>
 
           {canAttach ? (
@@ -756,36 +782,8 @@ export default function LogOnWardPage() {
             </>
           ) : null}
 
-          {canAttach && showUrlInput ? (
-            <div className="mb-2 flex items-center gap-2">
-              <input
-                autoFocus
-                value={urlDraft}
-                onChange={(e) => setUrlDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") addUrl(); }}
-                placeholder="https://…"
-                className="field-input flex-1"
-                aria-label="Evidence URL"
-              />
-              <button type="button" onClick={addUrl} className="rounded-btn bg-lime px-3 py-2 text-[11px] font-bold text-dark">
-                Add
-              </button>
-            </div>
-          ) : null}
-
-          {evidence.length === 0 ? (
-            <button
-              type="button"
-              disabled={uploadingEvidence}
-              onClick={() => { if (!canAttach) setEvidenceGate(true); }}
-              className={`w-full rounded-xl border border-dashed border-dash px-3.5 py-3 text-center text-[10px] text-muted ${canAttach ? "cursor-default" : "hover:border-lime-deep"}`}
-            >
-              {canAttach
-                ? "Attach files, images or links as evidence for this win."
-                : "Your 3 free onWards with attachments are used. Upgrade to Pro to attach evidence to more."}
-            </button>
-          ) : (
-            <div className="space-y-2">
+          {evidence.length ? (
+            <div className="mb-2 space-y-2">
               {evidence.map((ev) => (
                 <div key={ev.id} className="card flex items-center gap-3 px-3 py-2.5">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cream text-inksoft">
@@ -801,7 +799,97 @@ export default function LogOnWardPage() {
                 </div>
               ))}
             </div>
-          )}
+          ) : null}
+
+          <div
+            role="group"
+            aria-label="Add evidence"
+            onClick={handleEvidenceClick}
+            onDragOver={(event) => {
+              event.preventDefault();
+              event.dataTransfer.dropEffect = canAttach && !uploadingEvidence ? "copy" : "none";
+              setEvidenceDragOver(true);
+            }}
+            onDragLeave={(event) => {
+              if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) {
+                setEvidenceDragOver(false);
+              }
+            }}
+            onDrop={handleEvidenceDrop}
+            className={`rounded-xl border border-dashed px-3.5 py-3 text-center transition ${
+              evidenceDragOver
+                ? "border-lime-deep bg-lime-pale"
+                : canAttach
+                  ? "border-dash bg-paper hover:border-lime-deep"
+                  : "border-dash bg-cream"
+            } ${canAttach && !uploadingEvidence ? "cursor-pointer" : ""}`}
+          >
+            {canAttach ? (
+              <>
+                <p className="pointer-events-none text-[10px] text-muted">
+                  {evidenceDragOver
+                    ? "Drop it here to attach it"
+                    : "Drop files, images or links here, or tap to browse"}
+                </p>
+                <div className="mt-2 flex justify-center gap-2">
+                  <button
+                    type="button"
+                    disabled={uploadingEvidence}
+                    onClick={() => fileRef.current?.click()}
+                    className="flex items-center gap-1.5 rounded-full bg-cream px-3 py-1.5 text-[10px] font-semibold text-inksoft transition hover:bg-lime-soft disabled:opacity-50"
+                  >
+                    <FileIcon className="h-3.5 w-3.5" /> File
+                  </button>
+                  <button
+                    type="button"
+                    disabled={uploadingEvidence}
+                    onClick={() => imageRef.current?.click()}
+                    className="flex items-center gap-1.5 rounded-full bg-cream px-3 py-1.5 text-[10px] font-semibold text-inksoft transition hover:bg-lime-soft disabled:opacity-50"
+                  >
+                    <ImageIcon className="h-3.5 w-3.5" /> Image
+                  </button>
+                  <button
+                    type="button"
+                    disabled={uploadingEvidence}
+                    onClick={() => setShowUrlInput((visible) => !visible)}
+                    className="flex items-center gap-1.5 rounded-full bg-cream px-3 py-1.5 text-[10px] font-semibold text-inksoft transition hover:bg-lime-soft disabled:opacity-50"
+                  >
+                    <Link2 className="h-3.5 w-3.5" /> Link
+                  </button>
+                </div>
+                {showUrlInput ? (
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      autoFocus
+                      value={urlDraft}
+                      onChange={(e) => setUrlDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") addUrl();
+                      }}
+                      placeholder="https://…"
+                      className="field-input min-w-0 flex-1"
+                      aria-label="Evidence URL"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => addUrl()}
+                      className="rounded-btn bg-lime px-3 py-2 text-[11px] font-bold text-dark"
+                    >
+                      Add
+                    </button>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEvidenceGate(true)}
+                className="text-[10px] font-semibold text-muted"
+              >
+                Your 3 free onWards with attachments are used. Upgrade to Pro to attach evidence to more.
+              </button>
+            )}
+          </div>
 
           {!isPro && limits.evidenceWards != null ? (
             <p className="mt-2 text-[9px] leading-[1.5] text-muted">

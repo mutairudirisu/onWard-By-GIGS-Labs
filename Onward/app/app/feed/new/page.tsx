@@ -16,6 +16,7 @@ import {
   Globe,
   Handshake,
   ImagePlus,
+  Link2,
   Loader2,
   MessageCircle,
   PartyPopper,
@@ -54,6 +55,7 @@ import {
   searchPeople,
   signedWardEvidenceUrl,
   uploadPostDocument,
+  uuid,
   type ExchangePerson,
   type Community,
   type ScheduledPost,
@@ -69,6 +71,7 @@ type ComposerPage =
   | "celebration-details"
   | "job"
   | "document"
+  | "link"
   | null;
 const FORM_INPUT_CLASS =
   "w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[13px] text-ink outline-none placeholder:text-muted focus:border-lime-deep";
@@ -134,6 +137,7 @@ const POST_CATEGORIES = [
   { id: "job", label: "Job", Icon: BriefcaseBusiness },
   { id: "poll", label: "Poll", Icon: BarChart3 },
   { id: "document", label: "Document", Icon: FileText },
+  { id: "link", label: "Link", Icon: Link2 },
 ] as const;
 type AudiencePanel = "overview" | "visibility" | "comments" | "collaborators";
 type PostAudience = "anyone" | "connections";
@@ -151,7 +155,7 @@ function Composer() {
   const [picks, setPicks] = useState<Pick[]>([]);
   const [pickRatios, setPickRatios] = useState<Record<string, number>>({});
   const [wardDocumentFiles, setWardDocumentFiles] = useState<File[]>([]);
-  const [wardLinkEvidence, setWardLinkEvidence] = useState<Evidence[]>([]);
+  const [linkAttachments, setLinkAttachments] = useState<Evidence[]>([]);
   // Post and Poll are two modes of one composer, so switching between them keeps
   // whatever is already written in either of them. The chooser can ask for the poll
   // straight away.
@@ -196,6 +200,8 @@ function Composer() {
   const [documentTitle, setDocumentTitle] = useState("");
   const [documentCaption, setDocumentCaption] = useState("");
   const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [linkTitle, setLinkTitle] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
   const [audienceSettingsOpen, setAudienceSettingsOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [scheduleTab, setScheduleTab] = useState<"schedule" | "scheduled">("schedule");
@@ -222,7 +228,7 @@ function Composer() {
     setTitle(fromQuery.title.slice(0, POST_TITLE_MAX));
     setBody([fromQuery.impact, fromQuery.body].filter((line) => line && line.trim()).join("\n\n"));
     const evidence = fromQuery.evidence ?? [];
-    setWardLinkEvidence(evidence.filter((item) => item.kind === "url" && Boolean(item.url)));
+    setLinkAttachments(evidence.filter((item) => item.kind === "url" && Boolean(item.url)));
 
     let active = true;
     void Promise.all(
@@ -334,7 +340,7 @@ function Composer() {
       !picks.length &&
       !documentFile &&
       !wardDocumentFiles.length &&
-      !wardLinkEvidence.length;
+      !linkAttachments.length;
   // The ring counts the words that are actually going into the post, so a poll does not
   // inherit the count of the text left behind when the poll form came up.
   const ward = useMemo(
@@ -407,6 +413,29 @@ function Composer() {
     ]);
   }
 
+  function addPostLink() {
+    const raw = linkUrl.trim();
+    if (!raw) return;
+    try {
+      const parsed = new URL(raw);
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+        toastError("Use a link that starts with http:// or https://.");
+        return;
+      }
+      const url = parsed.toString();
+      const label = attachmentLabel(linkTitle.trim() || parsed.hostname.replace(/^www\./, ""));
+      setLinkAttachments((current) => [
+        ...current,
+        { id: uuid(), kind: "url", label, meta: url, url },
+      ]);
+      setLinkTitle("");
+      setLinkUrl("");
+      setComposerPage(null);
+    } catch {
+      toastError("Enter a valid http:// or https:// link.");
+    }
+  }
+
   function removeAt(index: number) {
     setPicks((prev) => {
       URL.revokeObjectURL(prev[index].url);
@@ -414,14 +443,16 @@ function Composer() {
     });
   }
 
-  function chooseCategory(category: "media" | "event" | "celebration" | "job" | "poll" | "document") {
+  function chooseCategory(
+    category: "media" | "event" | "celebration" | "job" | "poll" | "document" | "link",
+  ) {
     if ((category === "media" || category === "document") && postAudience !== "anyone") {
       toastError("Set the post audience to Anyone before adding media or a document.");
       return;
     }
     if (
       category === "poll" &&
-      (picks.length || documentFile || wardDocumentFiles.length || wardLinkEvidence.length)
+      (picks.length || documentFile || wardDocumentFiles.length || linkAttachments.length)
     ) {
       toastError("Remove attachments before switching this post to a poll.");
       return;
@@ -530,6 +561,10 @@ function Composer() {
 
   async function post(scheduledAt: string | null = null) {
     if (empty || busy || composerPage) return;
+    if (isPoll && (picks.length || documentFile || wardDocumentFiles.length || linkAttachments.length)) {
+      toastError("Remove attachments before publishing a poll.");
+      return;
+    }
     if (scheduledAt && Date.parse(scheduledAt) <= Date.now()) {
       setScheduledPostAt(null);
       toastError("That scheduled time has passed. Choose a new time.");
@@ -566,7 +601,7 @@ function Composer() {
       let postTitle = isPoll ? "" : title.trim();
       postBody = appendPostLines(
         postBody,
-        wardLinkEvidence.map((item) => `Link: ${postAttachmentLink(item.label, item.url ?? "")}`),
+        linkAttachments.map((item) => `Link: ${postAttachmentLink(item.label, item.url ?? "")}`),
       );
       if (documentFile) {
         const uploaded = await uploadPostDocument(user.id, documentFile);
@@ -771,8 +806,10 @@ function Composer() {
                       : composerPage === "celebration-details"
                         ? celebration
                         : composerPage === "job"
-                          ? "Share a job"
-                          : "Share a document"}
+                        ? "Share a job"
+                        : composerPage === "document"
+                          ? "Share a document"
+                          : "Add a link"}
                 </h2>
                 {composerPage === "celebration-details" ? (
                   <p className="text-[10px] text-muted">Add a message for your network</p>
@@ -1070,6 +1107,41 @@ function Composer() {
               </div>
             ) : null}
 
+            {composerPage === "link" ? (
+              <div className="space-y-3">
+                <input
+                  value={linkTitle}
+                  onChange={(event) => setLinkTitle(event.target.value.slice(0, 120))}
+                  placeholder="Link title (optional)"
+                  aria-label="Link title"
+                  className={FORM_INPUT_CLASS}
+                />
+                <input
+                  autoFocus
+                  type="url"
+                  value={linkUrl}
+                  onChange={(event) => setLinkUrl(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") addPostLink();
+                  }}
+                  placeholder="https://…"
+                  aria-label="Link URL"
+                  className={FORM_INPUT_CLASS}
+                />
+                <p className="text-[10px] leading-[1.5] text-muted">
+                  Attach a public web link to your post. Only http:// and https:// links are allowed.
+                </p>
+                <button
+                  type="button"
+                  disabled={!linkUrl.trim()}
+                  onClick={addPostLink}
+                  className="w-full rounded-full bg-lime-pale px-4 py-3 text-[13px] font-semibold text-ink transition hover:bg-lime-soft disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Add link to post
+                </button>
+              </div>
+            ) : null}
+
             {composerPage === "document" ? (
               <div className="space-y-3">
                 <input
@@ -1235,9 +1307,9 @@ function Composer() {
                       ))}
                     </div>
                   ) : null}
-                  {wardLinkEvidence.length ? (
+                  {linkAttachments.length ? (
                     <div className="mt-3 space-y-2" aria-label="Attached links">
-                      {wardLinkEvidence.map((item) => (
+                      {linkAttachments.map((item) => (
                         <div
                           key={item.id}
                           className="flex items-center gap-2 rounded-xl bg-cream px-3 py-2 text-[10px] text-inksoft"
@@ -1254,7 +1326,7 @@ function Composer() {
                           <button
                             type="button"
                             onClick={() =>
-                              setWardLinkEvidence((current) =>
+                              setLinkAttachments((current) =>
                                 current.filter((evidence) => evidence.id !== item.id),
                               )
                             }
