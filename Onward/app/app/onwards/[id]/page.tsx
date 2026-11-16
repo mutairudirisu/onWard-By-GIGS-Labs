@@ -1,15 +1,16 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PhoneShell } from "@/components/phone-shell";
 import { ShareSheet, wardShareText } from "@/components/share-sheet";
+import { Modal } from "@/components/modal";
 import { BackLink, Button, Tag } from "@/components/ui";
 import { useStore } from "@/components/store";
 import type { Evidence } from "@/lib/data";
 import { signedWardEvidenceUrl } from "@/lib/db";
-import { ArrowUpRight, Check, File as FileIcon, Folder, Globe, Image as ImageIcon, Pencil, Share2, Star, TrendingUp, Users } from "lucide-react";
+import { ArrowUpRight, Check, File as FileIcon, Folder, Globe, Image as ImageIcon, Pencil, Share2, Star, Trash2, TrendingUp, Users } from "lucide-react";
 
 function EvidenceIcon({ kind }: { kind: Evidence["kind"] }) {
   const cls = "h-[15px] w-[15px]";
@@ -20,11 +21,27 @@ function EvidenceIcon({ kind }: { kind: Evidence["kind"] }) {
 
 export default function OnWardDetailPage() {
   const params = useParams<{ id: string }>();
-  const { onWards, favourites, togglePortfolio, toggleFavourite } = useStore();
+  const router = useRouter();
+  const { onWards, favourites, togglePortfolio, toggleFavourite, deleteOnWard } = useStore();
   const [sharing, setSharing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const ward = onWards.find((w) => w.id === params.id);
   const evidence = ward?.evidence ?? [];
   const [evidenceUrls, setEvidenceUrls] = useState<Record<string, string>>({});
+
+  async function confirmRemove() {
+    if (!ward || deleting) return;
+    setDeleting(true);
+    try {
+      if (await deleteOnWard(ward.id)) {
+        setConfirmDelete(false);
+        router.replace("/onwards");
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -96,6 +113,14 @@ export default function OnWardDetailPage() {
         >
           <Pencil className="h-4 w-4" />
         </Link>
+        <button
+          type="button"
+          aria-label="Delete this onWard"
+          onClick={() => setConfirmDelete(true)}
+          className="-mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-danger transition hover:bg-danger/10 active:scale-90"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
       </div>
 
       <div className="mb-3 flex items-center justify-between">
@@ -275,6 +300,37 @@ export default function OnWardDetailPage() {
         defaultText={wardShareText(ward)}
         url={`${window.location.origin}/onwards/${ward.id}`}
       />
+      <Modal
+        open={confirmDelete}
+        onClose={() => {
+          if (!deleting) setConfirmDelete(false);
+        }}
+        title="Delete this onWard?"
+      >
+        <p className="text-[11.5px] leading-[1.6] text-inksoft">
+          This onWard and its attached evidence will be permanently deleted. Posts you already
+          shared to the Exchange will remain, but will no longer be linked to this entry.
+        </p>
+        <div className="mt-4 flex gap-2.5">
+          <button
+            type="button"
+            disabled={deleting}
+            onClick={() => setConfirmDelete(false)}
+            className="flex-1 cursor-pointer rounded-btn border border-line bg-paper px-4 py-3 text-[13px] font-semibold text-ink transition hover:bg-cream disabled:opacity-50"
+          >
+            Keep it
+          </button>
+          <button
+            type="button"
+            disabled={deleting}
+            onClick={() => void confirmRemove()}
+            className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-btn bg-danger px-4 py-3 text-[13px] font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
+          >
+            <Trash2 className="h-4 w-4" />
+            {deleting ? "Deleting…" : "Delete"}
+          </button>
+        </div>
+      </Modal>
     </PhoneShell>
   );
 }

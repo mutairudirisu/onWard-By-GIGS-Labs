@@ -88,6 +88,7 @@ type Store = State & {
   hydrated: boolean;
   addOnWard: (data: NewWard) => string;
   updateOnWard: (id: string, data: NewWard) => void;
+  deleteOnWard: (id: string) => Promise<boolean>;
   togglePortfolio: (id: string) => void;
   toggleFavourite: (id: string) => void;
   addSkill: (name: string) => void;
@@ -316,6 +317,39 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [commit],
   );
 
+  const deleteOnWard = useCallback(
+    async (id: string) => {
+      if (!stateRef.current.onWards.some((ward) => ward.id === id)) return false;
+
+      try {
+        await deleteRow("on_wards", id);
+      } catch (error) {
+        toastError(error instanceof Error ? error.message : "Couldn't delete that onWard.");
+        return false;
+      }
+
+      const current = stateRef.current;
+      const hadEvidenceEntitlement = current.evidenceEntitlementWardIds.includes(id);
+      const next: State = {
+        ...current,
+        onWards: current.onWards.filter((ward) => ward.id !== id),
+        favourites: current.favourites.filter((favourite) => favourite !== id),
+        evidenceWardsUsed: Math.max(
+          0,
+          current.evidenceWardsUsed - (hadEvidenceEntitlement ? 1 : 0),
+        ),
+        evidenceEntitlementWardIds: current.evidenceEntitlementWardIds.filter(
+          (wardId) => wardId !== id,
+        ),
+      };
+      stateRef.current = next;
+      setState(next);
+      toastSuccess("onWard deleted");
+      return true;
+    },
+    [],
+  );
+
   const togglePortfolio = useCallback(
     (id: string) => {
       const before = stateRef.current.onWards.find((w) => w.id === id);
@@ -391,6 +425,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       hydrated,
       addOnWard,
       updateOnWard,
+      deleteOnWard,
       togglePortfolio,
       toggleFavourite,
       addSkill,
@@ -407,6 +442,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       hydrated,
       addOnWard,
       updateOnWard,
+      deleteOnWard,
       togglePortfolio,
       toggleFavourite,
       addSkill,
