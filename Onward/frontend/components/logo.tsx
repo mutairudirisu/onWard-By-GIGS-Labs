@@ -16,6 +16,7 @@ export function LogoMark({
         fill={dark ? "#C9F24E" : "#B4E13A"}
       />
       <g
+        transform="translate(3 3) scale(0.75)"
         fill="none"
         stroke="#20211A"
         strokeWidth="1.8"
@@ -39,21 +40,20 @@ export function Logo({
   className?: string;
 }) {
   return (
-    <span className={`flex items-center gap-2 font-brand ${className}`}>
-      <LogoMark dark={dark} className="h-7 w-7 shrink-0" />
+    <span className={`flex items-center gap-1 font-brand ${className}`}>
+      <LogoMark dark={dark} className="h-[22px] w-[22px] shrink-0" />
       <span
-        className={`whitespace-nowrap text-[19px] font-bold leading-none tracking-tight ${
+        className={`whitespace-nowrap text-[16px] font-bold leading-none tracking-tight ${
           dark ? "text-paper" : "text-ink"
         }`}
       >
         onWard
       </span>
-      <span aria-hidden className={`h-5 w-px ${dark ? "bg-paper/30" : "bg-ink/20"}`} />
-      <span className="flex flex-col items-start leading-[1.05]">
-        <span className={`text-[7px] font-medium ${dark ? "text-paper/55" : "text-muted"}`}>
+      <span className="ml-0.5 flex flex-col items-start leading-[1.05]">
+        <span className={`text-[5px] font-medium ${dark ? "text-paper/55" : "text-muted"}`}>
           by
         </span>
-        <span className={`text-[9px] font-bold ${dark ? "text-paper/85" : "text-ink/80"}`}>
+        <span className={`text-[7px] font-bold ${dark ? "text-paper/85" : "text-ink/80"}`}>
           GIGS Labs
         </span>
       </span>

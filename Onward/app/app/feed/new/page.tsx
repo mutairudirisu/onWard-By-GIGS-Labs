@@ -1237,6 +1237,7 @@ function Composer() {
                             kind={pick.file.type.startsWith("video/") ? "video" : "image"}
                             alt={`Selected media ${index + 1}`}
                             loading="eager"
+                            mode="feed"
                             preload="metadata"
                             controls={false}
                             muted

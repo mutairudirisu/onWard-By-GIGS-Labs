@@ -29,6 +29,7 @@ export function PostMediaFrame({
   alt,
   loading,
   preload,
+  mode,
   onOpen,
   onDimensions,
   controls = true,
@@ -39,6 +40,7 @@ export function PostMediaFrame({
   alt: string;
   loading: "eager" | "lazy";
   preload: "none" | "metadata";
+  mode: "feed" | "viewer";
   onOpen?: () => void;
   onDimensions?: (width: number, height: number) => void;
   controls?: boolean;
@@ -103,7 +105,9 @@ export function PostMediaFrame({
           onDimensions?.(event.currentTarget.naturalWidth, event.currentTarget.naturalHeight);
         }}
         onError={() => setStatus("error")}
-        className="absolute inset-0 h-full w-full object-contain"
+        className={`absolute inset-0 h-full w-full object-contain ${
+          mode === "viewer" ? "bg-[#0a0b0c]" : "bg-cream"
+        }`}
       />
     );
 
@@ -252,6 +256,7 @@ export function PostMediaCarousel({
                     ? "eager"
                     : "lazy"
                 }
+                mode={mode}
                 preload={
                   isViewer && (itemIndex === 0 || itemIndex === index || itemIndex === index + 1)
                     ? "metadata"

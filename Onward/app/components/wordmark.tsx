@@ -22,9 +22,11 @@ function LogoMark() {
 export function Wordmark({
   className = "",
   tone = "ink",
+  showMark = true,
 }: {
   className?: string;
   tone?: "ink" | "paper";
+  showMark?: boolean;
 }) {
   return (
     <span
@@ -32,7 +34,7 @@ export function Wordmark({
         tone === "paper" ? "text-on-panel" : "text-ink"
       } ${className}`}
     >
-      <LogoMark />
+      {showMark ? <LogoMark /> : null}
       <span>onWard</span>
     </span>
   );

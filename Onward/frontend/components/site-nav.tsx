@@ -20,10 +20,10 @@ export function SiteNav() {
 
   return (
     <header
-      className={`fixed inset-x-0 z-40 ${isHome ? "top-[48px]" : "top-3"}`}
+      className={`fixed inset-x-0 z-40 ${isHome ? "top-10" : "top-2"}`}
     >
       <div className="container-x">
-        <div className="mx-auto flex h-[62px] max-w-[1060px] items-center justify-between rounded-full border border-line/80 bg-paper/95 px-2.5 shadow-[0_12px_42px_rgba(16,17,8,0.10)] backdrop-blur-md sm:px-5">
+        <div className="mx-auto flex h-14 max-w-[1060px] items-center justify-between rounded-full border border-line/80 bg-paper/95 px-3 shadow-[0_12px_42px_rgba(16,17,8,0.10)] backdrop-blur-md sm:px-5">
           <Link href="/" aria-label="onWard home" className="flex shrink-0">
             <Logo />
           </Link>
@@ -38,7 +38,7 @@ export function SiteNav() {
               </Link>
             ))}
           </nav>
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <a
               href={LOGIN_URL}
               className="hidden items-center gap-1.5 rounded-full px-3 py-2 text-[14px] font-semibold text-ink transition hover:bg-mist sm:inline-flex"
@@ -47,17 +47,17 @@ export function SiteNav() {
             </a>
             <a
               href={APP_URL}
-              className="inline-flex items-center gap-1 rounded-full bg-ink px-3.5 py-2.5 text-[13px] font-semibold text-paper transition hover:bg-dark sm:gap-1.5 sm:px-5 sm:text-[14px]"
+              className="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-full bg-ink px-2 py-2 text-[10px] font-semibold text-paper transition hover:bg-dark sm:gap-1.5 sm:px-5 sm:text-[14px]"
             >
               Get onWard
-              <ArrowUpRight className="h-4 w-4" strokeWidth={2.2} />
+              <ArrowUpRight className="h-3 w-3 sm:h-4 sm:w-4" strokeWidth={2.2} />
             </a>
             <button
               type="button"
               aria-expanded={open}
               aria-label={open ? "Close menu" : "Open menu"}
               onClick={() => setOpen((v) => !v)}
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line text-ink transition hover:bg-mist md:hidden"
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line text-ink transition hover:bg-mist md:hidden"
             >
               {open ? (
                 <X className="h-5 w-5" strokeWidth={2.2} />

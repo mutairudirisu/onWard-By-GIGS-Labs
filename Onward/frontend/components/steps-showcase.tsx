@@ -41,18 +41,20 @@ export function StepsShowcase() {
   const stepRefs = useRef<(HTMLElement | null)[]>([]);
 
   useEffect(() => {
-    if (!window.matchMedia("(min-width: 768px)").matches) return;
     const section = sectionRef.current;
     if (!section) return;
 
     let frame = 0;
     const updateActiveStep = () => {
       frame = 0;
+      if (!window.matchMedia("(min-width: 768px)").matches) return;
       const bounds = section.getBoundingClientRect();
       const distance = Math.max(1, section.offsetHeight - window.innerHeight);
       const travelled = Math.min(distance, Math.max(0, -bounds.top));
-      const stepDistance = distance / STEPS.length;
-      const next = Math.min(STEPS.length - 1, Math.floor(travelled / stepDistance));
+      const next = Math.min(
+        STEPS.length - 1,
+        Math.floor((travelled / distance) * STEPS.length),
+      );
       setActive((current) => (current === next ? current : next));
     };
     const scheduleUpdate = () => {
@@ -70,7 +72,7 @@ export function StepsShowcase() {
   }, []);
 
   useEffect(() => {
-    if (window.matchMedia("(min-width: 768px)").matches) return;
+    if (!("IntersectionObserver" in window)) return;
     const observer = new IntersectionObserver(
       (entries) => {
         const visible = entries
