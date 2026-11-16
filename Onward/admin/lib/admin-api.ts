@@ -35,11 +35,15 @@ export type AdminOverview = {
   recent: { name: string; title: string; when: string }[];
 };
 
-async function adminRequest(action: "check" | "users" | "overview" | "feedback"): Promise<unknown> {
+async function adminToken() {
   const { data, error } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (error || !token) throw new Error("Sign in to continue.");
+  return token;
+}
 
+async function adminRequest(action: "check" | "users" | "overview" | "feedback" | "automations"): Promise<unknown> {
+  const token = await adminToken();
   const response = await fetch(`/api/admin?action=${action}`, {
     cache: "no-store",
     headers: { Authorization: `Bearer ${token}` },
@@ -224,6 +228,54 @@ function mapFeedback(row: RawFeedback): AdminFeedback {
 export async function fetchAdminFeedback(): Promise<AdminFeedback[]> {
   const data = await adminRequest("feedback");
   return ((data ?? []) as RawFeedback[]).map(mapFeedback);
+}
+
+export type AdminPushAutomation = {
+  id: "monday_motivation" | "daily_checkin" | "friday_reflection" | "long_absence";
+  title: string;
+  body: string;
+  href: string;
+  trigger_type: string;
+  local_time: string;
+  enabled: boolean;
+  sent_7d: number;
+  opted_in_users: number;
+};
+
+export async function fetchAdminPushAutomations(): Promise<AdminPushAutomation[]> {
+  const data = await adminRequest("automations");
+  return (data ?? []) as AdminPushAutomation[];
+}
+
+export async function updateAdminPushAutomation(
+  automation: Pick<AdminPushAutomation, "id" | "enabled" | "local_time" | "title" | "body">,
+) {
+  const token = await adminToken();
+  const response = await fetch("/api/admin", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      id: automation.id,
+      enabled: automation.enabled,
+      localTime: automation.local_time,
+      title: automation.title,
+      body: automation.body,
+    }),
+  });
+  const result: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message =
+      typeof result === "object" &&
+      result !== null &&
+      "error" in result &&
+      typeof result.error === "string"
+        ? result.error
+        : "Could not save this notification automation.";
+    throw new Error(message);
+  }
 }
 
 export function usersToCsv(rows: AdminUser[]) {

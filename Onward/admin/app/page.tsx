@@ -6,7 +6,6 @@ import { AlertCircle, ArrowUpRight, Loader2, Megaphone, RefreshCw, Sprout, Trend
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/ui";
 import { fetchAdminOverview, type AdminOverview } from "@/lib/admin-api";
-import { broadcasts } from "@/lib/data";
 
 function relative(value: string) {
   const then = Date.parse(value);
@@ -82,9 +81,9 @@ export default function Overview() {
               <RefreshCw className={`h-4 w-4 ${state === "loading" ? "animate-spin" : ""}`} strokeWidth={2.1} />
               Refresh
             </button>
-            <Link href="/broadcasts/new" className="btn-lime">
+            <Link href="/broadcasts" className="btn-lime">
               <Megaphone className="h-4 w-4" strokeWidth={2.1} />
-              New broadcast
+              Manage notifications
             </Link>
           </>
         }
@@ -285,24 +284,34 @@ export default function Overview() {
 
             <section className="panel p-5">
               <div className="flex items-center justify-between">
-                <h2 className="h2">Recent broadcasts</h2>
+                <h2 className="h2">Automatic notification plan</h2>
                 <Link href="/broadcasts" className="tiny inline-flex items-center gap-1 font-semibold text-lime-deep hover:text-ink">
-                  View all <ArrowUpRight className="h-3 w-3" />
+                  Manage <ArrowUpRight className="h-3 w-3" />
                 </Link>
               </div>
-              <ul className="mt-4 space-y-3">
-                {broadcasts.slice(0, 2).map((b) => (
-                  <li key={b.id} className="flex items-start gap-3">
-                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cream text-inksoft">
-                      <Megaphone className="h-4 w-4" strokeWidth={2.1} />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] font-bold text-ink">{b.title}</p>
-                      <p className="tiny truncate">{b.channel} · {b.when.split(" ")[0]}</p>
-                    </div>
+              <p className="tiny mt-1.5">
+                Usage-aware push messages, sent only to opted-in users. Campaigns start paused and
+                need an admin to enable them.
+              </p>
+              <ul className="mt-4 space-y-2.5">
+                {[
+                  ["Monday · 08:30", "A fresh-week motivation"],
+                  ["Daily · 18:00", "A check-in only if no progress was logged"],
+                  ["Friday · 16:00", "A weekly reflection when no onWard was captured"],
+                  ["After 3 quiet days", "One gentle return note"],
+                ].map(([when, title]) => (
+                  <li key={when} className="flex items-start gap-3">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-lime-deep" />
+                    <p className="text-[12px] leading-[1.5] text-inksoft">
+                      <span className="font-bold text-ink">{when}</span> · {title}
+                    </p>
                   </li>
                 ))}
               </ul>
+              <p className="tiny mt-3 border-t border-line pt-3">
+                Africa/Lagos time · quiet hours 20:00–08:00 · maximum 3 automated pushes per week
+                and 1 per day.
+              </p>
             </section>
           </aside>
         </div>

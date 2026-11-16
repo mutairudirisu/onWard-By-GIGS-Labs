@@ -8,8 +8,9 @@ and on the server for delivery.
 
 ## Setup
 
-1. Apply `supabase/migrations/20261111130000_web_push.sql` and the API rate-limit
-   migrations `20261113150000_api_rate_limits.sql` and
+1. Apply `supabase/migrations/20261111130000_web_push.sql`,
+   `supabase/migrations/20261116170000_push_notification_automations.sql`, and
+   the API rate-limit migrations `20261113150000_api_rate_limits.sql` and
    `20261113153000_api_ip_rate_limits.sql` to the production Supabase project
    before deploying the corresponding API code.
 2. Generate a VAPID key pair in `app`:
@@ -24,9 +25,9 @@ and on the server for delivery.
    - `VAPID_SUBJECT`: monitored `mailto:` address or the production site URL.
    - `SUPABASE_SERVICE_ROLE_KEY`: Supabase service-role key; server-only.
    - `CRON_SECRET`: long random secret used to authenticate the cron endpoint.
-4. Deploy the app with a Vercel plan that supports a one-minute cron interval.
-   `vercel.json` calls `/api/cron/push` once per minute. Configure all secrets
-   for the production deployment before enabling reminders.
+4. Deploy the app from `app` with a Vercel plan that supports a one-minute cron
+   interval. `vercel.json` calls `/api/cron/push` once per minute. Configure
+   all secrets for the production deployment before enabling reminders.
 5. In an installed PWA or supported browser, sign in and turn on Push
    notifications in Settings. Permission is requested only after that user
    action; each browser/device gets its own subscription.
@@ -37,6 +38,15 @@ and on the server for delivery.
   local time zone. The cron checks due items at one-minute intervals.
 - The server checks the account's existing `user_settings.notifications`
   preference immediately before delivery. Turning it off suppresses delivery.
+- The admin console manages four optional automatic push campaigns: Monday
+  motivation (08:30), a usage-based check-in (18:00 only when no activity was
+  logged that day), a Friday reflection (16:00 when no onWard was logged that
+  week), and a gentle return message after three inactive days.
+- Automatic campaigns are paused until an admin enables them. Times use
+  Africa/Lagos; sends are blocked during 20:00–08:00. A user receives no more
+  than one automated broadcast per day or three in a rolling seven-day period.
+  The daily and weekly prompts are suppressed when the user has recently logged
+  activity, and a return message is sent only once per inactive period.
 - Checklist reminders remain available as in-app alerts when background push is
   unavailable. Focus sessions can also be started locally while the app is open.
 - Notification actions are platform-dependent. The focus action starts the

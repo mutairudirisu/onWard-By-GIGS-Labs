@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { LogOut, Menu, Plus, Search } from "lucide-react";
+import { Bell, LogOut, Menu, Search } from "lucide-react";
 import { useAdminSession } from "@/lib/admin-session";
 
 export function Topbar({ onMenu }: { onMenu: () => void }) {
@@ -54,10 +54,10 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
             <LogOut className="h-3.5 w-3.5" strokeWidth={2.1} /> Sign out
           </span>
         </button>
-        <Link href="/broadcasts/new" className="btn-lime !py-2">
-          <Plus className="h-4 w-4" strokeWidth={2.4} />
-          <span className="hidden sm:inline">New broadcast</span>
-          <span className="sm:hidden">Broadcast</span>
+        <Link href="/broadcasts" className="btn-lime !py-2">
+          <Bell className="h-4 w-4" strokeWidth={2.1} />
+          <span className="hidden sm:inline">Manage notifications</span>
+          <span className="sm:hidden">Notifications</span>
         </Link>
       </div>
     </header>

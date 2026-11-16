@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 type PushJob = {
   id: string;
   user_id: string;
-  kind: "checklist" | "focus";
+  kind: "checklist" | "focus" | "broadcast";
   scheduled_at: string;
   title: string;
   body: string;
@@ -44,6 +44,14 @@ export async function GET(request: Request) {
   }
   setVapidDetails(subject, publicKey, privateKey);
 
+  const { error: automationError } = await config.admin.rpc("enqueue_automated_push_jobs", {
+    p_now: new Date().toISOString(),
+  });
+  if (automationError) {
+    console.error("Could not enqueue automated push notifications", automationError.message);
+    return Response.json({ error: "Could not schedule automated notifications." }, { status: 500 });
+  }
+
   const { data, error } = await config.admin.rpc("claim_due_push_jobs", { p_limit: 100 });
   if (error) {
     console.error("Could not claim due push jobs", error.message);
@@ -69,7 +77,7 @@ export async function GET(request: Request) {
       if (subscriptionsError) throw subscriptionsError;
 
       const payload = JSON.stringify({
-        ...(job.kind === "focus" ? job.data : {}),
+        ...job.data,
         title: job.title,
         body: job.body,
         tag: job.id,

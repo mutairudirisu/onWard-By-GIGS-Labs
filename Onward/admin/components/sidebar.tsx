@@ -19,7 +19,7 @@ import { useAdminSession } from "@/lib/admin-session";
 const PRIMARY = [
   { href: "/", label: "Overview", Icon: LayoutDashboard },
   { href: "/users", label: "Users", Icon: Users },
-  { href: "/broadcasts", label: "Broadcasts", Icon: Megaphone },
+  { href: "/broadcasts", label: "Notifications", Icon: Megaphone },
   { href: "/feedback", label: "Feedback", Icon: MessageSquareHeart },
 ];
 
