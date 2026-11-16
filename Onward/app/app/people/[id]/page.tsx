@@ -428,9 +428,11 @@ export default function PersonPage() {
       apply(current, next);
       setLikeBusyIds((current) => new Set(current).add(postId));
       void setPostReaction(postId, next)
-        .catch(() => {
+        .catch((error) => {
           apply(next, current);
-          toastError("Couldn't save that reaction.");
+          toastError(
+            error instanceof Error ? error.message : "Couldn't save that reaction.",
+          );
         })
         .finally(() => {
           setLikeBusyIds((current) => {

@@ -799,7 +799,10 @@ async function withPostReactionCounts(posts: FeedPost[]): Promise<FeedPost[]> {
     .from("post_reaction_counts")
     .select("post_id, reaction, total")
     .in("post_id", posts.map((post) => post.id));
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (isMissingReactionSchema(error.code)) return posts;
+    throw new Error(error.message);
+  }
 
   const counts = new Map<string, { like: number; love: number }>();
   for (const row of (data ?? []) as {
@@ -816,6 +819,10 @@ async function withPostReactionCounts(posts: FeedPost[]): Promise<FeedPost[]> {
     const row = counts.get(post.id) ?? { like: 0, love: 0 };
     return { ...post, likes: row.like, loves: row.love };
   });
+}
+
+function isMissingReactionSchema(code: string | null | undefined): boolean {
+  return code === "42P01" || code === "42883" || code === "PGRST202" || code === "PGRST205";
 }
 
 const FEED_COLUMNS =
@@ -933,7 +940,11 @@ export async function fetchMyLikes(): Promise<Set<string>> {
 
 export async function fetchMyPostReactions(): Promise<Record<string, PostReaction>> {
   const { data, error } = await supabase.from("post_reactions").select("post_id, reaction");
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (!isMissingReactionSchema(error.code)) throw new Error(error.message);
+    const likedPosts = await fetchMyLikes();
+    return Object.fromEntries([...likedPosts].map((postId) => [postId, "like" as const]));
+  }
   return Object.fromEntries(
     ((data ?? []) as { post_id: string; reaction: PostReaction }[]).map((row) => [
       row.post_id,
@@ -1019,7 +1030,18 @@ export async function setPostReaction(
     p_post_id: postId,
     p_reaction: reaction,
   });
-  if (error) throw new Error(error.message);
+  if (!error) return;
+  if (!isMissingReactionSchema(error.code)) throw new Error(error.message);
+  if (reaction === "love") {
+    throw new Error("Love reactions need the latest Supabase migration.");
+  }
+  if (reaction === "like") {
+    const { error: likeError } = await supabase.from("post_likes").insert({ post_id: postId });
+    if (likeError && likeError.code !== "23505") throw new Error(likeError.message);
+    return;
+  }
+  const { error: unlikeError } = await supabase.from("post_likes").delete().eq("post_id", postId);
+  if (unlikeError) throw new Error(unlikeError.message);
 }
 
 /**

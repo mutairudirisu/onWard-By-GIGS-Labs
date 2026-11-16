@@ -207,9 +207,9 @@ export default function PostPage() {
       setLoves((count) => Math.max(0, count + (to === "love" ? 1 : 0) - (from === "love" ? 1 : 0)));
     };
     apply(current, next);
-    void setPostReaction(id, next).catch(() => {
+    void setPostReaction(id, next).catch((error) => {
       apply(next, current);
-      toastError("Couldn't save that");
+      toastError(error instanceof Error ? error.message : "Couldn't save that");
     });
   }, [id, liked, loved, router, user]);
 

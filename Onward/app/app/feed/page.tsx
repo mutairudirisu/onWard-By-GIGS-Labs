@@ -481,9 +481,9 @@ export default function FeedPage() {
         .then(() => {
           if (next === "like" && current !== "like") askAfterUpvote();
         })
-        .catch(() => {
+        .catch((error) => {
           apply(next, current);
-          toastError("Couldn't save that");
+          toastError(error instanceof Error ? error.message : "Couldn't save that");
         });
     },
     [liked, loved, router, user],

@@ -223,9 +223,9 @@ export default function CommunityHomePage() {
       }));
     };
     update(current, next);
-    void setPostReaction(postId, next).catch(() => {
+    void setPostReaction(postId, next).catch((error) => {
       update(next, current);
-      toastError("Couldn't save that");
+      toastError(error instanceof Error ? error.message : "Couldn't save that");
     });
   };
 
