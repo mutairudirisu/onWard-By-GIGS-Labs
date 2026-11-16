@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { KeyRound, Loader2, ShieldAlert, ShieldCheck, Sprout } from "lucide-react";
+import { KeyRound, Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
 import { AdminShell } from "@/components/admin-shell";
 import { checkAdmin } from "@/lib/admin-api";
 import { AdminSessionContext, type AdminSession } from "@/lib/admin-session";
 import { supabase } from "@/lib/supabase";
-import { DottedO } from "@/components/wordmark";
+import { Wordmark } from "@/components/wordmark";
 
 function initialsOf(value: string) {
   const words = value.replace(/[._-]+/g, " ").trim().split(/\s+/).filter(Boolean);
@@ -49,16 +49,8 @@ function AuthFrame({ children }: { children: React.ReactNode }) {
           }}
         />
 
-        <div className="relative flex w-fit items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-lime">
-            <Sprout className="h-5 w-5 text-dark" strokeWidth={2.2} />
-          </span>
-          <span className="text-[19px] font-bold tracking-tight text-white">
-            <DottedO className="text-lime" />nWard
-            <span className="ml-1.5 rounded-md bg-lime px-1.5 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wider text-dark">
-              Admin
-            </span>
-          </span>
+        <div className="relative w-fit">
+          <Wordmark tone="paper" className="text-[19px]" />
         </div>
 
         <div className="relative mb-24 mt-auto xl:mb-32">

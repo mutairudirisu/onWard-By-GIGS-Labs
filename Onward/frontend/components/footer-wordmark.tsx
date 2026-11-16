@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-import { DottedO } from "./logo";
+import { LogoMark } from "./logo";
 
 const WORD = "onWard";
 
@@ -142,7 +142,11 @@ export function FooterWordmark() {
                       }
                 }
               >
-                {mark ? <DottedO /> : ch}
+                {mark ? (
+                  <LogoMark className="inline-block h-[0.7em] w-[0.7em] align-baseline" />
+                ) : (
+                  ch
+                )}
               </span>
             );
           })}

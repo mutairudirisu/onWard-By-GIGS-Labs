@@ -123,7 +123,6 @@ export function Sidebar() {
   return (
     <aside className="sticky top-0 hidden h-dvh w-[220px] shrink-0 flex-col border-r border-line bg-paper px-3 py-5 md:flex lg:w-[248px]">
       <Link href="/today" className="mb-5 flex items-center gap-1 px-2">
-        <Sprout className="h-6 w-6 text-lime-deep" strokeWidth={2.2} />
         <Wordmark className="text-[17px]" />
       </Link>
 

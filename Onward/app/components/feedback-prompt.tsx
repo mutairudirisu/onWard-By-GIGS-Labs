@@ -117,8 +117,14 @@ export function FeedbackPrompt() {
             <p className="mt-2 text-[10.5px] leading-[1.45] text-[#E5484D]">{error}</p>
           ) : null}
           <div className="mt-4 grid grid-cols-2 gap-2.5">
-            <Button variant="quiet" onClick={close} className="whitespace-nowrap">
-              Skip
+            <Button
+              variant="quiet"
+              onClick={() => void send()}
+              disabled={busy}
+              aria-label="Send your rating without a comment"
+              className="whitespace-nowrap"
+            >
+              No comment
             </Button>
             <Button onClick={() => void send()} disabled={busy} className="whitespace-nowrap">
               {busy ? "Sending…" : "Send"}

@@ -28,8 +28,8 @@ const FACTS: [string, string][] = [
 const LOGOS = [
   ["onWard logo", "/press/onward-logo.svg", "Full wordmark · for light backgrounds"],
   ["onWard logo (light)", "/press/onward-logo-light.svg", "Full wordmark · for dark backgrounds"],
-  ["Sprout mark", "/press/onward-mark.svg", "Icon only · lime"],
-  ["Sprout mark (ink)", "/press/onward-mark-ink.svg", "Icon only · ink"],
+  ["onWard mark", "/press/onward-mark.svg", "Icon only · lime on ink"],
+  ["onWard mark (dark)", "/press/onward-mark-ink.svg", "Icon only · lime on dark"],
 ];
 
 const COLORS: [string, string, string][] = [
