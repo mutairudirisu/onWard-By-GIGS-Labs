@@ -86,7 +86,7 @@ export function ReshareSheet({
         onClick={requestClose}
       />
       <div
-        className="relative mt-auto flex w-full max-w-[420px] flex-col overflow-hidden rounded-t-3xl bg-paper shadow-lift"
+        className="relative mt-auto flex w-full max-w-none flex-col overflow-hidden rounded-t-3xl bg-paper shadow-lift md:max-w-[420px]"
         style={shellStyle}
       >
         <div

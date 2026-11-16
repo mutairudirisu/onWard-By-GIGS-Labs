@@ -543,7 +543,7 @@ export default function NewCommunityPage() {
         </section>
       </main>
       <footer
-        className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[400px] border-t border-line bg-paper px-5 pt-3 shadow-[0_-8px_24px_rgba(0,0,0,0.06)] md:static md:max-w-[620px] md:border-0 md:px-0 md:pt-4 md:shadow-none"
+        className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full border-t border-line bg-paper px-5 pt-3 shadow-[0_-8px_24px_rgba(0,0,0,0.06)] md:static md:max-w-[620px] md:border-0 md:px-0 md:pt-4 md:shadow-none"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1rem)" }}
       >
         <button

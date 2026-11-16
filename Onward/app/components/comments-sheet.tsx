@@ -47,6 +47,8 @@ export function CommentsSheet({
   const [sending, setSending] = useState(false);
 
   const keyboard = useKeyboardInset(open);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   const fieldRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -61,7 +63,7 @@ export function CommentsSheet({
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") onCloseRef.current();
     };
     document.addEventListener("keydown", onKey);
 
@@ -76,7 +78,7 @@ export function CommentsSheet({
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = previous;
     };
-  }, [open, onClose, postId]);
+  }, [open, postId]);
 
   // Newest at the bottom, so the sheet opens looking at the live end of the thread.
   useEffect(() => {
@@ -164,7 +166,7 @@ export function CommentsSheet({
   return (
     <div
       className="fixed inset-0 z-[75] flex items-end justify-center md:items-center md:px-6 md:py-8"
-      style={{ paddingBottom: keyboard }}
+      style={{ paddingBottom: keyboard || "env(safe-area-inset-bottom)" }}
       role="dialog"
       aria-modal="true"
       aria-label="Comments"
@@ -175,7 +177,7 @@ export function CommentsSheet({
         onClick={onClose}
       />
       <div
-        className="relative mt-auto flex w-full max-w-[420px] flex-col overflow-hidden rounded-t-3xl bg-paper shadow-lift md:mt-0 md:!h-[min(80dvh,760px)] md:!max-h-[calc(100dvh-4rem)] md:max-w-[600px] md:rounded-3xl"
+        className="relative mt-auto flex w-full max-w-none flex-col overflow-hidden rounded-t-3xl bg-paper shadow-lift md:mt-0 md:!h-[min(80dvh,760px)] md:!max-h-[calc(100dvh-4rem)] md:max-w-[600px] md:rounded-3xl"
         style={shellStyle}
       >
         <div
@@ -224,7 +226,16 @@ export function CommentsSheet({
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="text-[11.5px] leading-[1.55] text-ink [overflow-wrap:anywhere]">
-                      <span className="font-bold">{comment.fullName || "Someone"}</span>{" "}
+                      {comment.authorId ? (
+                        <Link
+                          href={`/people/${comment.authorId}`}
+                          className="font-bold hover:underline"
+                        >
+                          {comment.fullName || "Someone"}
+                        </Link>
+                      ) : (
+                        <span className="font-bold">{comment.fullName || "Someone"}</span>
+                      )}{" "}
                       {comment.body}
                     </p>
                     <div className="mt-1 flex items-center gap-3 text-[9.5px] text-faint">
@@ -276,7 +287,7 @@ export function CommentsSheet({
           )}
         </div>
 
-        <div className="shrink-0 border-t border-line px-4 py-3">
+        <div className="shrink-0 border-t border-line px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           {canType ? (
             <div className="flex items-end gap-2.5">
               {user ? (
@@ -303,7 +314,7 @@ export function CommentsSheet({
                   }}
                   placeholder="Add a comment…"
                   aria-label="Add a comment"
-                  className="wheel max-h-[96px] min-w-0 flex-1 resize-none bg-transparent text-[12px] leading-[1.5] text-ink outline-none placeholder:text-faint"
+                  className="wheel max-h-[96px] min-w-0 flex-1 resize-none bg-transparent text-[16px] leading-[1.4] text-ink outline-none placeholder:text-faint md:text-[12px] md:leading-[1.5]"
                 />
               </label>
               <button

@@ -42,9 +42,7 @@ export function PhoneShell({
         </div>
       </main>
       {hasFooter ? (
-        <div
-          className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[400px] bg-cream md:hidden"
-        >
+        <div className="fixed inset-x-0 bottom-0 z-40 w-full bg-cream md:hidden">
           <div
             className="pointer-events-none absolute inset-x-0 -top-8 h-8 bg-gradient-to-t from-cream via-cream/70 to-transparent"
           />

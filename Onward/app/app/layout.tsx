@@ -66,7 +66,7 @@ export default async function RootLayout({
                 <ThemeManager />
                 <ChecklistReminderScheduler />
                 <FocusTimerScheduler />
-                <div className="mx-auto flex min-h-dvh w-full max-w-[400px] flex-col bg-cream shadow-lift md:max-w-none md:flex-row md:shadow-none">
+                <div className="flex min-h-dvh w-full flex-col bg-cream md:flex-row">
                   <Sidebar />
                   <div className="flex min-h-dvh flex-1 flex-col">{children}</div>
                 </div>

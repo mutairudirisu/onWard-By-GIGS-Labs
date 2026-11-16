@@ -32,7 +32,11 @@ export function useSheetDrag(open: boolean, onClose: () => void, initialHeight?:
         ? Math.round(base * HALF)
         : Math.min(initialHeight, Math.max(240, base - 24)),
     );
-    const onResize = () => setViewport(window.innerHeight);
+    const onResize = () => {
+      const nextViewport = window.innerHeight;
+      setViewport(nextViewport);
+      setHeight((current) => Math.min(current, Math.max(180, nextViewport - 24)));
+    };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, [open, initialHeight]);

@@ -125,7 +125,7 @@ function PeopleSheet({
         onClick={onClose}
       />
       <div
-        className="relative mt-auto flex max-h-[70vh] w-full max-w-[420px] flex-col overflow-hidden rounded-t-3xl bg-paper shadow-lift"
+        className="relative mt-auto flex max-h-[70vh] w-full max-w-none flex-col overflow-hidden rounded-t-3xl bg-paper shadow-lift md:max-w-[420px]"
         style={shellStyle}
       >
         <div
