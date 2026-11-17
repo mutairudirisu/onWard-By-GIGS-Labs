@@ -73,9 +73,9 @@ export function CommentsSheet({
 
     void fetchComments(postId)
       .then((thread) => setComments(thread))
-      .catch(() => {
+      .catch((error: unknown) => {
         setComments([]);
-        toastError("Couldn't load the comments");
+        toastError(error instanceof Error ? error.message : "Couldn't load the comments");
       });
 
     return () => {

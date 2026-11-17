@@ -924,8 +924,23 @@ export async function fetchComments(postId: string): Promise<PostComment[]> {
     .select("id, body, media, full_name, initials, created_at, mine, likes, liked")
     .eq("post_id", postId)
     .order("created_at");
-  if (error) throw new Error(error.message);
-  return (data as CommentJson[] | null ?? []).map(commentFromJson);
+  if (!error) return (data as CommentJson[] | null ?? []).map(commentFromJson);
+  if (!isMissingCommentMediaColumn(error)) throw new Error(error.message);
+
+  const legacy = await supabase
+    .from("feed_comments")
+    .select("id, body, full_name, initials, created_at, mine, likes, liked")
+    .eq("post_id", postId)
+    .order("created_at");
+  if (legacy.error) throw new Error(legacy.error.message);
+  return (legacy.data as CommentJson[] | null ?? []).map(commentFromJson);
+}
+
+function isMissingCommentMediaColumn(error: { code?: string; message?: string }) {
+  return (
+    (error.code === "PGRST204" || error.code === "42703") &&
+    /media/i.test(error.message ?? "")
+  );
 }
 
 /**
@@ -1830,14 +1845,13 @@ export async function addComment(
 ): Promise<{ id: string; createdAt: string; media: PostCommentMedia[] }> {
   const trimmed = body.trim();
   if (trimmed.length > POST_COMMENT_MAX) throw new Error("Keep comments under 500 characters.");
-  if (!trimmed && !files.length) throw new Error("Write a comment or attach a file.");
-  if (files.length > 4) throw new Error("Attach up to four images or GIFs.");
+  if (!trimmed && !files.length) throw new Error("Write a comment or attach an image.");
+  if (files.length > 4) throw new Error("Attach up to four images.");
 
   const extensions: Record<string, string> = {
     "image/jpeg": "jpg",
     "image/png": "png",
     "image/webp": "webp",
-    "image/gif": "gif",
   };
   const userId = await signedInUserId();
   const media: PostCommentMedia[] = [];
@@ -1845,7 +1859,7 @@ export async function addComment(
   try {
     for (const file of files) {
       const extension = extensions[file.type];
-      if (!extension) throw new Error("Choose a JPG, PNG, WebP or GIF image.");
+      if (!extension) throw new Error("Choose a JPG, PNG or WebP image.");
       if (file.size > POST_MEDIA_MAX_BYTES) {
         throw new Error(`"${file.name}" is over the 25MB limit.`);
       }
@@ -1855,14 +1869,28 @@ export async function addComment(
         .from(POST_MEDIA_BUCKET)
         .upload(path, file, { contentType: file.type, upsert: false });
       if (error) throw new Error(error.message);
-      media.push({ kind: file.type === "image/gif" ? "gif" : "image", path });
+      media.push({ kind: "image", path });
     }
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("post_comments")
       .insert({ post_id: postId, body: trimmed, media })
       .select("id, created_at")
       .single();
+    if (error && isMissingCommentMediaColumn(error)) {
+      if (files.length) {
+        throw new Error(
+          "Image attachments need the comment media migration. Apply the latest comment media repair migration and try again.",
+        );
+      }
+      const legacy = await supabase
+        .from("post_comments")
+        .insert({ post_id: postId, body: trimmed })
+        .select("id, created_at")
+        .single();
+      data = legacy.data;
+      error = legacy.error;
+    }
     fail(error);
     if (!data) throw new Error("The comment did not land");
     return { id: data.id as string, createdAt: data.created_at as string, media };
@@ -1885,7 +1913,7 @@ export async function deleteComment(id: string) {
     .select("media")
     .eq("id", id)
     .maybeSingle();
-  if (readError) throw new Error(readError.message);
+  if (readError && !isMissingCommentMediaColumn(readError)) throw new Error(readError.message);
 
   const media = (comment?.media ?? []) as PostCommentMedia[];
   if (media.length) {

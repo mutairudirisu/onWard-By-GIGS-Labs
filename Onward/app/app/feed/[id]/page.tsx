@@ -93,7 +93,10 @@ export default function PostPage() {
       try {
         const [next, thread, reactions, found] = await Promise.all([
           fetchPost(id),
-          fetchComments(id).catch(() => [] as PostComment[]),
+          fetchComments(id).catch((error: unknown) => {
+            toastError(error instanceof Error ? error.message : "Couldn't load the comments");
+            return [] as PostComment[];
+          }),
           user
             ? fetchMyPostReactions().catch(() => ({} as Record<string, PostReaction>))
             : Promise.resolve({} as Record<string, PostReaction>),

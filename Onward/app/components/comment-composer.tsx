@@ -1,14 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent, type Ref } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type Ref } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { ImagePlus, Loader2, Send, Smile, X } from "lucide-react";
 import { Avatar } from "@/components/feed-post";
 import { useAuth, useCurrentUser } from "@/components/auth";
 import { toastError } from "@/components/toast";
 import { POST_COMMENT_MAX } from "@/lib/db";
 
-const EMOJIS = ["😊", "😂", "❤️", "🙌", "🎉", "✨", "👍", "🔥", "💚", "👏", "🥰", "💪"];
+const EmojiPicker = dynamic(() => import("emoji-picker-react"), {
+  ssr: false,
+  loading: () => (
+    <div className="grid h-48 place-items-center text-[12px] font-medium text-muted">
+      Loading emoji…
+    </div>
+  ),
+});
+
 const MAX_FILES = 4;
 const MAX_FILE_BYTES = 26_214_400;
 
@@ -34,9 +43,13 @@ export function CommentComposer({
   const { user } = useAuth();
   const me = useCurrentUser();
   const photoInput = useRef<HTMLInputElement>(null);
-  const gifInput = useRef<HTMLInputElement>(null);
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const closeEmojiPicker = useCallback(() => {
+    setEmojiOpen(false);
+    window.requestAnimationFrame(() => emojiButtonRef.current?.focus());
+  }, []);
 
   useEffect(() => {
     const field = composerRef.current?.querySelector("textarea");
@@ -45,18 +58,42 @@ export function CommentComposer({
     field.style.height = `${Math.min(96, field.scrollHeight)}px`;
   }, [value]);
 
+  useEffect(() => {
+    if (!emojiOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeEmojiPicker();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [closeEmojiPicker, emojiOpen]);
+
   function addFiles(event: ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(event.currentTarget.files ?? []);
     event.currentTarget.value = "";
     if (files.length + picked.length > MAX_FILES) {
-      toastError("Attach up to four images or GIFs.");
+      toastError("Attach up to four images.");
+      return;
+    }
+    if (picked.some((file) => !["image/jpeg", "image/png", "image/webp"].includes(file.type))) {
+      toastError("Choose a JPG, PNG or WebP image.");
       return;
     }
     if (picked.some((file) => file.size > MAX_FILE_BYTES)) {
-      toastError("Keep each image or GIF under 25MB.");
+      toastError("Keep each image under 25MB.");
       return;
     }
     onFilesChange([...files, ...picked]);
+  }
+
+  function addEmoji(emoji: string) {
+    if (value.length + emoji.length <= POST_COMMENT_MAX) {
+      onChange(`${value}${emoji}`);
+    }
   }
 
   const canSend = Boolean(value.trim() || files.length) && !sending;
@@ -73,28 +110,6 @@ export function CommentComposer({
           </Link>
         ) : null}
         <div ref={composerRef} className="relative min-w-0 flex-1">
-          {emojiOpen ? (
-            <div
-              role="group"
-              aria-label="Choose an emoji"
-              className="absolute bottom-full right-8 z-10 mb-2 grid grid-cols-6 gap-1 rounded-2xl border border-line bg-paper p-2 shadow-lift"
-            >
-              {EMOJIS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  aria-label={`Add ${emoji}`}
-                  onClick={() => {
-                    onChange(`${value}${emoji}`.slice(0, POST_COMMENT_MAX));
-                    setEmojiOpen(false);
-                  }}
-                  className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-[20px] transition hover:bg-cream"
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          ) : null}
           <div className="rounded-2xl border border-line bg-paper px-3.5 py-2 focus-within:border-dash">
             <textarea
               ref={inputRef}
@@ -124,7 +139,7 @@ export function CommentComposer({
                     key={`${file.name}-${file.lastModified}-${index}`}
                     className="flex max-w-full items-center gap-1.5 rounded-full bg-cream px-2.5 py-1 text-[10px] text-muted"
                   >
-                    {file.type === "image/gif" ? "GIF" : <ImagePlus className="h-3 w-3" />}
+                    <ImagePlus className="h-3 w-3" />
                     <span className="max-w-32 truncate">{file.name}</span>
                     <button
                       type="button"
@@ -142,27 +157,13 @@ export function CommentComposer({
               <button
                 type="button"
                 aria-label="Add an emoji"
+                aria-haspopup="dialog"
                 aria-expanded={emojiOpen}
+                ref={emojiButtonRef}
                 onClick={() => setEmojiOpen((open) => !open)}
                 className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-muted transition hover:bg-cream hover:text-ink"
               >
                 <Smile className="h-[18px] w-[18px]" />
-              </button>
-              <input
-                ref={gifInput}
-                type="file"
-                accept="image/gif"
-                multiple
-                className="hidden"
-                onChange={addFiles}
-              />
-              <button
-                type="button"
-                aria-label="Attach a GIF"
-                onClick={() => gifInput.current?.click()}
-                className="flex h-8 min-w-8 cursor-pointer items-center justify-center rounded-md px-1 text-[10px] font-bold text-muted transition hover:bg-cream hover:text-ink"
-              >
-                GIF
               </button>
               <input
                 ref={photoInput}
@@ -201,6 +202,58 @@ export function CommentComposer({
           </div>
         </div>
       </div>
+      {emojiOpen ? (
+        <div
+          className="fixed inset-0 z-[90] flex items-end justify-center sm:items-center sm:px-5 sm:py-8"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Choose an emoji"
+        >
+          <button
+            type="button"
+            aria-label="Close emoji picker"
+            onClick={closeEmojiPicker}
+            className="absolute inset-0 cursor-default bg-ink/40"
+            style={{ animation: "onward-fade 0.15s ease-out" }}
+          />
+          <section
+            className="relative flex max-h-[82dvh] w-full max-w-[460px] flex-col overflow-hidden rounded-t-3xl border border-line bg-paper shadow-lift sm:rounded-3xl"
+            style={{
+              paddingBottom: "env(safe-area-inset-bottom)",
+              animation: "onward-slide-up 0.22s ease-out",
+            }}
+          >
+            <header className="flex shrink-0 items-center gap-3 border-b border-line px-4 py-3">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-[13px] font-bold text-ink">Choose an emoji</h2>
+                <p className="mt-0.5 text-[10.5px] text-muted">
+                  Search or browse by category
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close emoji picker"
+                onClick={closeEmojiPicker}
+                className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted transition hover:bg-cream hover:text-ink"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </header>
+            <div className="min-h-0 overflow-y-auto p-2">
+              <EmojiPicker
+                onEmojiClick={(emoji) => addEmoji(emoji.emoji)}
+                emojiStyle="native"
+                theme="light"
+                width="100%"
+                height="52dvh"
+                lazyLoadEmojis
+                autoFocusSearch={false}
+                previewConfig={{ showPreview: false }}
+              />
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }

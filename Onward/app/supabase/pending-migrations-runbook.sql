@@ -1,4 +1,4 @@
--- onWard: the seven migration passes the live project is still missing.
+-- onWard: manual Supabase migration runbook. Pass 8 repairs comment-media schema drift.
 --
 -- Exchange audience settings are a separate migration. Apply all earlier Exchange
 -- migrations in timestamp order through 20261111100000_post_document_uploads.sql
@@ -19,7 +19,8 @@
 -- paste this whole file, press Run. Each pass is its own begin;/commit;, so a pass
 -- that fails leaves everything before it applied and nothing after it attempted.
 -- Order matters only here: pass 3 reads posts.title, which pass 2 adds; pass 7 needs
--- the final post access rules and comment-likes view from the earlier passes.
+-- the final post access rules and comment-likes view from the earlier passes. Pass 8
+-- follows pass 7 and repairs/reloads the comment-media column and feed view.
 --
 -- No existing post or comment is removed. Pass 7 copies existing post likes into the
 -- new reaction table and preserves them as Like reactions.
@@ -902,11 +903,79 @@ grant select on public.feed_comments to anon, authenticated;
 
 commit;
 
+-- ============================================================================
+-- PASS 8 :: 20261117070000_comment_media_schema_repair.sql
+-- ============================================================================
+-- Ensures the comment media column is present in both the table and feed view,
+-- then tells PostgREST to refresh its schema cache.
+begin;
+
+alter table public.post_comments
+  add column if not exists media jsonb not null default '[]'::jsonb;
+
+alter table public.post_comments
+  drop constraint if exists post_comments_body_check;
+
+alter table public.post_comments
+  add constraint post_comments_body_check
+  check (
+    (char_length(body) between 1 and 500)
+    or (char_length(body) = 0 and jsonb_array_length(media) > 0)
+  );
+
+drop view if exists public.feed_comments;
+drop view if exists public.feed_comments_unfiltered;
+
+create view public.feed_comments_unfiltered
+with (security_barrier = true)
+as
+select
+  c.id,
+  c.post_id,
+  c.created_at,
+  c.body,
+  p.display_name as full_name,
+  split_part(p.display_name, ' ', 1) as first_name,
+  p.initials,
+  (c.user_id = auth.uid()) as mine,
+  coalesce(l.likes, 0)::int as likes,
+  coalesce(k.liked, false) as liked,
+  c.user_id as author_id,
+  c.media
+from public.post_comments c
+join public.profiles p on p.id = c.user_id
+left join lateral (
+  select count(*) as likes
+  from public.comment_likes cl
+  where cl.comment_id = c.id
+) l on true
+left join lateral (
+  select true as liked
+  from public.comment_likes cl2
+  where cl2.comment_id = c.id
+    and cl2.user_id = auth.uid()
+) k on true;
+
+revoke all on public.feed_comments_unfiltered from public, anon, authenticated;
+
+create view public.feed_comments
+with (security_barrier = true)
+as
+select c.*
+from public.feed_comments_unfiltered c
+join public.posts p on p.id = c.post_id
+where public.can_read_post_comments(p.id);
+
+grant select on public.feed_comments to anon, authenticated;
+
+notify pgrst, 'reload schema';
+
+commit;
 
 -- ============================================================================
 -- AFTER THE RUN
 --
--- One row, twelve answers, every one of them "present". Run this on its own once
+-- One row, thirteen answers, every one of them "present". Run this on its own once
 -- the script above has finished, then reload myonward.vercel.app.
 -- ============================================================================
 select
@@ -924,6 +993,9 @@ select
   case when exists (select 1 from information_schema.columns
      where table_schema = 'public' and table_name = 'post_comments' and column_name = 'media')
   then 'present' else 'MISSING' end as comment_media,
+  case when exists (select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'feed_comments' and column_name = 'media')
+  then 'present' else 'MISSING' end as feed_comments_media,
   case when exists (select 1 from information_schema.tables
      where table_schema = 'public' and table_name = 'post_reactions')
   then 'present' else 'MISSING' end as post_reactions,
