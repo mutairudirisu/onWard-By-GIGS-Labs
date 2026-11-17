@@ -300,7 +300,11 @@ export function CommentComposer({
                 </ul>
               ) : null}
             </div>
-            <div className="mt-1 flex items-center justify-between gap-1 md:mt-0">
+            <div
+              className={`mt-1 flex items-center justify-between gap-1 md:mt-0 ${
+                user ? "-ml-[42px] w-[calc(100%+42px)] md:ml-0 md:w-full" : "w-full"
+              }`}
+            >
               <div className="flex items-center gap-1">
                 <input
                   ref={photoInput}
