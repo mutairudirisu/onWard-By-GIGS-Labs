@@ -503,10 +503,10 @@ export function PostBlock({
           aria-label={liked ? "Remove your upvote" : "Upvote this post"}
           title={liked ? "Remove upvote" : "Upvote"}
           onClick={() => onLike(post.id)}
-          className="ml-auto flex cursor-pointer items-center gap-1 text-[11px] font-semibold text-ink transition hover:text-lime-deep"
+          className="flex cursor-pointer items-center gap-1 text-[11px] font-semibold text-ink transition hover:text-lime-deep"
         >
           <ThumbsUp
-            className={`h-[18px] w-[18px] ${liked ? "fill-lime text-ink" : ""}`}
+            className={`h-[18px] w-[18px] ${liked ? "fill-lime text-lime-deep" : ""}`}
             strokeWidth={liked ? 2.2 : 1.9}
           />
           {likes > 0 ? <span className="tabular-nums">{likes}</span> : null}
@@ -552,7 +552,7 @@ export function PostBlock({
             <Share2 className="h-[22px] w-[22px]" strokeWidth={1.9} />
           </button>
         ) : null}
-        <span className="text-[10.5px] tracking-[0.06em] text-faint">
+        <span className="ml-auto text-[10.5px] tracking-[0.06em] text-faint">
           {timeAgo(post.createdAt)}
         </span>
       </div>
