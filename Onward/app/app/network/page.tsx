@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth";
 import { Avatar } from "@/components/feed-post";
 import { PhoneShell } from "@/components/phone-shell";
-import { toastError } from "@/components/toast";
+import { toastError, toastSuccess } from "@/components/toast";
 import { TextInput } from "@/components/ui";
 import {
   fetchConnectionPosts,
@@ -238,6 +238,7 @@ function RequestCard({
 
 export default function NetworkPage() {
   const { user, profile, ready } = useAuth();
+  const handledAcceptRequest = useRef<string | null>(null);
   const [tab, setTab] = useState<NetworkTab>("grow");
   const [requests, setRequests] = useState<NetworkRequest[]>([]);
   const [suggestions, setSuggestions] = useState<NetworkSuggestion[]>([]);
@@ -255,6 +256,26 @@ export default function NetworkPage() {
   const [catchupEvents, setCatchupEvents] = useState<NetworkEvent[]>([]);
   const [loadingCatchup, setLoadingCatchup] = useState(false);
   const [catchupError, setCatchupError] = useState("");
+
+  useEffect(() => {
+    if (!ready || !user) return;
+    const url = new URL(window.location.href);
+    const requestId = url.searchParams.get("acceptRequest");
+    if (!requestId || handledAcceptRequest.current === requestId) return;
+
+    handledAcceptRequest.current = requestId;
+    url.searchParams.delete("acceptRequest");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+
+    void respondToConnectionRequest(requestId, true)
+      .then(() => {
+        toastSuccess("Connection request accepted.");
+        setGrowRetry((attempt) => attempt + 1);
+      })
+      .catch((error: unknown) => {
+        toastError(error instanceof Error ? error.message : "Couldn't accept the connection request.");
+      });
+  }, [ready, user]);
 
   useEffect(() => {
     if (!ready || !user) return;

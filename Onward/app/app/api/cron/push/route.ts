@@ -9,7 +9,14 @@ export const dynamic = "force-dynamic";
 type PushJob = {
   id: string;
   user_id: string;
-  kind: "checklist" | "focus" | "broadcast" | "post" | "comment" | "reply";
+  kind:
+    | "checklist"
+    | "focus"
+    | "broadcast"
+    | "post"
+    | "comment"
+    | "reply"
+    | "connection_request";
   scheduled_at: string;
   title: string;
   body: string;
@@ -47,9 +54,15 @@ export async function GET(request: Request) {
   const { error: automationError } = await config.admin.rpc("enqueue_automated_push_jobs", {
     p_now: new Date().toISOString(),
   });
+  let automationUnavailable = false;
   if (automationError) {
-    console.error("Could not enqueue automated push notifications", automationError.message);
-    return Response.json({ error: "Could not schedule automated notifications." }, { status: 500 });
+    if (automationError.code === "PGRST202") {
+      automationUnavailable = true;
+      console.warn("Automated push scheduling is unavailable; processing queued notifications.");
+    } else {
+      console.error("Could not enqueue automated push notifications", automationError.message);
+      return Response.json({ error: "Could not schedule automated notifications." }, { status: 500 });
+    }
   }
 
   const { data, error } = await config.admin.rpc("claim_due_push_jobs", { p_limit: 100 });
@@ -145,5 +158,12 @@ export async function GET(request: Request) {
     }
   }
 
-  return Response.json({ processed: jobs.length, sent, retried });
+  return Response.json({
+    processed: jobs.length,
+    sent,
+    retried,
+    ...(automationUnavailable
+      ? { warning: "Automated push scheduling is unavailable; queued notifications were processed." }
+      : {}),
+  });
 }

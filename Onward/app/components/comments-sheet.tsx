@@ -436,14 +436,18 @@ export function CommentsSheet({
                     aria-pressed={followingIds.has(comment.authorId)}
                     disabled={followBusyIds.has(comment.authorId)}
                     onClick={() => void toggleFollow(comment)}
-                    className="shrink-0 rounded-full px-1 py-1 text-[11px] font-semibold text-blue-600 transition hover:text-blue-700 disabled:opacity-50"
+                    className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold transition disabled:opacity-50 ${
+                      followingIds.has(comment.authorId)
+                        ? "bg-cream text-lime-deep hover:bg-lime-pale"
+                        : "bg-lime text-dark hover:bg-lime-deep"
+                    }`}
                   >
                     {followingIds.has(comment.authorId) ? "Following" : "Follow"}
                   </button>
                 ) : (
                   <Link
                     href="/sign-in"
-                    className="shrink-0 rounded-full px-1 py-1 text-[11px] font-semibold text-blue-600 no-underline transition hover:text-blue-700"
+                    className="shrink-0 rounded-full bg-lime px-2.5 py-1 text-[11px] font-semibold text-dark no-underline transition hover:bg-lime-deep"
                   >
                     Follow
                   </Link>

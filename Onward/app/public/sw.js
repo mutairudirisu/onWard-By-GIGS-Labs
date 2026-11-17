@@ -85,9 +85,20 @@ self.addEventListener("push", (event) => {
     payload = { title: "onWard reminder", body: "You have a reminder." };
   }
   const kind = payload.kind;
+  let icon = "/icons/icon-512.png";
+  if (kind === "connection_request" && typeof payload.avatarUrl === "string") {
+    try {
+      const avatarUrl = new URL(payload.avatarUrl, self.location.origin);
+      if (avatarUrl.origin === self.location.origin || avatarUrl.protocol === "https:") {
+        icon = avatarUrl.href;
+      }
+    } catch {
+      /* Keep the app icon when a profile image URL is invalid. */
+    }
+  }
   const options = {
     body: payload.body || "You have a reminder.",
-    icon: "/icons/icon-512.png",
+    icon,
     badge: "/icons/icon-maskable.svg",
     tag: payload.tag || `onward-${Date.now()}`,
     renotify: false,
@@ -99,6 +110,9 @@ self.addEventListener("push", (event) => {
       scheduledAt: payload.scheduledAt,
       scheduleId: payload.scheduleId,
       tag: payload.tag,
+      requestId: payload.requestId,
+      personId: payload.personId,
+      profileHref: payload.profileHref,
     },
   };
   const scheduledAt = Date.parse(payload.scheduledAt || "");
@@ -106,6 +120,12 @@ self.addEventListener("push", (event) => {
     !Number.isFinite(scheduledAt) || Date.now() - scheduledAt < 30 * 60 * 1000;
   if (kind === "focus" && startIsCurrent) {
     options.actions = [{ action: "start", title: "Start focus" }];
+  }
+  if (kind === "connection_request" && payload.requestId && payload.personId) {
+    options.actions = [
+      { action: "accept", title: "Accept" },
+      { action: "view-profile", title: "View Profile" },
+    ];
   }
   event.waitUntil(self.registration.showNotification(payload.title || "onWard reminder", options));
 });
@@ -117,7 +137,15 @@ self.addEventListener("notificationclick", (event) => {
   const startFocus = event.action === "start" && data.kind === "focus";
   const scheduledAt = Date.parse(data.scheduledAt || "");
   const mayStart = startFocus && (!Number.isFinite(scheduledAt) || Date.now() - scheduledAt < 30 * 60 * 1000);
-  const target = new URL(data.href || "/today", self.location.origin);
+  let target = new URL(data.href || "/today", self.location.origin);
+  if (data.kind === "connection_request") {
+    if (event.action === "accept" && data.requestId) {
+      target = new URL("/network", self.location.origin);
+      target.searchParams.set("acceptRequest", String(data.requestId));
+    } else {
+      target = new URL(data.profileHref || data.href || "/network", self.location.origin);
+    }
+  }
   if (data.kind === "focus" && data.scheduleId) {
     target.searchParams.set("focusSchedule", String(data.scheduleId));
   }

@@ -12,7 +12,8 @@ and on the server for delivery.
 1. Apply `supabase/migrations/20261111130000_web_push.sql`,
    `supabase/migrations/20261116170000_push_notification_automations.sql`, and
    `supabase/migrations/20261118100000_comment_replies_and_social_push.sql`,
-   `supabase/migrations/20261118110000_nested_comment_threads.sql`, plus
+   `supabase/migrations/20261118110000_nested_comment_threads.sql`,
+   `supabase/migrations/20261118120000_connection_request_push_notifications.sql`, plus
    the API rate-limit migrations `20261113150000_api_rate_limits.sql` and
    `20261113153000_api_ip_rate_limits.sql` to the production Supabase project
    before deploying the corresponding API code.
@@ -51,6 +52,9 @@ and on the server for delivery.
   scheduled posts notify at their scheduled time. New comments notify the post
   author, and replies notify the parent commenter and post author. Tapping the
   notification opens the post; comment and reply alerts open its comments sheet.
+- New connection requests notify the recipient with the sender's profile image.
+  The notification offers Accept and View Profile actions. Accept opens the
+  Network page and responds through the signed-in user's connection-request RPC.
 - Replies are stored beneath the specific comment they answer. Deleting a parent
   comment also deletes its nested replies.
 - The admin console manages four optional automatic push campaigns: Monday
@@ -66,13 +70,15 @@ and on the server for delivery.
   unavailable. Focus sessions can also be started locally while the app is open.
 - Notification actions are platform-dependent. The focus action starts the
   configured timer when the app is opened; a delayed start action expires after
-  30 minutes.
+  30 minutes. Connection-request actions are handled when the app opens.
 - Android supports Web Push in installed PWAs on current browsers. iOS/iPadOS
   requires an installed Home Screen web app and iOS/iPadOS 16.4 or newer.
   Browsers without Push API support fall back to app-open reminders.
 - Supabase Cron is not invoked by local development. Test schedules on a deployed
   preview/production environment after applying the migration and configuring
   secrets. The cron endpoint rejects requests without `CRON_SECRET`.
+- If the optional automation migration is absent, the cron route logs a warning
+  and still processes queued notifications; automated campaigns remain unavailable.
 
 ## Operational checks
 
