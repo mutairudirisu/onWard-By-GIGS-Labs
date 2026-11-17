@@ -57,7 +57,6 @@ export function CommentComposer({
   const gifInput = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
-  const composerRef = useRef<HTMLDivElement>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [mention, setMention] = useState<ActiveMention | null>(null);
   const [mentionPeople, setMentionPeople] = useState<ExchangePerson[]>([]);
@@ -194,50 +193,54 @@ export function CommentComposer({
 
   return (
     <div className={className}>
-      <div className="flex items-end gap-2.5">
+      <div className="relative flex items-start gap-2.5">
+        {mention ? (
+          <div
+            role="listbox"
+            aria-label="People to mention"
+            className="absolute inset-x-0 bottom-full z-30 mb-2 max-h-[45dvh] overflow-y-auto rounded-2xl border border-line bg-paper p-1.5 shadow-lift"
+          >
+            {mentionLoading ? (
+              <p className="px-3 py-2 text-[11px] text-muted">Finding people…</p>
+            ) : mentionPeople.length ? (
+              mentionPeople.map((person) => (
+                <button
+                  key={person.id}
+                  type="button"
+                  role="option"
+                  aria-selected="false"
+                  onClick={() => chooseMention(person)}
+                  className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition hover:bg-cream"
+                >
+                  <Avatar initials={person.initials} src={person.avatarUrl} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[12px] font-semibold text-ink">
+                      {person.name}
+                    </span>
+                    {person.role ? (
+                      <span className="block truncate text-[10px] text-muted">{person.role}</span>
+                    ) : null}
+                  </span>
+                </button>
+              ))
+            ) : (
+              <p className="px-3 py-2 text-[11px] text-muted">No people found.</p>
+            )}
+          </div>
+        ) : null}
         {user ? (
-          <Link href={`/people/${user.id}`} aria-label="View your profile" className="shrink-0">
+          <Link
+            href={`/people/${user.id}`}
+            aria-label="View your profile"
+            className="mt-1 shrink-0"
+          >
             <Avatar
               initials={me.initials || (me.name.slice(0, 1).toUpperCase() || "?")}
               src={me.avatarUrl}
             />
           </Link>
         ) : null}
-        <div ref={composerRef} className="relative min-w-0 flex-1">
-          {mention ? (
-            <div
-              role="listbox"
-              aria-label="People to mention"
-              className="absolute inset-x-0 bottom-full z-30 mb-2 max-h-[45dvh] overflow-y-auto rounded-2xl border border-line bg-paper p-1.5 shadow-lift"
-            >
-              {mentionLoading ? (
-                <p className="px-3 py-2 text-[11px] text-muted">Finding people…</p>
-              ) : mentionPeople.length ? (
-                mentionPeople.map((person) => (
-                  <button
-                    key={person.id}
-                    type="button"
-                    role="option"
-                    aria-selected="false"
-                    onClick={() => chooseMention(person)}
-                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition hover:bg-cream"
-                  >
-                    <Avatar initials={person.initials} src={person.avatarUrl} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[12px] font-semibold text-ink">
-                        {person.name}
-                      </span>
-                      {person.role ? (
-                        <span className="block truncate text-[10px] text-muted">{person.role}</span>
-                      ) : null}
-                    </span>
-                  </button>
-                ))
-              ) : (
-                <p className="px-3 py-2 text-[11px] text-muted">No people found.</p>
-              )}
-            </div>
-          ) : null}
+        <div className="min-w-0 flex-1">
           <div className="rounded-2xl md:border md:border-line md:bg-paper md:px-3.5 md:py-2 md:focus-within:border-dash">
             <div className="rounded-2xl border border-line bg-paper px-3.5 py-2 focus-within:border-dash md:rounded-none md:border-0 md:bg-transparent md:px-0 md:py-0">
               <textarea

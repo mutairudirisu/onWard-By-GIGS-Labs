@@ -11,6 +11,7 @@ import {
   BellRing,
   CheckCheck,
   Flame,
+  MessageCircle,
   Sparkles,
   Sprout,
 } from "lucide-react";
@@ -19,6 +20,7 @@ const ICONS: Record<NoticeKind, typeof Bell> = {
   streak: Flame,
   win: Sprout,
   welcome: Sparkles,
+  message: MessageCircle,
 };
 
 function when(iso: string) {

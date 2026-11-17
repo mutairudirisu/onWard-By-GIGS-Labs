@@ -6,15 +6,17 @@ import { useAuth } from "@/components/auth";
 import { Modal } from "@/components/modal";
 import { PresenceAvatar } from "@/components/presence-avatar";
 import { PhoneShell } from "@/components/phone-shell";
-import { BackLink } from "@/components/ui";
+import { BackLink, Toggle } from "@/components/ui";
 import { toastError } from "@/components/toast";
+import { useStore } from "@/components/store";
 import {
   fetchDirectMessageInbox,
   subscribeToDirectConversationPresence,
   type DirectMessageThread,
 } from "@/lib/db";
 import {
-  CalendarDays,
+  Bell,
+  CheckCheck,
   Loader2,
   ListChecks,
   MessageCircle,
@@ -26,6 +28,7 @@ import {
 
 export default function MessagesPage() {
   const { user, ready } = useAuth();
+  const { settings, setSetting, hydrated } = useStore();
   const [threads, setThreads] = useState<DirectMessageThread[]>([]);
   const [onlineByConversation, setOnlineByConversation] = useState<Record<string, boolean | null>>({});
   const [query, setQuery] = useState("");
@@ -202,32 +205,89 @@ export default function MessagesPage() {
       </Link>
 
       <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Message settings">
-        <div className="-mx-5 divide-y divide-line">
+        {!hydrated ? (
+          <p aria-live="polite" className="py-4 text-center text-[11px] text-muted">
+            Loading your message settings…
+          </p>
+        ) : null}
+        <div className="-mx-5 divide-y divide-line" hidden={!hydrated}>
+          <section className="px-5 py-4">
+            <h2 className="text-[13px] font-semibold text-ink">Who can message me</h2>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted">
+              People outside your connections can’t start or continue a conversation when this is restricted.
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2" role="group" aria-label="Who can message me">
+              {(
+                [
+                  ["everyone", "Everyone"],
+                  ["connections", "Connections only"],
+                ] as const
+              ).map(([value, label]) => {
+                const active = settings.messagePrivacy === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setSetting("messagePrivacy", value)}
+                    className={`rounded-xl border px-3 py-2.5 text-[11px] font-semibold transition ${
+                      active
+                        ? "border-lime-deep bg-lime/20 text-ink"
+                        : "border-line bg-paper text-muted hover:bg-cream"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+          <div className="divide-y divide-line">
+            <div className="flex items-center gap-3 px-5 py-4">
+              <CheckCheck className="h-5 w-5 shrink-0 text-muted" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[12px] font-semibold text-ink">Read receipts</span>
+                <span className="mt-0.5 block text-[10px] text-muted">
+                  Share when you’ve read messages, and see others’ read status.
+                </span>
+              </span>
+              <Toggle
+                checked={settings.messageReadReceipts}
+                onChange={(value) => setSetting("messageReadReceipts", value)}
+                label="Read receipts"
+              />
+            </div>
+            <div className="flex items-center gap-3 px-5 py-4">
+              <Bell className="h-5 w-5 shrink-0 text-muted" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[12px] font-semibold text-ink">Message notifications</span>
+                <span className="mt-0.5 block text-[10px] text-muted">
+                  Add new messages to your inbox. Browser alerts need Push notifications enabled
+                  and onWard open.
+                </span>
+              </span>
+              <Toggle
+                checked={settings.messageNotifications}
+                onChange={(value) => setSetting("messageNotifications", value)}
+                label="Message notifications"
+              />
+            </div>
+          </div>
           <Link
             href="#conversation-list"
             onClick={() => setSettingsOpen(false)}
-            className="flex items-center gap-4 px-5 py-4 text-[14px] font-medium text-ink hover:bg-cream"
+            className="flex items-center gap-3 px-5 py-4 text-[12px] font-medium text-ink hover:bg-cream"
           >
-            <ListChecks className="h-6 w-6 text-muted" />
+            <ListChecks className="h-5 w-5 text-muted" />
             Manage conversations
           </Link>
-          <div
-            aria-disabled="true"
-            className="flex cursor-not-allowed items-center gap-4 px-5 py-4 text-[14px] font-medium text-muted"
-          >
-            <CalendarDays className="h-6 w-6" />
-            <span>
-              <span className="block">Set away message</span>
-              <span className="mt-0.5 block text-[11px]">Unlock with Premium</span>
-            </span>
-          </div>
           <Link
             href="/settings"
             onClick={() => setSettingsOpen(false)}
-            className="flex items-center gap-4 px-5 py-4 text-[14px] font-medium text-ink hover:bg-cream"
+            className="flex items-center gap-3 px-5 py-4 text-[12px] font-medium text-ink hover:bg-cream"
           >
-            <Settings2 className="h-6 w-6 text-muted" />
-            Manage settings
+            <Settings2 className="h-5 w-5 text-muted" />
+            Push notification settings
           </Link>
         </div>
       </Modal>

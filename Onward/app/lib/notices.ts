@@ -1,6 +1,6 @@
 "use client";
 
-export type NoticeKind = "streak" | "win" | "welcome";
+export type NoticeKind = "streak" | "win" | "welcome" | "message";
 
 export type NoticeInput = {
   id?: string;

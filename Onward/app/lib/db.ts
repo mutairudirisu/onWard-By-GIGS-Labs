@@ -98,6 +98,9 @@ type SettingsRow = {
   weekly_digest: boolean;
   haptics: boolean;
   reduced_motion: boolean;
+  message_privacy: "everyone" | "connections";
+  message_read_receipts: boolean;
+  message_notifications: boolean;
 };
 
 type ProfileRow = {
@@ -264,6 +267,9 @@ function settingsFromRow(row: SettingsRow | null): Settings {
     weeklyDigest: row.weekly_digest,
     haptics: row.haptics,
     reducedMotion: row.reduced_motion,
+    messagePrivacy: row.message_privacy,
+    messageReadReceipts: row.message_read_receipts,
+    messageNotifications: row.message_notifications,
   };
 }
 
@@ -380,6 +386,9 @@ export async function writeSettings(userId: string, settings: Settings) {
         weekly_digest: settings.weeklyDigest,
         haptics: settings.haptics,
         reduced_motion: settings.reducedMotion,
+        message_privacy: settings.messagePrivacy,
+        message_read_receipts: settings.messageReadReceipts,
+        message_notifications: settings.messageNotifications,
       },
       { onConflict: "user_id" },
     );
@@ -1568,6 +1577,14 @@ export async function sendDirectMessage(
   const senderId = await signedInUserId();
   const cleanBody = body.trim();
   if (!cleanBody && !file) throw new Error("Write a message or attach a file.");
+  const { data: canSend, error: permissionError } = await supabase.rpc(
+    "can_send_direct_message",
+    { p_conversation_id: conversationId, p_sender_id: senderId },
+  );
+  fail(permissionError);
+  if (!canSend) {
+    throw new Error("This person only accepts messages from their connections.");
+  }
   let uploaded: {
     path: string;
     type: DirectMessageMediaType;
@@ -1673,18 +1690,7 @@ export function subscribeToDirectMessages(
         filter: `conversation_id=eq.${conversationId}`,
       },
       (payload) => {
-        const row = payload.new as {
-          id: string;
-          conversation_id: string;
-          sender_id: string;
-          body: string;
-          created_at: string;
-          read_at: string | null;
-          media_path: string | null;
-          media_type: DirectMessageMediaType | null;
-          media_name: string | null;
-          media_size: number | string | null;
-        };
+        const row = payload.new as DirectMessageRow;
         void directMessageFromRow(row)
           .then(onMessage)
           .catch((error: unknown) => onError?.(error));
@@ -1699,18 +1705,7 @@ export function subscribeToDirectMessages(
         filter: `conversation_id=eq.${conversationId}`,
       },
       (payload) => {
-        const row = payload.new as {
-          id: string;
-          conversation_id: string;
-          sender_id: string;
-          body: string;
-          created_at: string;
-          read_at: string | null;
-          media_path: string | null;
-          media_type: DirectMessageMediaType | null;
-          media_name: string | null;
-          media_size: number | string | null;
-        };
+        const row = payload.new as DirectMessageRow;
         void directMessageFromRow(row)
           .then(onMessage)
           .catch((error: unknown) => onError?.(error));
@@ -1719,6 +1714,40 @@ export function subscribeToDirectMessages(
     .subscribe((status) => {
       if (status === "SUBSCRIBED") onSubscribed?.();
       else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") onError?.();
+    });
+  return () => {
+    void supabase.removeChannel(channel);
+  };
+}
+
+export function subscribeToIncomingDirectMessages(
+  userId: string,
+  onMessage: (message: DirectMessage) => void,
+  onError?: (error?: unknown) => void,
+): () => void {
+  const channel = supabase
+    .channel(`incoming-direct-messages:${userId}`)
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "direct_messages" },
+      (payload) => {
+        const row = payload.new as DirectMessageRow;
+        onMessage({
+          id: row.id,
+          conversationId: row.conversation_id,
+          senderId: row.sender_id,
+          body: row.body,
+          createdAt: row.created_at,
+          readAt: row.read_at,
+          mediaUrl: null,
+          mediaType: row.media_type,
+          mediaName: row.media_name,
+          mediaSize: row.media_size == null ? null : Number(row.media_size),
+        });
+      },
+    )
+    .subscribe((status) => {
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") onError?.();
     });
   return () => {
     void supabase.removeChannel(channel);

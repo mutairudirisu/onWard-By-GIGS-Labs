@@ -16,6 +16,9 @@ export type Settings = {
   weeklyDigest: boolean;
   haptics: boolean;
   reducedMotion: boolean;
+  messagePrivacy: "everyone" | "connections";
+  messageReadReceipts: boolean;
+  messageNotifications: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -24,6 +27,9 @@ export const DEFAULT_SETTINGS: Settings = {
   weeklyDigest: false,
   haptics: true,
   reducedMotion: false,
+  messagePrivacy: "everyone",
+  messageReadReceipts: true,
+  messageNotifications: true,
 };
 
 export type Plan = "free" | "pro";

@@ -13,8 +13,10 @@ import { useAuth } from "./auth";
 import { useStore } from "./store";
 import { useActivity } from "@/lib/activity";
 import { toISO } from "@/lib/dates";
-import { NOTICE_EVENT, type AppNotice, type NoticeInput } from "@/lib/notices";
+import { emitNotice, NOTICE_EVENT, type AppNotice, type NoticeInput } from "@/lib/notices";
+import { subscribeToIncomingDirectMessages } from "@/lib/db";
 import { registerPushSubscription } from "@/lib/push-client";
+import { toastError } from "./toast";
 
 const FEED_KEY = "onward.notices.v1";
 const READ_KEY = "onward.notices.read.v1";
@@ -100,7 +102,7 @@ function derivedNotices(
 
 export function NotificationsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const { settings } = useStore();
+  const { settings, hydrated } = useStore();
   const { streak } = useActivity();
   const userId = user?.id ?? null;
 
@@ -167,6 +169,45 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       active = false;
     };
   }, [permission, settings.notifications, userId]);
+
+  useEffect(() => {
+    if (!userId || !hydrated || !settings.messageNotifications) return;
+    return subscribeToIncomingDirectMessages(
+      userId,
+      (message) => {
+        if (message.senderId === userId || message.readAt) return;
+        if (
+          document.visibilityState === "visible" &&
+          window.location.pathname === `/messages/${message.conversationId}`
+        ) {
+          return;
+        }
+        const mediaLabel = message.mediaType
+          ? {
+              image: "Sent you a photo",
+              video: "Sent you a video",
+              audio: "Sent a voice message",
+              file: "Sent you a file",
+            }[message.mediaType]
+          : "New message";
+        emitNotice({
+          id: `direct-message-${message.id}`,
+          kind: "message",
+          title: "New message",
+          body: message.body || mediaLabel,
+          href: `/messages/${message.conversationId}`,
+          at: message.createdAt,
+        });
+      },
+      (error) => {
+        toastError(
+          error instanceof Error
+            ? `Message alerts disconnected: ${error.message}`
+            : "Message alerts disconnected. Check your connection.",
+        );
+      },
+    );
+  }, [hydrated, settings.messageNotifications, userId]);
 
   useEffect(() => {
     if (!userId) {

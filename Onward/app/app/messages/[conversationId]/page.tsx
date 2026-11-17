@@ -9,6 +9,7 @@ import { Avatar } from "@/components/feed-post";
 import { PresenceAvatar } from "@/components/presence-avatar";
 import { PhoneShell } from "@/components/phone-shell";
 import { BackLink, TextInput } from "@/components/ui";
+import { useStore } from "@/components/store";
 import { toastError } from "@/components/toast";
 import {
   fetchDirectMessageInbox,
@@ -111,6 +112,7 @@ export default function DirectMessagePage() {
   const params = useParams<{ conversationId: string }>();
   const conversationId = params.conversationId;
   const { user, profile, ready } = useAuth();
+  const { settings } = useStore();
   const [thread, setThread] = useState<DirectMessageThread | null>(null);
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -130,7 +132,7 @@ export default function DirectMessagePage() {
   const mountedRef = useRef(true);
 
   const markMessagesRead = useCallback(async () => {
-    if (!user) return;
+    if (!user || !settings.messageReadReceipts) return;
     const readAt = await markDirectMessagesRead(conversationId);
     const readTime = Date.parse(readAt);
     setMessages((current) =>
@@ -142,7 +144,7 @@ export default function DirectMessagePage() {
           : message,
       ),
     );
-  }, [conversationId, user]);
+  }, [conversationId, settings.messageReadReceipts, user]);
 
   const loadMessages = useCallback(async () => {
     const [rows, inbox] = await Promise.all([
@@ -450,13 +452,19 @@ export default function DirectMessagePage() {
                       </time>
                       {mine ? (
                         <span
-                          aria-label={message.readAt ? "Read" : "Delivered"}
-                          title={message.readAt ? "Read" : "Delivered"}
+                          aria-label={
+                            message.readAt && settings.messageReadReceipts ? "Read" : "Delivered"
+                          }
+                          title={
+                            message.readAt && settings.messageReadReceipts ? "Read" : "Delivered"
+                          }
                           className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
-                            message.readAt ? "bg-lime-deep text-dark" : "text-muted"
+                            message.readAt && settings.messageReadReceipts
+                              ? "bg-lime-deep text-dark"
+                              : "text-muted"
                           }`}
                         >
-                          {message.readAt ? (
+                          {message.readAt && settings.messageReadReceipts ? (
                             <Check className="h-3 w-3" strokeWidth={3} />
                           ) : (
                             <CircleCheck className="h-3.5 w-3.5" />
