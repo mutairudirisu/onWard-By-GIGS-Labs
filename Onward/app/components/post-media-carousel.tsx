@@ -77,6 +77,18 @@ export function PostMediaFrame({
     return () => observer.disconnect();
   }, [kind, preload]);
 
+  useEffect(() => {
+    if (kind !== "image") return;
+    const image = frameRef.current?.querySelector("img");
+    if (!image?.complete) return;
+    if (image.naturalWidth > 0 && image.naturalHeight > 0) {
+      setStatus("ready");
+      onDimensions?.(image.naturalWidth, image.naturalHeight);
+    } else {
+      setStatus("error");
+    }
+  }, [kind, onDimensions, src]);
+
   const content =
     kind === "video" ? (
       <video
@@ -151,13 +163,10 @@ export function PostMediaCarousel({
 }: PostMediaCarouselProps) {
   const isViewer = mode === "viewer";
   const railRef = useRef<HTMLDivElement>(null);
-  const [frameRatio, setFrameRatio] = useState(DEFAULT_FRAME_RATIO);
-  const [viewerBounds, setViewerBounds] = useState({ width: 0, height: 0 });
   const firstItemId = media[0]?.id;
-
-  useEffect(() => {
-    setFrameRatio(DEFAULT_FRAME_RATIO);
-  }, [firstItemId]);
+  const [frame, setFrame] = useState({ itemId: firstItemId, ratio: DEFAULT_FRAME_RATIO });
+  const frameRatio = frame.itemId === firstItemId ? frame.ratio : DEFAULT_FRAME_RATIO;
+  const [viewerBounds, setViewerBounds] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     if (!isViewer) return;
@@ -182,10 +191,18 @@ export function PostMediaCarousel({
     return () => observer.disconnect();
   }, [isViewer]);
 
-  const updateFrameRatio = useCallback((width: number, height: number) => {
-    const ratio = mediaAspectRatio(width, height);
-    if (ratio !== null) setFrameRatio((current) => (Math.abs(current - ratio) < 0.01 ? current : ratio));
-  }, []);
+  const updateFrameRatio = useCallback(
+    (width: number, height: number) => {
+      const ratio = mediaAspectRatio(width, height);
+      if (ratio === null) return;
+      setFrame((current) =>
+        current.itemId === firstItemId && Math.abs(current.ratio - ratio) < 0.01
+          ? current
+          : { itemId: firstItemId, ratio },
+      );
+    },
+    [firstItemId],
+  );
 
   const updateIndexFromScroll = useCallback(() => {
     const rail = railRef.current;

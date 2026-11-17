@@ -139,7 +139,7 @@ export function PostMediaPreview({
           alt={`Photo shared by ${authorName}`}
         />
 
-        <div className="absolute bottom-5 left-3 z-10 flex flex-col items-center gap-4 sm:bottom-7 sm:left-8">
+        <div className="absolute bottom-5 right-3 z-10 flex flex-col items-center gap-4 sm:bottom-7 sm:right-8">
           <button
             type="button"
             aria-pressed={liked}
