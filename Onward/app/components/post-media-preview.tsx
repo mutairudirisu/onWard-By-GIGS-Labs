@@ -149,7 +149,7 @@ export function PostMediaPreview({
             className="flex min-h-12 min-w-12 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-full bg-black/35 text-white shadow-lg backdrop-blur-sm transition hover:bg-black/60"
           >
             <ThumbsUp
-              className={`h-6 w-6 drop-shadow ${liked ? "fill-[#1877f2] text-[#1877f2]" : ""}`}
+              className={`h-6 w-6 drop-shadow ${liked ? "fill-lime text-ink" : ""}`}
               strokeWidth={2}
             />
             {likes > 0 ? (

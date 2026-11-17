@@ -503,12 +503,10 @@ export function PostBlock({
           aria-label={liked ? "Remove your upvote" : "Upvote this post"}
           title={liked ? "Remove upvote" : "Upvote"}
           onClick={() => onLike(post.id)}
-          className={`flex cursor-pointer items-center gap-1 text-[11px] font-semibold transition ${
-            liked ? "text-[#1877f2]" : "text-muted hover:text-[#1877f2]"
-          }`}
+          className="flex cursor-pointer items-center gap-1 text-[11px] font-semibold text-ink transition hover:text-lime-deep"
         >
           <ThumbsUp
-            className={`h-[18px] w-[18px] ${liked ? "fill-current" : ""}`}
+            className={`h-[18px] w-[18px] ${liked ? "fill-lime text-ink" : ""}`}
             strokeWidth={liked ? 2.2 : 1.9}
           />
           {likes > 0 ? <span className="tabular-nums">{likes}</span> : null}
