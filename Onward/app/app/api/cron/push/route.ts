@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 type PushJob = {
   id: string;
   user_id: string;
-  kind: "checklist" | "focus" | "broadcast";
+  kind: "checklist" | "focus" | "broadcast" | "post" | "comment" | "reply";
   scheduled_at: string;
   title: string;
   body: string;

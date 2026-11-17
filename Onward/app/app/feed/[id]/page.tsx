@@ -78,6 +78,7 @@ export default function PostPage() {
 
   useEffect(() => {
     if (!post || !focusComments) return;
+    setCommentsOpen(true);
     const frame = window.requestAnimationFrame(() => {
       document.getElementById("comments")?.scrollIntoView({
         behavior: "smooth",
@@ -289,6 +290,7 @@ export default function PostPage() {
         ...prev,
         {
           id: created.id,
+          parentCommentId: null,
           authorId: user?.id ?? null,
           body,
           media: created.media,

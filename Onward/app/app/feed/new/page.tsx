@@ -739,41 +739,43 @@ function Composer() {
               : "Public on the Exchange"}
           </p>
         </div>
-        <button
-          type="button"
-          disabled={Boolean(busy)}
-          aria-label={scheduledPostAt ? "Change scheduled post time" : "Schedule post"}
-          title={scheduledPostAt ? "Change scheduled post time" : "Schedule post"}
-          onClick={openSchedule}
-          className={`flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-50 ${
-            scheduledPostAt
-              ? "bg-lime text-dark hover:bg-lime-deep"
-              : "bg-lime-pale text-inksoft hover:bg-lime-soft"
-          }`}
-        >
-          <Clock3 className="h-4 w-4" strokeWidth={1.9} />
-        </button>
-        <button
-          type="button"
-          onClick={() => void post(scheduledPostAt)}
-          disabled={empty || Boolean(busy) || Boolean(composerPage)}
-          className={`flex h-9 shrink-0 items-center justify-center gap-1 rounded-full px-3 text-[12px] font-semibold transition active:scale-[0.99] ${
-            empty || busy || composerPage
-              ? "cursor-not-allowed bg-lime-pale text-muted"
-              : "cursor-pointer bg-lime-deep text-dark hover:bg-lime"
-          }`}
-        >
-          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-          {busy
-            ? busy.startsWith("Scheduling")
-              ? "Scheduling…"
-              : "Posting…"
-            : isPoll
-              ? "Publish poll"
-              : scheduledPostAt
-                ? "Schedule"
-                : "Post"}
-        </button>
+        <div className="flex h-9 shrink-0 overflow-hidden rounded-full border border-lime-deep/25 bg-lime-pale">
+          <button
+            type="button"
+            disabled={Boolean(busy)}
+            aria-label={scheduledPostAt ? "Change scheduled post time" : "Schedule post"}
+            title={scheduledPostAt ? "Change scheduled post time" : "Schedule post"}
+            onClick={openSchedule}
+            className={`flex h-full w-9 cursor-pointer items-center justify-center border-r border-lime-deep/20 transition disabled:cursor-not-allowed disabled:opacity-50 ${
+              scheduledPostAt
+                ? "bg-lime text-dark hover:bg-lime-deep"
+                : "bg-lime-pale text-inksoft hover:bg-lime-soft"
+            }`}
+          >
+            <Clock3 className="h-4 w-4" strokeWidth={1.9} />
+          </button>
+          <button
+            type="button"
+            onClick={() => void post(scheduledPostAt)}
+            disabled={empty || Boolean(busy) || Boolean(composerPage)}
+            className={`flex h-full shrink-0 items-center justify-center gap-1 px-3 text-[12px] font-semibold transition active:scale-[0.99] ${
+              empty || busy || composerPage
+                ? "cursor-not-allowed bg-lime-pale text-muted"
+                : "cursor-pointer bg-lime-deep text-dark hover:bg-lime"
+            }`}
+          >
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+            {busy
+              ? busy.startsWith("Scheduling")
+                ? "Scheduling…"
+                : "Posting…"
+              : isPoll
+                ? "Publish poll"
+                : scheduledPostAt
+                  ? "Schedule"
+                  : "Post"}
+          </button>
+        </div>
       </div>
       <div
         aria-hidden="true"
@@ -1129,7 +1131,7 @@ function Composer() {
                   className={FORM_INPUT_CLASS}
                 />
                 <p className="text-[10px] leading-[1.5] text-muted">
-                  Attach a public web link to your post. Only http:// and https:// links are allowed.
+                  Paste a public URL or a copied onWard post link. It will appear as a clickable title; only http:// and https:// links are allowed.
                 </p>
                 <button
                   type="button"

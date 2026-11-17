@@ -553,6 +553,7 @@ export type PostMedia = {
 
 export type PostComment = {
   id: string;
+  parentCommentId: string | null;
   authorId: string | null;
   body: string;
   media: PostCommentMedia[];
@@ -640,6 +641,7 @@ export type FeedPost = {
 
 type CommentJson = {
   id: string;
+  parent_comment_id?: string | null;
   author_id?: string | null;
   body: string;
   media?: PostCommentMedia[] | null;
@@ -718,6 +720,7 @@ type FeedRow = {
 function commentFromJson(row: CommentJson): PostComment {
   return {
     id: row.id,
+    parentCommentId: row.parent_comment_id ?? null,
     authorId: row.author_id ?? null,
     body: row.body,
     media: row.media ?? [],
@@ -933,11 +936,22 @@ export async function fetchPost(id: string): Promise<FeedPost | null> {
 }
 
 export async function fetchComments(postId: string): Promise<PostComment[]> {
-  const { data, error } = await supabase
+  const initial = await supabase
     .from("feed_comments")
-    .select("id, author_id, body, media, full_name, initials, avatar_url, role, created_at, mine, likes, liked")
+    .select("id, parent_comment_id, author_id, body, media, full_name, initials, avatar_url, role, created_at, mine, likes, liked")
     .eq("post_id", postId)
     .order("created_at");
+  let data = initial.data as CommentJson[] | null;
+  let error = initial.error;
+  if (error && isMissingCommentParentColumn(error)) {
+    const legacy = await supabase
+      .from("feed_comments")
+      .select("id, author_id, body, media, full_name, initials, avatar_url, role, created_at, mine, likes, liked")
+      .eq("post_id", postId)
+      .order("created_at");
+    data = legacy.data;
+    error = legacy.error;
+  }
   if (!error) return (data as CommentJson[] | null ?? []).map(commentFromJson);
   if (!isMissingCommentDisplayColumn(error)) throw new Error(error.message);
 
@@ -967,6 +981,13 @@ function isMissingCommentDisplayColumn(error: { code?: string; message?: string 
   const message = (error.message ?? "").toLowerCase();
   return ["author_id", "media", "avatar_url", "role"].some((column) =>
     message.includes(column),
+  );
+}
+
+function isMissingCommentParentColumn(error: { code?: string; message?: string }) {
+  return (
+    (error.code === "PGRST204" || error.code === "42703") &&
+    /parent_comment_id/i.test(error.message ?? "")
   );
 }
 
@@ -1896,6 +1917,7 @@ export async function addComment(
   postId: string,
   body: string,
   files: File[] = [],
+  parentCommentId: string | null = null,
 ): Promise<{ id: string; createdAt: string; media: PostCommentMedia[] }> {
   const trimmed = body.trim();
   if (trimmed.length > POST_COMMENT_MAX) throw new Error("Keep comments under 500 characters.");
@@ -1927,11 +1949,21 @@ export async function addComment(
       media.push({ kind: file.type === "image/gif" ? "gif" : "image", path });
     }
 
+    const commentFields = {
+      post_id: postId,
+      body: trimmed,
+      ...(parentCommentId ? { parent_comment_id: parentCommentId } : {}),
+    };
     let { data, error } = await supabase
       .from("post_comments")
-      .insert({ post_id: postId, body: trimmed, media })
+      .insert({ ...commentFields, media })
       .select("id, created_at")
       .single();
+    if (error && isMissingCommentParentColumn(error)) {
+      throw new Error(
+        "Comment replies need the latest comment replies migration. Apply it in Supabase and try again.",
+      );
+    }
     if (error && isMissingCommentMediaColumn(error)) {
       if (files.length) {
         throw new Error(
@@ -1940,7 +1972,7 @@ export async function addComment(
       }
       const legacy = await supabase
         .from("post_comments")
-        .insert({ post_id: postId, body: trimmed })
+        .insert(commentFields)
         .select("id, created_at")
         .single();
       data = legacy.data;

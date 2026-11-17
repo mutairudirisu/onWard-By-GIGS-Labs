@@ -39,6 +39,13 @@ import {
 import { timeAgo } from "@/lib/dates";
 import { useKeyboardInset } from "@/lib/keyboard";
 
+function visibleThreadRows(rows: PostComment[]) {
+  const ids = new Set(rows.map((comment) => comment.id));
+  return rows.filter(
+    (comment) => !comment.parentCommentId || ids.has(comment.parentCommentId),
+  );
+}
+
 /**
  * The thread of one post, in a sheet that comes up over the half of the screen the
  * list needs and can be pulled taller - or pushed back down and dismissed - by its
@@ -64,6 +71,8 @@ export function CommentsSheet({
   const [comments, setComments] = useState<PostComment[] | undefined>(undefined);
   const [draft, setDraft] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  const [replyTarget, setReplyTarget] = useState<{ id: string; name: string } | null>(null);
+  const [expandedReplyGroups, setExpandedReplyGroups] = useState<Record<string, boolean>>({});
   const [sending, setSending] = useState(false);
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
   const [followBusyIds, setFollowBusyIds] = useState<Set<string>>(new Set());
@@ -97,6 +106,8 @@ export function CommentsSheet({
     setComments(undefined);
     setDraft("");
     setFiles([]);
+    setReplyTarget(null);
+    setExpandedReplyGroups({});
     setActiveActionComment(null);
     setConfirmingBlock(false);
     setReportedReasons({});
@@ -158,19 +169,21 @@ export function CommentsSheet({
 
   function setTotal(next: PostComment[]) {
     setComments(next);
-    onCountChange(next.length);
+    onCountChange(visibleThreadRows(next).length);
   }
 
   async function send() {
     const body = draft.trim();
     if ((!body && !files.length) || sending) return;
+    const parentCommentId = replyTarget?.id ?? null;
     setSending(true);
     try {
-      const created = await addComment(postId, body, files);
+      const created = await addComment(postId, body, files, parentCommentId);
       setTotal([
         ...(comments ?? []),
         {
           id: created.id,
+          parentCommentId,
           authorId: user?.id ?? null,
           body,
           media: created.media,
@@ -186,6 +199,7 @@ export function CommentsSheet({
       ]);
       setDraft("");
       setFiles([]);
+      setReplyTarget(null);
     } catch (error) {
       toastError(error instanceof Error ? error.message : "Couldn't post that comment");
     } finally {
@@ -196,7 +210,11 @@ export function CommentsSheet({
   async function remove(commentId: string) {
     try {
       await deleteComment(commentId);
-      setTotal((comments ?? []).filter((comment) => comment.id !== commentId));
+      setTotal(
+        (comments ?? []).filter(
+          (comment) => comment.id !== commentId && comment.parentCommentId !== commentId,
+        ),
+      );
     } catch {
       toastError("Couldn't delete the comment");
     }
@@ -295,7 +313,11 @@ export function CommentsSheet({
     setActionBusy(true);
     try {
       await dismissComment(comment.id);
-      setTotal((comments ?? []).filter((row) => row.id !== comment.id));
+      setTotal(
+        (comments ?? []).filter(
+          (row) => row.id !== comment.id && row.parentCommentId !== comment.id,
+        ),
+      );
       setActiveActionComment(null);
       toastSuccess("Comment hidden from your view");
     } catch (error) {
@@ -323,18 +345,174 @@ export function CommentsSheet({
     }
   }
 
-  /** Replies are a name at the front of the box, not a nested thread: nothing in the
-   *  schema knows which comment a reply belongs to, so the thread stays one level. */
   function replyTo(comment: PostComment) {
-    // Addressed by given name, not by the whole one the row above carries.
     const name = comment.fullName.split(" ")[0] || "someone";
-    setDraft((prev) => (prev.startsWith(`@${name}`) ? prev : `@${name} ${prev}`));
+    const previousName = replyTarget?.name.split(" ")[0];
+    setReplyTarget({
+      id: comment.parentCommentId ?? comment.id,
+      name: comment.fullName || name,
+    });
+    setDraft((prev) => {
+      const current =
+        previousName && prev.startsWith(`@${previousName} `)
+          ? prev.slice(previousName.length + 2)
+          : prev;
+      return current.startsWith(`@${name}`) ? current : `@${name} ${current}`;
+    });
     fieldRef.current?.focus();
+  }
+
+  function renderComment(comment: PostComment) {
+    return (
+      <div key={comment.id} className="flex gap-2.5 py-2">
+        {comment.authorId ? (
+          <Link
+            href={`/people/${comment.authorId}`}
+            aria-label={`View ${comment.fullName || "commenter"}'s profile`}
+            className="shrink-0"
+          >
+            <Avatar initials={comment.initials} src={comment.avatarUrl} />
+          </Link>
+        ) : (
+          <Avatar initials={comment.initials} src={comment.avatarUrl} />
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 items-center gap-1.5">
+                {comment.authorId ? (
+                  <Link
+                    href={`/people/${comment.authorId}`}
+                    className="truncate text-[11.5px] font-bold text-ink no-underline hover:no-underline"
+                  >
+                    {comment.fullName || "Someone"}
+                  </Link>
+                ) : (
+                  <span className="truncate text-[11.5px] font-bold text-ink">
+                    {comment.fullName || "Someone"}
+                  </span>
+                )}
+                <span className="shrink-0 text-[9px] text-faint">·</span>
+                <span className="shrink-0 text-[9px] text-faint">
+                  {timeAgo(comment.createdAt)}
+                </span>
+              </div>
+              {comment.role ? (
+                <p className="mt-0.5 truncate text-[9.5px] leading-tight text-muted">
+                  {comment.role}
+                </p>
+              ) : null}
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              {comment.authorId && !comment.mine ? (
+                user ? (
+                  <button
+                    type="button"
+                    aria-pressed={followingIds.has(comment.authorId)}
+                    disabled={followBusyIds.has(comment.authorId)}
+                    onClick={() => void toggleFollow(comment)}
+                    className="rounded-full px-2 py-1 text-[9.5px] font-bold text-lime-deep transition hover:bg-lime-soft disabled:opacity-50"
+                  >
+                    {followingIds.has(comment.authorId) ? "Following" : "Follow"}
+                  </button>
+                ) : (
+                  <Link
+                    href="/sign-in"
+                    className="rounded-full px-2 py-1 text-[9.5px] font-bold text-lime-deep no-underline transition hover:bg-lime-soft"
+                  >
+                    Follow
+                  </Link>
+                )
+              ) : null}
+              <button
+                type="button"
+                aria-label={`More actions for ${comment.fullName || "comment"}`}
+                onClick={() => {
+                  setActiveActionComment(comment);
+                  setConfirmingBlock(false);
+                }}
+                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-muted transition hover:bg-cream hover:text-ink"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+          <p className="mt-1.5 text-[11.5px] leading-[1.55] text-ink [overflow-wrap:anywhere]">
+            {comment.body}
+          </p>
+          {comment.media.length ? (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {comment.media.map((media) => (
+                <img
+                  key={media.path}
+                  src={mediaUrl(media.path)}
+                  alt={
+                    media.kind === "gif"
+                      ? "GIF attached to comment"
+                      : "Image attached to comment"
+                  }
+                  className="max-h-48 max-w-full rounded-xl object-contain"
+                  loading="lazy"
+                />
+              ))}
+            </div>
+          ) : null}
+          <div className="mt-1 flex items-center gap-3 text-[9.5px] text-faint">
+            {canType ? (
+              <button
+                type="button"
+                aria-pressed={comment.liked}
+                aria-label={comment.liked ? "Remove your upvote" : "Upvote this comment"}
+                onClick={() => void toggleLike(comment)}
+                className="-mx-1 flex cursor-pointer items-center gap-1 px-1 font-semibold text-muted transition hover:text-ink"
+              >
+                <ThumbsUp
+                  className={`h-3 w-3 ${
+                    comment.liked ? "fill-current text-lime-deep" : ""
+                  }`}
+                  strokeWidth={comment.liked ? 2.4 : 1.9}
+                />
+                {comment.likes > 0 ? (
+                  <span className="tabular-nums">{comment.likes}</span>
+                ) : null}
+              </button>
+            ) : null}
+            {canType && !comment.mine ? (
+              <button
+                type="button"
+                onClick={() => replyTo(comment)}
+                className="cursor-pointer font-semibold text-muted transition hover:text-ink"
+              >
+                Reply
+              </button>
+            ) : null}
+            {comment.mine ? (
+              <button
+                type="button"
+                onClick={() => void remove(comment.id)}
+                className="cursor-pointer font-semibold text-muted transition hover:text-ink"
+              >
+                Delete
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!open) return null;
 
-  const total = comments?.length ?? 0;
+  const threadRows = visibleThreadRows(comments ?? []);
+  const rootComments = threadRows.filter((comment) => !comment.parentCommentId);
+  const repliesByParent = new Map<string, PostComment[]>();
+  for (const comment of threadRows) {
+    if (!comment.parentCommentId) continue;
+    const replies = repliesByParent.get(comment.parentCommentId) ?? [];
+    replies.push(comment);
+    repliesByParent.set(comment.parentCommentId, replies);
+  }
+  const total = threadRows.length;
   const canType = Boolean(user);
 
   return (
@@ -379,165 +557,85 @@ export function CommentsSheet({
         <div ref={listRef} className="wheel min-h-0 flex-1 overflow-y-auto border-t border-line px-4">
           {comments === undefined ? (
             <ThreadSkeleton rows={5} />
-          ) : !comments.length ? (
+          ) : !rootComments.length ? (
             <p className="py-10 text-center text-[11.5px] text-muted">
               No comments yet. Say the first thing.
             </p>
           ) : (
             <ul className="pb-2">
-              {comments.map((comment) => (
-                <li key={comment.id} className="flex gap-2.5 border-b border-line py-3 last:border-0">
-                  {comment.authorId ? (
-                    <Link
-                      href={`/people/${comment.authorId}`}
-                      aria-label={`View ${comment.fullName || "commenter"}'s profile`}
-                      className="shrink-0"
-                    >
-                      <Avatar initials={comment.initials} src={comment.avatarUrl} />
-                    </Link>
-                  ) : (
-                    <Avatar initials={comment.initials} src={comment.avatarUrl} />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex min-w-0 items-start gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex min-w-0 items-center gap-1.5">
-                          {comment.authorId ? (
-                            <Link
-                              href={`/people/${comment.authorId}`}
-                              className="truncate text-[11.5px] font-bold text-ink no-underline hover:no-underline"
-                            >
-                              {comment.fullName || "Someone"}
-                            </Link>
-                          ) : (
-                            <span className="truncate text-[11.5px] font-bold text-ink">
-                              {comment.fullName || "Someone"}
-                            </span>
-                          )}
-                          <span className="shrink-0 text-[9px] text-faint">·</span>
-                          <span className="shrink-0 text-[9px] text-faint">
-                            {timeAgo(comment.createdAt)}
-                          </span>
+              {rootComments.map((comment) => {
+                const replies = repliesByParent.get(comment.id) ?? [];
+                const expanded = Boolean(expandedReplyGroups[comment.id]);
+                const visibleReplies = expanded ? replies : replies.slice(0, 2);
+                return (
+                  <li key={comment.id} className="border-b border-line py-2 last:border-0">
+                    {renderComment(comment)}
+                    {replies.length ? (
+                      <div className="ml-4 border-l border-dash pl-3">
+                        <div className="divide-y divide-line/70">
+                          {visibleReplies.map((reply) => renderComment(reply))}
                         </div>
-                        {comment.role ? (
-                          <p className="mt-0.5 truncate text-[9.5px] leading-tight text-muted">
-                            {comment.role}
-                          </p>
-                        ) : null}
-                      </div>
-                      <div className="flex shrink-0 items-center gap-1">
-                        {comment.authorId && !comment.mine ? (
-                          user ? (
-                            <button
-                              type="button"
-                              aria-pressed={followingIds.has(comment.authorId)}
-                              disabled={followBusyIds.has(comment.authorId)}
-                              onClick={() => void toggleFollow(comment)}
-                              className="rounded-full px-2 py-1 text-[9.5px] font-bold text-lime-deep transition hover:bg-lime-soft disabled:opacity-50"
-                            >
-                              {followingIds.has(comment.authorId) ? "Following" : "Follow"}
-                            </button>
-                          ) : (
-                            <Link
-                              href="/sign-in"
-                              className="rounded-full px-2 py-1 text-[9.5px] font-bold text-lime-deep no-underline transition hover:bg-lime-soft"
-                            >
-                              Follow
-                            </Link>
-                          )
-                        ) : null}
-                        <button
-                          type="button"
-                          aria-label={`More actions for ${comment.fullName || "comment"}`}
-                          onClick={() => {
-                            setActiveActionComment(comment);
-                            setConfirmingBlock(false);
-                          }}
-                          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-muted transition hover:bg-cream hover:text-ink"
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                    <p className="mt-1.5 text-[11.5px] leading-[1.55] text-ink [overflow-wrap:anywhere]">
-                      {comment.body}
-                    </p>
-                    {comment.media.length ? (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {comment.media.map((media) => (
-                          <img
-                            key={media.path}
-                            src={mediaUrl(media.path)}
-                            alt={
-                              media.kind === "gif"
-                                ? "GIF attached to comment"
-                                : "Image attached to comment"
+                        {replies.length > 2 ? (
+                          <button
+                            type="button"
+                            aria-expanded={expanded}
+                            onClick={() =>
+                              setExpandedReplyGroups((current) => ({
+                                ...current,
+                                [comment.id]: !current[comment.id],
+                              }))
                             }
-                            className="max-h-48 max-w-full rounded-xl object-contain"
-                            loading="lazy"
-                          />
-                        ))}
+                            className="mt-1 cursor-pointer py-1 text-[10px] font-semibold text-lime-deep"
+                          >
+                            {expanded
+                              ? "Collapse replies"
+                              : `See ${replies.length - 2} more ${
+                                  replies.length - 2 === 1 ? "reply" : "replies"
+                                }`}
+                          </button>
+                        ) : null}
                       </div>
                     ) : null}
-                    <div className="mt-1 flex items-center gap-3 text-[9.5px] text-faint">
-                      {canType ? (
-                        <button
-                          type="button"
-                          aria-pressed={comment.liked}
-                          aria-label={
-                            comment.liked ? "Remove your upvote" : "Upvote this comment"
-                          }
-                          onClick={() => void toggleLike(comment)}
-                          className="-mx-1 flex cursor-pointer items-center gap-1 px-1 font-semibold text-muted transition hover:text-ink"
-                        >
-                          <ThumbsUp
-                            className={`h-3 w-3 ${
-                              comment.liked ? "fill-current text-lime-deep" : ""
-                            }`}
-                            strokeWidth={comment.liked ? 2.4 : 1.9}
-                          />
-                          {comment.likes > 0 ? (
-                            <span className="tabular-nums">{comment.likes}</span>
-                          ) : null}
-                        </button>
-                      ) : null}
-                      {canType && !comment.mine ? (
-                        <button
-                          type="button"
-                          onClick={() => replyTo(comment)}
-                          className="cursor-pointer font-semibold text-muted transition hover:text-ink"
-                        >
-                          Reply
-                        </button>
-                      ) : null}
-                      {comment.mine ? (
-                        <button
-                          type="button"
-                          onClick={() => void remove(comment.id)}
-                          className="cursor-pointer font-semibold text-muted transition hover:text-ink"
-                        >
-                          Delete
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
 
         <div className="shrink-0 border-t border-line px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           {canType ? (
-            <CommentComposer
-              value={draft}
-              onChange={setDraft}
-              files={files}
-              onFilesChange={setFiles}
-              onSubmit={() => void send()}
-              sending={sending}
-              inputRef={fieldRef}
-            />
+            <>
+              {replyTarget ? (
+                <div className="mb-2 flex items-center gap-2 text-[10px] text-muted">
+                  <span className="min-w-0 flex-1 truncate">Replying to {replyTarget.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const name = replyTarget.name.split(" ")[0] || "someone";
+                      setDraft((current) =>
+                        current.startsWith(`@${name} `)
+                          ? current.slice(name.length + 2)
+                          : current,
+                      );
+                      setReplyTarget(null);
+                    }}
+                    className="cursor-pointer font-semibold text-lime-deep"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : null}
+              <CommentComposer
+                value={draft}
+                onChange={setDraft}
+                files={files}
+                onFilesChange={setFiles}
+                onSubmit={() => void send()}
+                sending={sending}
+                inputRef={fieldRef}
+              />
+            </>
           ) : (
             <p className="text-center text-[11px] text-muted">
               <Link
