@@ -939,15 +939,35 @@ export async function fetchComments(postId: string): Promise<PostComment[]> {
     .eq("post_id", postId)
     .order("created_at");
   if (!error) return (data as CommentJson[] | null ?? []).map(commentFromJson);
-  if (!isMissingCommentMediaColumn(error)) throw new Error(error.message);
+  if (!isMissingCommentDisplayColumn(error)) throw new Error(error.message);
+
+  const legacyWithMedia = await supabase
+    .from("feed_comments")
+    .select("id, body, media, full_name, initials, created_at, mine, likes, liked")
+    .eq("post_id", postId)
+    .order("created_at");
+  if (!legacyWithMedia.error) {
+    return (legacyWithMedia.data as CommentJson[] | null ?? []).map(commentFromJson);
+  }
+  if (!isMissingCommentMediaColumn(legacyWithMedia.error)) {
+    throw new Error(legacyWithMedia.error.message);
+  }
 
   const legacy = await supabase
     .from("feed_comments")
-    .select("id, author_id, body, full_name, initials, created_at, mine, likes, liked")
+    .select("id, body, full_name, initials, created_at, mine, likes, liked")
     .eq("post_id", postId)
     .order("created_at");
   if (legacy.error) throw new Error(legacy.error.message);
   return (legacy.data as CommentJson[] | null ?? []).map(commentFromJson);
+}
+
+function isMissingCommentDisplayColumn(error: { code?: string; message?: string }) {
+  if (error.code !== "PGRST204" && error.code !== "42703") return false;
+  const message = (error.message ?? "").toLowerCase();
+  return ["author_id", "media", "avatar_url", "role"].some((column) =>
+    message.includes(column),
+  );
 }
 
 function isMissingCommentMediaColumn(error: { code?: string; message?: string }) {

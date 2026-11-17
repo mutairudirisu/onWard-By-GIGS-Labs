@@ -278,7 +278,7 @@ export function PostBlock({
   communityJoined = post.communityIsMember ?? false,
   communityBusy = false,
   onJoinCommunity,
-  previewThread = true,
+  previewThread = false,
   edgeToEdge = false,
 }: {
   post: FeedPost;
