@@ -17,6 +17,7 @@ import { PostMediaCarousel } from "@/components/post-media-carousel";
 import {
   communityMediaUrl,
   initialsFor,
+  mediaUrl,
   type FeedPost,
 } from "@/lib/db";
 import { timeAgo } from "@/lib/dates";
@@ -130,14 +131,26 @@ export function PostMediaPreview({
         ) : null}
       </header>
 
-      <section className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden px-2 py-3 sm:px-8">
-        <PostMediaCarousel
-          media={post.media}
-          index={index}
-          onIndexChange={setIndex}
-          mode="viewer"
-          alt={`Photo shared by ${authorName}`}
-        />
+      <section className="relative isolate flex min-h-0 flex-1 items-center justify-center overflow-hidden px-2 py-3 sm:px-8">
+        {post.media[index]?.kind === "image" ? (
+          <img
+            src={mediaUrl(post.media[index].path)}
+            alt=""
+            aria-hidden="true"
+            loading="lazy"
+            decoding="async"
+            className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-35 blur-3xl"
+          />
+        ) : null}
+        <div className="relative z-[1] h-full w-full">
+          <PostMediaCarousel
+            media={post.media}
+            index={index}
+            onIndexChange={setIndex}
+            mode="viewer"
+            alt={`Photo shared by ${authorName}`}
+          />
+        </div>
 
         <div className="absolute bottom-5 right-3 z-10 flex flex-col items-center gap-4 sm:bottom-7 sm:right-8">
           <button
