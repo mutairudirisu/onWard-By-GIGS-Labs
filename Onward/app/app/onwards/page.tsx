@@ -13,6 +13,11 @@ import { ShareSheet, wardShareText } from "@/components/share-sheet";
 import { haptic } from "@/lib/haptics";
 import { signedWardEvidenceUrl } from "@/lib/db";
 import { PortfolioShareControls } from "@/components/portfolio-share-controls";
+import { PostMediaFrame } from "@/components/post-media-carousel";
+import {
+  EvidenceImageViewer,
+  type EvidenceImagePreview,
+} from "@/components/evidence-image-viewer";
 
 const TABS = ["Timeline", "By skill", "Portfolio"] as const;
 type Tab = (typeof TABS)[number];
@@ -55,11 +60,13 @@ function WardCard({
   favourite,
   onFavourite,
   onShare,
+  onPreviewImage,
 }: {
   ward: OnWard;
   favourite: boolean;
   onFavourite: (id: string) => void;
   onShare: (ward: OnWard) => void;
+  onPreviewImage: (image: EvidenceImagePreview) => void;
 }) {
   const wardEvidence = ward.evidence ?? [];
   const evidence = evidenceCounts(wardEvidence);
@@ -96,7 +103,9 @@ function WardCard({
       <p className="mt-1.5 line-clamp-3 flex-1 text-[11.5px] leading-[1.65] text-inksoft lg:text-[13px]">
         {ward.impact}
       </p>
-      {wardEvidence.length ? <EvidenceStickers evidence={wardEvidence} /> : null}
+      {wardEvidence.length ? (
+        <EvidenceStickers evidence={wardEvidence} onPreviewImage={onPreviewImage} />
+      ) : null}
       <div className="mt-3.5 flex items-end justify-between gap-3">
         <span className="flex items-center gap-2.5 text-[10.5px] font-semibold text-muted">
           {evidence.map(({ kind, n }) => {
@@ -131,7 +140,13 @@ function WardCard({
   );
 }
 
-function EvidenceStickers({ evidence }: { evidence: Evidence[] }) {
+function EvidenceStickers({
+  evidence,
+  onPreviewImage,
+}: {
+  evidence: Evidence[];
+  onPreviewImage: (image: EvidenceImagePreview) => void;
+}) {
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -172,23 +187,39 @@ function EvidenceStickers({ evidence }: { evidence: Evidence[] }) {
           "-rotate-2",
         ][index];
         const imageUrl = signedUrls[item.id];
-        return (
-          <span
+        const stickerClass = `relative -ml-2 first:ml-0 flex h-12 w-14 items-center justify-center overflow-hidden rounded-lg border-2 border-paper bg-cream text-inksoft shadow-sm ${stickerStyle}`;
+        const stickerContent =
+          item.kind === "image" && imageUrl ? (
+            <PostMediaFrame
+              src={imageUrl}
+              kind="image"
+              alt=""
+              loading="lazy"
+              preload="none"
+              mode="feed"
+              controls={false}
+            />
+          ) : item.kind === "image" ? (
+            <Image className="h-4 w-4" />
+          ) : item.kind === "url" ? (
+            <Globe className="h-4 w-4" />
+          ) : (
+            <FileText className="h-4 w-4" />
+          );
+        return item.kind === "image" && imageUrl ? (
+          <button
             key={item.id}
+            type="button"
             title={item.label}
-            className={`relative -ml-2 first:ml-0 flex h-9 w-10 items-center justify-center overflow-hidden rounded-lg border-2 border-paper bg-cream text-inksoft shadow-sm ${stickerStyle}`}
+            aria-label={`Preview image: ${item.label}`}
+            onClick={() => onPreviewImage({ src: imageUrl, label: item.label })}
+            className={`${stickerClass} z-10 cursor-zoom-in transition hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-deep`}
           >
-            {item.kind === "image" && imageUrl ? (
-              // The private image URL is a short-lived signed URL.
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={imageUrl} alt="" className="h-full w-full object-cover" />
-            ) : item.kind === "image" ? (
-              <Image className="h-4 w-4" />
-            ) : item.kind === "url" ? (
-              <Globe className="h-4 w-4" />
-            ) : (
-              <FileText className="h-4 w-4" />
-            )}
+            {stickerContent}
+          </button>
+        ) : (
+          <span key={item.id} title={item.label} className={stickerClass}>
+            {stickerContent}
           </span>
         );
       })}
@@ -220,6 +251,7 @@ export default function OnWardsPage() {
   const [tab, setTab] = useState<Tab>("Timeline");
   const [query, setQuery] = useState("");
   const [sharing, setSharing] = useState<OnWard | null>(null);
+  const [previewImage, setPreviewImage] = useState<EvidenceImagePreview | null>(null);
 
   const buzzFavourite = (id: string) => {
     haptic("tap", settings.haptics);
@@ -344,6 +376,7 @@ export default function OnWardsPage() {
                 favourite={favourites.includes(ward.id)}
                 onFavourite={buzzFavourite}
                 onShare={setSharing}
+                onPreviewImage={setPreviewImage}
               />
             ))}
         </div>
@@ -363,6 +396,7 @@ export default function OnWardsPage() {
                   favourite={favourites.includes(ward.id)}
                   onFavourite={buzzFavourite}
                   onShare={setSharing}
+                  onPreviewImage={setPreviewImage}
                 />
               ))}
             </div>
@@ -384,6 +418,7 @@ export default function OnWardsPage() {
                     favourite={favourites.includes(ward.id)}
                     onFavourite={buzzFavourite}
                     onShare={setSharing}
+                    onPreviewImage={setPreviewImage}
                   />
                 ))}
               </div>
@@ -400,6 +435,10 @@ export default function OnWardsPage() {
           url={`${window.location.origin}/onwards/${sharing.id}`}
         />
       ) : null}
+      <EvidenceImageViewer
+        image={previewImage}
+        onClose={() => setPreviewImage(null)}
+      />
       </div>
     </PhoneShell>
   );

@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   disablePublicPortfolioShare,
   enablePublicPortfolioShare,
   fetchMyPublicPortfolioShare,
 } from "@/lib/portfolio-share";
-import { Check, Copy, Link2, LoaderCircle, Link2Off } from "lucide-react";
+import { ArrowUpRight, Check, Copy, Link2, LoaderCircle, Link2Off } from "lucide-react";
 
 function errorText(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong. Please try again.";
@@ -93,6 +94,14 @@ export function PortfolioShareControls() {
           </p>
         </div>
       </div>
+
+      <Link
+        href="/portfolio"
+        className="mt-3 flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-line bg-cream px-3 text-[10px] font-bold text-ink transition hover:border-lime-deep hover:bg-lime-pale"
+      >
+        <ArrowUpRight className="h-3.5 w-3.5" />
+        View portfolio
+      </Link>
 
       {slug ? (
         <div className="mt-3 space-y-2">

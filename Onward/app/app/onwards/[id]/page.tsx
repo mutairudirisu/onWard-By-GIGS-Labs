@@ -6,6 +6,8 @@ import Link from "next/link";
 import { PhoneShell } from "@/components/phone-shell";
 import { ShareSheet, wardShareText } from "@/components/share-sheet";
 import { Modal } from "@/components/modal";
+import { EvidenceImageViewer, type EvidenceImagePreview } from "@/components/evidence-image-viewer";
+import { PostMediaFrame } from "@/components/post-media-carousel";
 import { BackLink, Button, Tag } from "@/components/ui";
 import { useStore } from "@/components/store";
 import type { Evidence } from "@/lib/data";
@@ -24,6 +26,7 @@ export default function OnWardDetailPage() {
   const router = useRouter();
   const { onWards, favourites, togglePortfolio, toggleFavourite, deleteOnWard } = useStore();
   const [sharing, setSharing] = useState(false);
+  const [previewImage, setPreviewImage] = useState<EvidenceImagePreview | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const ward = onWards.find((w) => w.id === params.id);
@@ -189,6 +192,38 @@ export default function OnWardDetailPage() {
           <div className="space-y-2">
             {evidence.map((ev) => {
               const href = evidenceUrls[ev.id];
+              if (ev.kind === "image" && href) {
+                return (
+                  <button
+                    key={ev.id}
+                    type="button"
+                    onClick={() => setPreviewImage({ src: href, label: ev.label })}
+                    aria-label={`Preview image: ${ev.label}`}
+                    className="card flex w-full cursor-zoom-in items-center gap-3 px-3 py-2.5 text-left transition hover:border-lime-deep"
+                  >
+                    <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-cream">
+                      <PostMediaFrame
+                        src={href}
+                        kind="image"
+                        alt={ev.label}
+                        loading="lazy"
+                        preload="none"
+                        mode="feed"
+                        controls={false}
+                      />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[12px] font-semibold text-ink">
+                        {ev.label}
+                      </span>
+                      <span className="block truncate text-[10px] text-muted">
+                        {ev.meta ?? ev.kind}
+                      </span>
+                    </span>
+                    <ImageIcon className="h-4 w-4 shrink-0 text-muted" />
+                  </button>
+                );
+              }
               const item = (
                 <>
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cream text-inksoft">
@@ -299,6 +334,10 @@ export default function OnWardDetailPage() {
         onClose={() => setSharing(false)}
         defaultText={wardShareText(ward)}
         url={`${window.location.origin}/onwards/${ward.id}`}
+      />
+      <EvidenceImageViewer
+        image={previewImage}
+        onClose={() => setPreviewImage(null)}
       />
       <Modal
         open={confirmDelete}

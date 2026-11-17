@@ -698,12 +698,15 @@ function Composer() {
         </Link>
         <button
           type="button"
-          aria-label={`Post to ${selectedCommunity?.name ?? "your profile"}`}
+          aria-haspopup="dialog"
+          aria-label={`Post to ${selectedCommunity?.name ?? "your profile"}, audience ${
+            selectedCommunity ? "Anyone" : audienceLabel
+          }`}
           onClick={() => {
-            setCommunityQuery("");
-            setComposerPage("destination");
+            setAudiencePanel("overview");
+            setAudienceSettingsOpen(true);
           }}
-          className="flex h-9 max-w-[112px] shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-line bg-paper px-2 transition hover:bg-lime-pale"
+          className="flex h-10 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-full border border-line bg-paper px-2 transition hover:bg-lime-pale"
         >
           {selectedCommunity ? (
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-lime-pale text-lime-deep">
@@ -712,70 +715,57 @@ function Composer() {
           ) : (
             <Avatar initials={initials} src={me.avatarUrl} size="sm" />
           )}
-          <span className="min-w-0 truncate text-[10px] font-semibold text-ink">
-            {selectedCommunity?.name ?? "My profile"}
+          <span className="min-w-0 flex-1 text-left">
+            <span className="block truncate text-[10px] font-semibold leading-tight text-ink">
+              {selectedCommunity?.name ?? "My profile"}
+            </span>
+            <span className="mt-0.5 block truncate text-[9px] leading-tight text-muted">
+              {selectedCommunity
+                ? "Anyone · Posting as you"
+                : `${audienceLabel} · ${
+                    postAudience === "connections"
+                      ? "Your accepted connections"
+                      : "Public on the Exchange"
+                  }`}
+            </span>
           </span>
-          <ChevronDown className="h-3 w-3 shrink-0 text-muted" />
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted" />
         </button>
-        <div className="min-w-0 flex-1">
-          <button
-            type="button"
-            aria-haspopup="dialog"
-            disabled={Boolean(selectedCommunity)}
-            onClick={() => {
-              setAudiencePanel("overview");
-              setAudienceSettingsOpen(true);
-            }}
-            className="flex cursor-pointer items-center gap-1 text-[11px] font-semibold leading-tight text-ink disabled:cursor-default"
-          >
-            {selectedCommunity ? "Anyone" : audienceLabel}
-            {!selectedCommunity ? <ChevronDown className="h-3.5 w-3.5" strokeWidth={2} /> : null}
-          </button>
-          <p className="mt-1 truncate text-[9px] leading-tight text-muted">
-            {selectedCommunity
-              ? "Posting as you"
-              : postAudience === "connections"
-              ? "Visible to your accepted connections"
-              : "Public on the Exchange"}
-          </p>
-        </div>
-        <div className="flex h-9 shrink-0 overflow-hidden rounded-full border border-lime-deep/25 bg-lime-pale">
-          <button
-            type="button"
-            disabled={Boolean(busy)}
-            aria-label={scheduledPostAt ? "Change scheduled post time" : "Schedule post"}
-            title={scheduledPostAt ? "Change scheduled post time" : "Schedule post"}
-            onClick={openSchedule}
-            className={`flex h-full w-9 cursor-pointer items-center justify-center border-r border-lime-deep/20 transition disabled:cursor-not-allowed disabled:opacity-50 ${
-              scheduledPostAt
-                ? "bg-lime text-dark hover:bg-lime-deep"
-                : "bg-lime-pale text-inksoft hover:bg-lime-soft"
-            }`}
-          >
-            <Clock3 className="h-4 w-4" strokeWidth={1.9} />
-          </button>
-          <button
-            type="button"
-            onClick={() => void post(scheduledPostAt)}
-            disabled={empty || Boolean(busy) || Boolean(composerPage)}
-            className={`flex h-full shrink-0 items-center justify-center gap-1 px-3 text-[12px] font-semibold transition active:scale-[0.99] ${
-              empty || busy || composerPage
-                ? "cursor-not-allowed bg-lime-pale text-muted"
-                : "cursor-pointer bg-lime-deep text-dark hover:bg-lime"
-            }`}
-          >
-            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-            {busy
-              ? busy.startsWith("Scheduling")
-                ? "Scheduling…"
-                : "Posting…"
-              : isPoll
-                ? "Publish poll"
-                : scheduledPostAt
-                  ? "Schedule"
-                  : "Post"}
-          </button>
-        </div>
+        <button
+          type="button"
+          disabled={Boolean(busy)}
+          aria-label={scheduledPostAt ? "Change scheduled post time" : "Schedule post"}
+          title={scheduledPostAt ? "Change scheduled post time" : "Schedule post"}
+          onClick={openSchedule}
+          className={`flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-50 ${
+            scheduledPostAt
+              ? "border-lime-deep bg-lime text-dark hover:bg-lime-deep"
+              : "border-line bg-paper text-inksoft hover:border-lime-deep hover:bg-lime-pale"
+          }`}
+        >
+          <Clock3 className="h-4 w-4" strokeWidth={1.9} />
+        </button>
+        <button
+          type="button"
+          onClick={() => void post(scheduledPostAt)}
+          disabled={empty || Boolean(busy) || Boolean(composerPage)}
+          className={`flex h-9 shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full px-3 text-[12px] font-semibold transition active:scale-[0.99] ${
+            empty || busy || composerPage
+              ? "cursor-not-allowed bg-lime-pale text-muted"
+              : "bg-lime-deep text-dark hover:bg-lime"
+          }`}
+        >
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+          {busy
+            ? busy.startsWith("Scheduling")
+              ? "Scheduling…"
+              : "Posting…"
+            : isPoll
+              ? "Publish poll"
+              : scheduledPostAt
+                ? "Schedule"
+                : "Post"}
+        </button>
       </div>
       <div
         aria-hidden="true"
@@ -1438,16 +1428,35 @@ function Composer() {
       >
         {audiencePanel === "overview" ? (
           <div className="space-y-2">
-            <div className="flex items-center gap-3 rounded-2xl bg-cream px-3 py-3">
-              <Avatar initials={initials} src={me.avatarUrl} size="sm" />
-              <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-ink">
-                {me.name || "Your profile"}
-              </span>
-            </div>
             <button
               type="button"
+              onClick={() => {
+                setAudienceSettingsOpen(false);
+                setCommunityQuery("");
+                setComposerPage("destination");
+              }}
+              className="flex w-full cursor-pointer items-center gap-3 rounded-2xl bg-cream px-3 py-3 text-left transition hover:bg-lime-pale"
+            >
+              {selectedCommunity ? (
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-lime-pale text-lime-deep">
+                  <CommunityTopicIcon topic={selectedCommunity.topic} className="h-4 w-4" />
+                </span>
+              ) : (
+                <Avatar initials={initials} src={me.avatarUrl} size="sm" />
+              )}
+              <span className="min-w-0 flex-1">
+                <span className="block text-[10px] font-semibold text-muted">Post to</span>
+                <span className="block truncate text-[13px] font-semibold text-ink">
+                  {selectedCommunity?.name || me.name || "My profile"}
+                </span>
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
+            </button>
+            <button
+              type="button"
+              disabled={Boolean(selectedCommunity)}
               onClick={() => setAudiencePanel("visibility")}
-              className="flex w-full cursor-pointer items-center gap-3 rounded-2xl px-3 py-3 text-left transition hover:bg-cream"
+              className="flex w-full cursor-pointer items-center gap-3 rounded-2xl px-3 py-3 text-left transition hover:bg-cream disabled:cursor-not-allowed disabled:opacity-60"
             >
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-lime-pale text-ink">
                 <Globe className="h-5 w-5" />
@@ -1455,7 +1464,7 @@ function Composer() {
               <span className="min-w-0 flex-1">
                 <span className="block text-[12px] font-semibold text-ink">Who can see your post?</span>
                 <span className="block truncate text-[11px] text-muted">
-                  {audienceLabel}
+                  {selectedCommunity ? "Community posts are public" : audienceLabel}
                 </span>
               </span>
               <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
