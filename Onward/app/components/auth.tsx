@@ -55,7 +55,8 @@ function isPublicRoute(pathname: string) {
   if (pathname === "/feed") return true;
   if (pathname.startsWith("/feed/")) return pathname !== "/feed/new";
   if (pathname === "/communities") return true;
-  return pathname.startsWith("/communities/") && pathname !== "/communities/new";
+  if (pathname.startsWith("/communities/")) return pathname !== "/communities/new";
+  return pathname.startsWith("/share/");
 }
 
 // These are the entry screens a signed-in user should be bounced away from.

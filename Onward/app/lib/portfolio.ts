@@ -41,6 +41,7 @@ type Source = {
   skills: string[];
   days: ActivityDay[];
   streak: StreakStats;
+  activeDays?: number;
 };
 
 function byDateDesc(a: OnWard, b: OnWard) {
@@ -66,7 +67,14 @@ function stageFor(count: number) {
   return "Recorded";
 }
 
-export function buildPortfolio({ user, onWards, skills, days, streak }: Source): PortfolioModel {
+export function buildPortfolio({
+  user,
+  onWards,
+  skills,
+  days,
+  streak,
+  activeDays,
+}: Source): PortfolioModel {
   const ordered = [...onWards].sort(byDateDesc);
   const shared = ordered.filter((w) => w.inPortfolio);
   const list = shared.length ? shared : ordered;
@@ -98,7 +106,7 @@ export function buildPortfolio({ user, onWards, skills, days, streak }: Source):
     location: user.location?.trim() || undefined,
     bio: user.bio?.trim() || undefined,
     email: user.email ?? "",
-    activeDays: days.length,
+    activeDays: activeDays ?? days.length,
     stats: [
       { value: String(ordered.length), label: "onWards logged" },
       { value: String(ranked.length), label: "skills tracked" },

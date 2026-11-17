@@ -569,12 +569,45 @@ export function PostBlock({
             </button>
           ) : null}
           {post.recentComments.map((comment) => (
-            <p
-              key={comment.id}
-              className="text-[12.5px] leading-[1.5] text-ink [overflow-wrap:anywhere]"
-            >
-              <span className="font-bold">{comment.fullName || "Someone"}</span> {comment.body}
-            </p>
+            <div key={comment.id} className="flex gap-2 py-1">
+              {comment.authorId ? (
+                <Link
+                  href={`/people/${comment.authorId}`}
+                  aria-label={`View ${comment.fullName || "commenter"}'s profile`}
+                  className="shrink-0"
+                >
+                  <Avatar initials={comment.initials} src={comment.avatarUrl} size="sm" />
+                </Link>
+              ) : (
+                <Avatar initials={comment.initials} src={comment.avatarUrl} size="sm" />
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  {comment.authorId ? (
+                    <Link
+                      href={`/people/${comment.authorId}`}
+                      className="truncate text-[11px] font-bold text-ink no-underline hover:no-underline"
+                    >
+                      {comment.fullName || "Someone"}
+                    </Link>
+                  ) : (
+                    <span className="truncate text-[11px] font-bold text-ink">
+                      {comment.fullName || "Someone"}
+                    </span>
+                  )}
+                  <span className="shrink-0 text-[9px] text-faint">·</span>
+                  <span className="shrink-0 text-[9px] text-faint">
+                    {timeAgo(comment.createdAt)}
+                  </span>
+                </div>
+                {comment.role ? (
+                  <p className="truncate text-[9px] leading-tight text-muted">{comment.role}</p>
+                ) : null}
+                <p className="mt-1 text-[11.5px] leading-[1.5] text-ink [overflow-wrap:anywhere]">
+                  {comment.body}
+                </p>
+              </div>
+            </div>
           ))}
         </div>
       ) : null}

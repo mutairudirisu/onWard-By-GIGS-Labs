@@ -192,7 +192,10 @@ export default function ProfilePage() {
               <h2 className="text-[14px] font-bold tracking-tight text-ink lg:text-[17px]">
                 My skills
               </h2>
-              <Link href="/profile/edit" className="text-[11px] font-semibold text-muted underline">
+              <Link
+                href="/profile/edit"
+                className="text-[11px] font-semibold text-muted no-underline hover:no-underline"
+              >
                 Edit skills
               </Link>
             </div>

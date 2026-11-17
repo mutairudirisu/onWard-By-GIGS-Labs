@@ -558,6 +558,8 @@ export type PostComment = {
   media: PostCommentMedia[];
   fullName: string;
   initials: string;
+  avatarUrl: string | null;
+  role: string | null;
   createdAt: string;
   mine: boolean;
   likes: number;
@@ -643,6 +645,8 @@ type CommentJson = {
   media?: PostCommentMedia[] | null;
   full_name: string | null;
   initials: string | null;
+  avatar_url?: string | null;
+  role?: string | null;
   created_at: string;
   mine?: boolean | null;
   likes?: number | null;
@@ -719,6 +723,8 @@ function commentFromJson(row: CommentJson): PostComment {
     media: row.media ?? [],
     fullName: row.full_name ?? "",
     initials: row.initials ?? "",
+    avatarUrl: row.avatar_url ?? null,
+    role: row.role ?? null,
     createdAt: row.created_at,
     mine: row.mine ?? false,
     // The two newest replies carried on a card come from the view's jsonb, which
@@ -927,10 +933,9 @@ export async function fetchPost(id: string): Promise<FeedPost | null> {
 }
 
 export async function fetchComments(postId: string): Promise<PostComment[]> {
-  // The live feed_comments view predates author_id, so selecting it breaks the thread.
   const { data, error } = await supabase
     .from("feed_comments")
-    .select("id, body, media, full_name, initials, created_at, mine, likes, liked")
+    .select("id, author_id, body, media, full_name, initials, avatar_url, role, created_at, mine, likes, liked")
     .eq("post_id", postId)
     .order("created_at");
   if (!error) return (data as CommentJson[] | null ?? []).map(commentFromJson);
@@ -938,7 +943,7 @@ export async function fetchComments(postId: string): Promise<PostComment[]> {
 
   const legacy = await supabase
     .from("feed_comments")
-    .select("id, body, full_name, initials, created_at, mine, likes, liked")
+    .select("id, author_id, body, full_name, initials, created_at, mine, likes, liked")
     .eq("post_id", postId)
     .order("created_at");
   if (legacy.error) throw new Error(legacy.error.message);

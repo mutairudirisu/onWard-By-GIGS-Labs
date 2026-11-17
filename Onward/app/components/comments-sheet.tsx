@@ -111,6 +111,8 @@ export function CommentsSheet({
           media: created.media,
           fullName: me.name.trim() || "Someone",
           initials: me.initials || (me.name.slice(0, 1).toUpperCase() || "?"),
+          avatarUrl: me.avatarUrl || null,
+          role: me.role || null,
           createdAt: created.createdAt,
           mine: true,
           likes: 0,
@@ -224,23 +226,36 @@ export function CommentsSheet({
                       aria-label={`View ${comment.fullName || "commenter"}'s profile`}
                       className="shrink-0"
                     >
-                      <Avatar initials={comment.initials} />
+                      <Avatar initials={comment.initials} src={comment.avatarUrl} />
                     </Link>
                   ) : (
-                    <Avatar initials={comment.initials} />
+                    <Avatar initials={comment.initials} src={comment.avatarUrl} />
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="text-[11.5px] leading-[1.55] text-ink [overflow-wrap:anywhere]">
+                    <div className="flex min-w-0 items-center gap-1.5">
                       {comment.authorId ? (
                         <Link
                           href={`/people/${comment.authorId}`}
-                          className="font-bold hover:underline"
+                          className="truncate text-[11.5px] font-bold text-ink no-underline hover:no-underline"
                         >
                           {comment.fullName || "Someone"}
                         </Link>
                       ) : (
-                        <span className="font-bold">{comment.fullName || "Someone"}</span>
-                      )}{" "}
+                        <span className="truncate text-[11.5px] font-bold text-ink">
+                          {comment.fullName || "Someone"}
+                        </span>
+                      )}
+                      <span className="shrink-0 text-[9px] text-faint">·</span>
+                      <span className="shrink-0 text-[9px] text-faint">
+                        {timeAgo(comment.createdAt)}
+                      </span>
+                    </div>
+                    {comment.role ? (
+                      <p className="mt-0.5 truncate text-[9.5px] leading-tight text-muted">
+                        {comment.role}
+                      </p>
+                    ) : null}
+                    <p className="mt-1.5 text-[11.5px] leading-[1.55] text-ink [overflow-wrap:anywhere]">
                       {comment.body}
                     </p>
                     {comment.media.length ? (
@@ -261,7 +276,6 @@ export function CommentsSheet({
                       </div>
                     ) : null}
                     <div className="mt-1 flex items-center gap-3 text-[9.5px] text-faint">
-                      <span>{timeAgo(comment.createdAt)}</span>
                       {canType ? (
                         <button
                           type="button"

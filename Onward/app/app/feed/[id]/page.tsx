@@ -294,6 +294,8 @@ export default function PostPage() {
           media: created.media,
           fullName: me.name.trim() || "Someone",
           initials: me.initials || (me.name.slice(0, 1).toUpperCase() || "?"),
+          avatarUrl: me.avatarUrl || null,
+          role: me.role || null,
           createdAt: created.createdAt,
           mine: true,
           likes: 0,
