@@ -11,7 +11,8 @@ and on the server for delivery.
 
 1. Apply `supabase/migrations/20261111130000_web_push.sql`,
    `supabase/migrations/20261116170000_push_notification_automations.sql`, and
-   `supabase/migrations/20261118100000_comment_replies_and_social_push.sql`, plus
+   `supabase/migrations/20261118100000_comment_replies_and_social_push.sql`,
+   `supabase/migrations/20261118110000_nested_comment_threads.sql`, plus
    the API rate-limit migrations `20261113150000_api_rate_limits.sql` and
    `20261113153000_api_ip_rate_limits.sql` to the production Supabase project
    before deploying the corresponding API code.
@@ -50,8 +51,8 @@ and on the server for delivery.
   scheduled posts notify at their scheduled time. New comments notify the post
   author, and replies notify the parent commenter and post author. Tapping the
   notification opens the post; comment and reply alerts open its comments sheet.
-- Replies are stored as one-level threads beneath their parent comment. Deleting
-  a parent comment also deletes its replies.
+- Replies are stored beneath the specific comment they answer. Deleting a parent
+  comment also deletes its nested replies.
 - The admin console manages four optional automatic push campaigns: Monday
   motivation (08:30), a usage-based check-in (18:00 only when no activity was
   logged that day), a Friday reflection (16:00 when no onWard was logged that

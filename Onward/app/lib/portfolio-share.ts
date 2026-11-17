@@ -32,9 +32,14 @@ type SharedPortfolioPayload = {
 };
 
 function shareRpcError(error: { code?: string; message: string }) {
-  if (error.code === "PGRST202" || error.code === "42883") {
+  if (
+    error.code === "PGRST202" ||
+    error.code === "PGRST205" ||
+    error.code === "42883" ||
+    error.code === "42P01"
+  ) {
     return new Error(
-      "Public sharing is not enabled in the database yet. Apply the portfolio-share migration and refresh the API schema.",
+      "Public sharing is not enabled in the database yet. Apply 20261117120000_public_portfolio_shares.sql in Supabase and refresh the API schema.",
     );
   }
   return new Error(error.message);
@@ -48,7 +53,7 @@ export async function fetchMyPublicPortfolioShare(): Promise<string | null> {
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw shareRpcError(error);
   return data?.slug ?? null;
 }
 

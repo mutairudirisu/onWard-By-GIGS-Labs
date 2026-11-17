@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
   Ban,
@@ -40,10 +40,43 @@ import { timeAgo } from "@/lib/dates";
 import { useKeyboardInset } from "@/lib/keyboard";
 
 function visibleThreadRows(rows: PostComment[]) {
-  const ids = new Set(rows.map((comment) => comment.id));
-  return rows.filter(
-    (comment) => !comment.parentCommentId || ids.has(comment.parentCommentId),
+  const visibleIds = new Set(
+    rows.filter((comment) => !comment.parentCommentId).map((comment) => comment.id),
   );
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const comment of rows) {
+      if (
+        comment.parentCommentId &&
+        visibleIds.has(comment.parentCommentId) &&
+        !visibleIds.has(comment.id)
+      ) {
+        visibleIds.add(comment.id);
+        changed = true;
+      }
+    }
+  }
+  return rows.filter((comment) => visibleIds.has(comment.id));
+}
+
+function withoutCommentBranch(rows: PostComment[], parentId: string) {
+  const removedIds = new Set([parentId]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const comment of rows) {
+      if (
+        comment.parentCommentId &&
+        removedIds.has(comment.parentCommentId) &&
+        !removedIds.has(comment.id)
+      ) {
+        removedIds.add(comment.id);
+        changed = true;
+      }
+    }
+  }
+  return rows.filter((comment) => !removedIds.has(comment.id));
 }
 
 /**
@@ -210,11 +243,7 @@ export function CommentsSheet({
   async function remove(commentId: string) {
     try {
       await deleteComment(commentId);
-      setTotal(
-        (comments ?? []).filter(
-          (comment) => comment.id !== commentId && comment.parentCommentId !== commentId,
-        ),
-      );
+      setTotal(withoutCommentBranch(comments ?? [], commentId));
     } catch {
       toastError("Couldn't delete the comment");
     }
@@ -313,11 +342,7 @@ export function CommentsSheet({
     setActionBusy(true);
     try {
       await dismissComment(comment.id);
-      setTotal(
-        (comments ?? []).filter(
-          (row) => row.id !== comment.id && row.parentCommentId !== comment.id,
-        ),
-      );
+      setTotal(withoutCommentBranch(comments ?? [], comment.id));
       setActiveActionComment(null);
       toastSuccess("Comment hidden from your view");
     } catch (error) {
@@ -349,7 +374,7 @@ export function CommentsSheet({
     const name = comment.fullName.split(" ")[0] || "someone";
     const previousName = replyTarget?.name.split(" ")[0];
     setReplyTarget({
-      id: comment.parentCommentId ?? comment.id,
+      id: comment.id,
       name: comment.fullName || name,
     });
     setDraft((prev) => {
@@ -411,14 +436,14 @@ export function CommentsSheet({
                     aria-pressed={followingIds.has(comment.authorId)}
                     disabled={followBusyIds.has(comment.authorId)}
                     onClick={() => void toggleFollow(comment)}
-                    className="rounded-full px-2 py-1 text-[9.5px] font-bold text-lime-deep transition hover:bg-lime-soft disabled:opacity-50"
+                    className="shrink-0 rounded-full px-1 py-1 text-[11px] font-semibold text-blue-600 transition hover:text-blue-700 disabled:opacity-50"
                   >
                     {followingIds.has(comment.authorId) ? "Following" : "Follow"}
                   </button>
                 ) : (
                   <Link
                     href="/sign-in"
-                    className="rounded-full px-2 py-1 text-[9.5px] font-bold text-lime-deep no-underline transition hover:bg-lime-soft"
+                    className="shrink-0 rounded-full px-1 py-1 text-[11px] font-semibold text-blue-600 no-underline transition hover:text-blue-700"
                   >
                     Follow
                   </Link>
@@ -515,6 +540,44 @@ export function CommentsSheet({
   const total = threadRows.length;
   const canType = Boolean(user);
 
+  function renderThread(comment: PostComment): ReactNode {
+    const replies = repliesByParent.get(comment.id) ?? [];
+    const expanded = Boolean(expandedReplyGroups[comment.id]);
+    const visibleReplies = expanded ? replies : replies.slice(0, 2);
+
+    return (
+      <li key={comment.id} className="border-b border-line py-2 last:border-0">
+        {renderComment(comment)}
+        {replies.length ? (
+          <div className="ml-4 border-l border-dash pl-3">
+            <ul className="divide-y divide-line/70">
+              {visibleReplies.map((reply) => renderThread(reply))}
+            </ul>
+            {replies.length > 2 ? (
+              <button
+                type="button"
+                aria-expanded={expanded}
+                onClick={() =>
+                  setExpandedReplyGroups((current) => ({
+                    ...current,
+                    [comment.id]: !current[comment.id],
+                  }))
+                }
+                className="mt-1 cursor-pointer py-1 text-[10px] font-semibold text-lime-deep"
+              >
+                {expanded
+                  ? "Collapse replies"
+                  : `See ${replies.length - 2} more ${
+                      replies.length - 2 === 1 ? "reply" : "replies"
+                    }`}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </li>
+    );
+  }
+
   return (
     <div
       className="fixed inset-0 z-[75] flex items-end justify-center md:items-center md:px-6 md:py-8"
@@ -563,42 +626,7 @@ export function CommentsSheet({
             </p>
           ) : (
             <ul className="pb-2">
-              {rootComments.map((comment) => {
-                const replies = repliesByParent.get(comment.id) ?? [];
-                const expanded = Boolean(expandedReplyGroups[comment.id]);
-                const visibleReplies = expanded ? replies : replies.slice(0, 2);
-                return (
-                  <li key={comment.id} className="border-b border-line py-2 last:border-0">
-                    {renderComment(comment)}
-                    {replies.length ? (
-                      <div className="ml-4 border-l border-dash pl-3">
-                        <div className="divide-y divide-line/70">
-                          {visibleReplies.map((reply) => renderComment(reply))}
-                        </div>
-                        {replies.length > 2 ? (
-                          <button
-                            type="button"
-                            aria-expanded={expanded}
-                            onClick={() =>
-                              setExpandedReplyGroups((current) => ({
-                                ...current,
-                                [comment.id]: !current[comment.id],
-                              }))
-                            }
-                            className="mt-1 cursor-pointer py-1 text-[10px] font-semibold text-lime-deep"
-                          >
-                            {expanded
-                              ? "Collapse replies"
-                              : `See ${replies.length - 2} more ${
-                                  replies.length - 2 === 1 ? "reply" : "replies"
-                                }`}
-                          </button>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </li>
-                );
-              })}
+              {rootComments.map((comment) => renderThread(comment))}
             </ul>
           )}
         </div>
