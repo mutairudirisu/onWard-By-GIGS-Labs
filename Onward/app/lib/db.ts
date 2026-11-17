@@ -1846,12 +1846,13 @@ export async function addComment(
   const trimmed = body.trim();
   if (trimmed.length > POST_COMMENT_MAX) throw new Error("Keep comments under 500 characters.");
   if (!trimmed && !files.length) throw new Error("Write a comment or attach an image.");
-  if (files.length > 4) throw new Error("Attach up to four images.");
+  if (files.length > 4) throw new Error("Attach up to four images or GIFs.");
 
   const extensions: Record<string, string> = {
     "image/jpeg": "jpg",
     "image/png": "png",
     "image/webp": "webp",
+    "image/gif": "gif",
   };
   const userId = await signedInUserId();
   const media: PostCommentMedia[] = [];
@@ -1859,7 +1860,7 @@ export async function addComment(
   try {
     for (const file of files) {
       const extension = extensions[file.type];
-      if (!extension) throw new Error("Choose a JPG, PNG or WebP image.");
+      if (!extension) throw new Error("Choose a JPG, PNG, WebP or GIF image.");
       if (file.size > POST_MEDIA_MAX_BYTES) {
         throw new Error(`"${file.name}" is over the 25MB limit.`);
       }
@@ -1869,7 +1870,7 @@ export async function addComment(
         .from(POST_MEDIA_BUCKET)
         .upload(path, file, { contentType: file.type, upsert: false });
       if (error) throw new Error(error.message);
-      media.push({ kind: "image", path });
+      media.push({ kind: file.type === "image/gif" ? "gif" : "image", path });
     }
 
     let { data, error } = await supabase
@@ -1880,7 +1881,7 @@ export async function addComment(
     if (error && isMissingCommentMediaColumn(error)) {
       if (files.length) {
         throw new Error(
-          "Image attachments need the comment media migration. Apply the latest comment media repair migration and try again.",
+          "Media attachments need the comment media migration. Apply the latest comment media repair migration and try again.",
         );
       }
       const legacy = await supabase
