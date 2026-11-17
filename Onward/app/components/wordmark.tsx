@@ -35,7 +35,9 @@ export function Wordmark({
       } ${className}`}
     >
       {showMark ? <LogoMark /> : null}
-      <span>onWard</span>
+      <span>
+        <span className="text-lime-deep">o</span>nWard
+      </span>
     </span>
   );
 }
