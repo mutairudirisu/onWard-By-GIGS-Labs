@@ -9,7 +9,6 @@ import { useAuth } from "@/components/auth";
 import { Wordmark } from "@/components/wordmark";
 import { fetchSharedPortfolio } from "@/lib/portfolio-share";
 import type { PortfolioModel } from "@/lib/portfolio";
-import { Sprout } from "lucide-react";
 
 function message(error: unknown) {
   return error instanceof Error ? error.message : "This portfolio could not be loaded.";
@@ -40,10 +39,7 @@ export default function SharedPortfolioPage() {
   return (
     <PhoneShell>
       <div className="mb-5 flex items-center justify-between">
-        <span className="flex items-center gap-1.5">
-          <Sprout className="h-3.5 w-3.5 text-lime-deep" strokeWidth={2.2} />
-          <Wordmark className="text-[12px]" />
-        </span>
+        <Wordmark className="text-[12px]" />
         <span className="text-[8px] font-semibold uppercase tracking-[0.14em] text-muted">
           Shared work portfolio
         </span>

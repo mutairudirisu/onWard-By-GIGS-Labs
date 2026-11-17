@@ -12,6 +12,7 @@ import { CalendarDays, FileText, Globe, Image, Share2, Star, Search, Trophy, X }
 import { ShareSheet, wardShareText } from "@/components/share-sheet";
 import { haptic } from "@/lib/haptics";
 import { signedWardEvidenceUrl } from "@/lib/db";
+import { PortfolioShareControls } from "@/components/portfolio-share-controls";
 
 const TABS = ["Timeline", "By skill", "Portfolio"] as const;
 type Tab = (typeof TABS)[number];
@@ -262,6 +263,7 @@ export default function OnWardsPage() {
         }
         actions={<NewButton href="/onwards/new">Log an onWard</NewButton>}
       />
+      <PortfolioShareControls />
 
       {(!hydrated || onWards.length > 0) && (
         <div className="mb-5 grid gap-4 lg:mb-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">

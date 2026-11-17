@@ -7,6 +7,7 @@ type SharedPortfolioPayload = {
   user: {
     name: string | null;
     initials: string | null;
+    avatarUrl?: string | null;
     role: string | null;
     location: string | null;
     bio: string | null;
@@ -30,6 +31,15 @@ type SharedPortfolioPayload = {
   } | null;
 };
 
+function shareRpcError(error: { code?: string; message: string }) {
+  if (error.code === "PGRST202" || error.code === "42883") {
+    return new Error(
+      "Public sharing is not enabled in the database yet. Apply the portfolio-share migration and refresh the API schema.",
+    );
+  }
+  return new Error(error.message);
+}
+
 export async function fetchMyPublicPortfolioShare(): Promise<string | null> {
   const { data, error } = await supabase
     .from("portfolio_shares")
@@ -44,7 +54,7 @@ export async function fetchMyPublicPortfolioShare(): Promise<string | null> {
 
 export async function enablePublicPortfolioShare(): Promise<string> {
   const { data, error } = await supabase.rpc("enable_public_portfolio_share");
-  if (error) throw new Error(error.message);
+  if (error) throw shareRpcError(error);
   if (typeof data !== "string" || !data) {
     throw new Error("The share link could not be created.");
   }
@@ -53,12 +63,12 @@ export async function enablePublicPortfolioShare(): Promise<string> {
 
 export async function disablePublicPortfolioShare(): Promise<void> {
   const { error } = await supabase.rpc("disable_public_portfolio_share");
-  if (error) throw new Error(error.message);
+  if (error) throw shareRpcError(error);
 }
 
 export async function fetchSharedPortfolio(slug: string): Promise<PortfolioModel | null> {
   const { data, error } = await supabase.rpc("get_public_portfolio", { p_slug: slug });
-  if (error) throw new Error(error.message);
+  if (error) throw shareRpcError(error);
   if (!data) return null;
 
   const payload = data as SharedPortfolioPayload;
@@ -82,6 +92,7 @@ export async function fetchSharedPortfolio(slug: string): Promise<PortfolioModel
     user: {
       name: payload.user.name ?? "onWard member",
       initials: payload.user.initials ?? "",
+      avatarUrl: payload.user.avatarUrl,
       role: payload.user.role ?? "",
       location: payload.user.location ?? "",
       bio: payload.user.bio ?? "",

@@ -1,14 +1,15 @@
 import { FileText } from "lucide-react";
 import { Tag } from "@/components/ui";
+import { Avatar } from "@/components/feed-post";
 import type { PortfolioModel } from "@/lib/portfolio";
 
 export function PortfolioDetails({ portfolio }: { portfolio: PortfolioModel }) {
   return (
     <>
       <section className="mb-5">
-        <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-lime-soft text-[12px] font-bold text-ink">
-          {portfolio.initials}
-        </span>
+        <div className="mb-3">
+          <Avatar initials={portfolio.initials} src={portfolio.avatarUrl} size="lg" />
+        </div>
         <h1 className="text-[24px] font-bold leading-tight tracking-tight text-ink">
           {portfolio.name}
         </h1>

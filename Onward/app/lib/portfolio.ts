@@ -24,6 +24,7 @@ export type PortfolioSkill = {
 export type PortfolioModel = {
   name: string;
   initials: string;
+  avatarUrl?: string;
   role?: string;
   location?: string;
   bio?: string;
@@ -36,7 +37,15 @@ export type PortfolioModel = {
 };
 
 type Source = {
-  user: { name: string; initials: string; role?: string; location?: string; bio?: string; email?: string };
+  user: {
+    name: string;
+    initials: string;
+    avatarUrl?: string | null;
+    role?: string;
+    location?: string;
+    bio?: string;
+    email?: string;
+  };
   onWards: OnWard[];
   skills: string[];
   days: ActivityDay[];
@@ -102,6 +111,7 @@ export function buildPortfolio({
   return {
     name: user.name,
     initials: user.initials,
+    avatarUrl: user.avatarUrl || undefined,
     role: user.role?.trim() || undefined,
     location: user.location?.trim() || undefined,
     bio: user.bio?.trim() || undefined,

@@ -93,6 +93,7 @@ as $$
     'user', pg_catalog.jsonb_build_object(
       'name', p.display_name,
       'initials', coalesce(p.initials, ''),
+      'avatarUrl', p.avatar_url,
       'role', p.role,
       'location', p.location,
       'bio', p.bio

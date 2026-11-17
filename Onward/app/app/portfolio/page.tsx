@@ -2,11 +2,10 @@
 
 import { PhoneShell } from "@/components/phone-shell";
 import { PortfolioDetails } from "@/components/portfolio-details";
-import { PortfolioShareControls } from "@/components/portfolio-share-controls";
 import { PortfolioDownloadButton, usePortfolio } from "@/components/portfolio-download";
 import { BackButton, Button } from "@/components/ui";
 import { Wordmark } from "@/components/wordmark";
-import { ArrowRight, FileText, Mail, Sprout } from "lucide-react";
+import { ArrowRight, FileText, Mail } from "lucide-react";
 
 export default function EmployerPortfolioPage() {
   const portfolio = usePortfolio();
@@ -16,10 +15,7 @@ export default function EmployerPortfolioPage() {
       <div className="mb-5 flex items-center justify-between">
         <span className="flex items-center gap-2">
           <BackButton label="Back to portfolio" fallback="/profile" />
-          <span className="flex items-center gap-1.5">
-            <Sprout className="h-3.5 w-3.5 text-lime-deep" strokeWidth={2.2} />
-            <Wordmark className="text-[12px]" />
-          </span>
+          <Wordmark className="text-[12px]" />
         </span>
         <span className="text-[8px] font-semibold uppercase tracking-[0.14em] text-muted">
           Work portfolio
@@ -27,7 +23,6 @@ export default function EmployerPortfolioPage() {
       </div>
 
       <PortfolioDetails portfolio={portfolio} />
-      <PortfolioShareControls />
 
       <h2 className="mb-1.5 text-[13px] font-bold tracking-tight text-ink">
         Let&apos;s talk about what&apos;s next.
