@@ -1,7 +1,8 @@
 # Production push notifications
 
-Background reminders are delivered by the Vercel Cron route and Web Push. The
-browser's service worker displays notifications and handles notification clicks.
+Background reminders are delivered by Supabase Cron through the Vercel API
+route and Web Push. The browser's service worker displays notifications and
+handles notification clicks.
 Checklist reminders are stored on the device as before and are also scheduled
 on the server; scheduled focus sessions are kept locally for the device's list
 and on the server for delivery.
@@ -25,17 +26,23 @@ and on the server for delivery.
    - `VAPID_SUBJECT`: monitored `mailto:` address or the production site URL.
    - `SUPABASE_SERVICE_ROLE_KEY`: Supabase service-role key; server-only.
    - `CRON_SECRET`: long random secret used to authenticate the cron endpoint.
-4. Deploy the app from `app` with a Vercel plan that supports a one-minute cron
-   interval. `vercel.json` calls `/api/cron/push` once per minute. Configure
-   all secrets for the production deployment before enabling reminders.
-5. In an installed PWA or supported browser, sign in and turn on Push
+4. Deploy the app from `app` on your current Vercel plan. The project does not
+   declare a Vercel Cron because Hobby plans reject schedules more frequent than
+   daily. After deployment, remove any old Vercel Cron for `/api/cron/push` if
+   one remains in the Vercel dashboard.
+5. In the Supabase Dashboard, enable the `pg_cron`, `pg_net`, and Vault
+   extensions. Add a Vault secret named `onward_cron_secret` whose value is the
+   same `CRON_SECRET` configured in Vercel. Do not put the value in source code.
+6. After deploying, run `supabase/push-cron-setup.sql` in the Supabase SQL
+   Editor. It calls `/api/cron/push` every minute through Supabase Cron.
+7. In an installed PWA or supported browser, sign in and turn on Push
    notifications in Settings. Permission is requested only after that user
    action; each browser/device gets its own subscription.
 
 ## Behavior and limitations
 
 - Reminder times are sent as absolute UTC instants calculated from the device's
-  local time zone. The cron checks due items at one-minute intervals.
+  local time zone. Supabase Cron checks due items at one-minute intervals.
 - The server checks the account's existing `user_settings.notifications`
   preference immediately before delivery. Turning it off suppresses delivery.
 - The admin console manages four optional automatic push campaigns: Monday
@@ -55,13 +62,16 @@ and on the server for delivery.
 - Android supports Web Push in installed PWAs on current browsers. iOS/iPadOS
   requires an installed Home Screen web app and iOS/iPadOS 16.4 or newer.
   Browsers without Push API support fall back to app-open reminders.
-- Vercel Cron is not invoked by local development. Test schedules on a deployed
+- Supabase Cron is not invoked by local development. Test schedules on a deployed
   preview/production environment after applying the migration and configuring
   secrets. The cron endpoint rejects requests without `CRON_SECRET`.
 
 ## Operational checks
 
 - Confirm a device appears in `push_subscriptions` after enabling notifications.
+- Confirm `onward-push-delivery` appears in `cron.job` and check its recent
+  results in `cron.job_run_details`. The asynchronous HTTP response is recorded
+  in `net._http_response`.
 - Schedule a checklist or focus notification one or two minutes ahead and check
   `push_jobs` for the due job, then its `sent_at`.
 - Repeated cron runs cannot claim a job concurrently. Temporary endpoint errors
