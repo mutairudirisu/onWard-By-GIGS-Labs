@@ -39,7 +39,7 @@ const PROGRESS = [
   { href: "/leaderboard", label: "Leaderboard", Icon: Trophy },
   { href: "/insights", label: "Insights", Icon: BarChart3 },
   { href: "/student", label: "Student space", Icon: GraduationCap },
-  { href: "/cv", label: "CV Builder", Icon: FileText },
+  { href: "/cv", label: "CV Builder", Icon: FileText, comingSoon: process.env.NODE_ENV === "production" },
 ];
 
 const AUTH_ROUTES = [
@@ -70,7 +70,13 @@ function NavGroup({
   newPosts = 0,
 }: {
   title: string;
-  items: { href: string; label: string; Icon: typeof Home; badge?: boolean }[];
+  items: {
+    href: string;
+    label: string;
+    Icon: typeof Home;
+    badge?: boolean;
+    comingSoon?: boolean;
+  }[];
   pathname: string;
   unread?: number;
   newPosts?: number;
@@ -81,9 +87,24 @@ function NavGroup({
         {title}
       </p>
       <div className="space-y-0.5">
-        {items.map(({ href, label, Icon, badge }) => {
+        {items.map(({ href, label, Icon, badge, comingSoon }) => {
           const active = isActive(pathname, href);
           const count = badge ? unread : href === "/feed" ? newPosts : 0;
+          if (comingSoon) {
+            return (
+              <div
+                key={href}
+                aria-disabled="true"
+                className="flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-semibold text-inksoft opacity-65"
+              >
+                <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+                <span>{label}</span>
+                <span className="ml-auto rounded-full bg-cream px-1.5 py-0.5 text-[7px] font-bold uppercase tracking-[0.06em] text-muted">
+                  Coming soon
+                </span>
+              </div>
+            );
+          }
           return (
             <Link
               key={href}

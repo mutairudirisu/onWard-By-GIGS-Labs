@@ -92,7 +92,7 @@ function MonthInput({
   );
 }
 
-export default function CvPage() {
+function CvBuilderPage() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const profile = useCurrentUser();
@@ -1193,4 +1193,31 @@ export default function CvPage() {
       />
     </PhoneShell>
   );
+}
+
+function CvComingSoonPage() {
+  return (
+    <PhoneShell>
+      <div className="mb-5 flex items-center justify-between">
+        <BackButton label="Back to profile" fallback="/profile" />
+        <Wordmark className="text-[12px]" />
+      </div>
+      <section className="card px-5 py-8 text-center">
+        <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-lime-soft text-lime-deep">
+          <FileText className="h-6 w-6" />
+        </span>
+        <h1 className="text-[18px] font-bold tracking-tight text-ink">CV Builder</h1>
+        <p className="mx-auto mt-2 max-w-[280px] text-[12px] leading-[1.6] text-muted">
+          The CV builder is coming soon. Your onWard portfolio is ready to share in the meantime.
+        </p>
+        <Button href="/portfolio" variant="secondary" className="mt-5">
+          View your portfolio
+        </Button>
+      </section>
+    </PhoneShell>
+  );
+}
+
+export default function CvPage() {
+  return process.env.NODE_ENV === "production" ? <CvComingSoonPage /> : <CvBuilderPage />;
 }

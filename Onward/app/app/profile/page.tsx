@@ -8,6 +8,7 @@ import { PhoneShell } from "@/components/phone-shell";
 import { ReferralCard } from "@/components/referral-card";
 import { ShareButton } from "@/components/share-button";
 import { Button, PageHeader, Tag } from "@/components/ui";
+import { CvEntryButton } from "@/components/cv-entry-button";
 import { ProBadge } from "@/components/pro";
 import { useStore } from "@/components/store";
 import { useCurrentUser } from "@/components/auth";
@@ -283,9 +284,9 @@ export default function ProfilePage() {
           </Button>
 
           <div className="mt-2">
-            <Button href="/cv" variant="secondary" iconLeft={<FileDown className="h-4 w-4" />}>
+            <CvEntryButton variant="secondary" iconLeft={<FileDown className="h-4 w-4" />}>
               My CV
-            </Button>
+            </CvEntryButton>
           </div>
 
           <p className="pt-2 text-center text-[9.5px] font-medium tracking-[0.08em] text-faint">

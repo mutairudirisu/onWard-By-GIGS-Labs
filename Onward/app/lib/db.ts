@@ -2514,6 +2514,49 @@ export async function unfollowPerson(id: string): Promise<void> {
   fail(error);
 }
 
+export async function fetchFollowingIds(personIds: string[]): Promise<Set<string>> {
+  if (!personIds.length) return new Set();
+  const userId = await signedInUserId();
+  const { data, error } = await supabase
+    .from("follows")
+    .select("following_id")
+    .eq("follower_id", userId)
+    .in("following_id", personIds);
+  fail(error);
+  return new Set(
+    ((data ?? []) as { following_id: string }[]).map((row) => row.following_id),
+  );
+}
+
+export type CommentReportReason = "ai_slop" | "other";
+
+export async function blockPerson(id: string): Promise<void> {
+  const { error } = await supabase.rpc("block_person", { p_person: id });
+  fail(error);
+}
+
+export async function dismissComment(commentId: string): Promise<void> {
+  const userId = await signedInUserId();
+  const { error } = await supabase
+    .from("dismissed_comments")
+    .insert({ user_id: userId, comment_id: commentId });
+  fail(error);
+}
+
+export async function reportComment(
+  commentId: string,
+  reason: CommentReportReason,
+): Promise<void> {
+  const userId = await signedInUserId();
+  const { error } = await supabase
+    .from("comment_reports")
+    .insert({ reporter_id: userId, comment_id: commentId, reason });
+  if (error?.code === "23505") {
+    throw new Error("You have already sent this report");
+  }
+  fail(error);
+}
+
 export async function fetchFollowList(
   personId: string,
   kind: "followers" | "following",

@@ -5,7 +5,11 @@ import { Check, Link2, Loader2, MoreHorizontal, Search, Send, X } from "lucide-r
 import { Avatar } from "@/components/feed-post";
 import { useSheetDrag } from "@/components/sheet-drag";
 import { PeopleSkeleton } from "@/components/skeleton";
-import { TARGETS } from "@/components/share-sheet";
+import {
+  ShareTargetIcon,
+  TARGETS,
+  type Target,
+} from "@/components/share-sheet";
 import { toastError, toastSuccess } from "@/components/toast";
 import { useKeyboardInset } from "@/lib/keyboard";
 import {
@@ -143,6 +147,40 @@ export function ExchangeShareSheet({
     }
   }
 
+  async function shareToInstagram(target: Target) {
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ text: shareText, url: permalink });
+        onClose();
+      } catch (error) {
+        if (!(error instanceof Error && error.name === "AbortError")) {
+          toastError("Couldn't open Instagram sharing");
+        }
+      }
+      return;
+    }
+
+    window.open(target.href(shareText, permalink), "_blank", "noopener,noreferrer");
+    try {
+      await navigator.clipboard.writeText(`${shareText}\n\n${permalink}`);
+      setCopied(true);
+      toastSuccess("Copied. Paste the link into Instagram.");
+      onClose();
+    } catch {
+      toastError("Couldn't copy the link for Instagram");
+    }
+  }
+
+  async function shareMoreApps() {
+    try {
+      await navigator.share({ text: shareText, url: permalink });
+    } catch (error) {
+      if (!(error instanceof Error && error.name === "AbortError")) {
+        toastError("Couldn't open the share options");
+      }
+    }
+  }
+
   if (!open || !target) return null;
 
   const rows = people ?? [];
@@ -257,23 +295,43 @@ export function ExchangeShareSheet({
             Or post it where your other audience is
           </p>
           <div className="wheel flex gap-2 overflow-x-auto">
-            {TARGETS.map((t) => (
-              <a
-                key={t.id}
-                href={t.href(shareText, permalink)}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={onClose}
-                className="flex w-[68px] shrink-0 flex-col items-center gap-1.5"
-              >
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-lime-soft text-[13px] font-bold text-ink">
-                  {t.badge}
-                </span>
-                <span className="text-center text-[9.5px] leading-tight text-inksoft">
-                  {t.label}
-                </span>
-              </a>
-            ))}
+            {TARGETS.map((target) => {
+              const content = (
+                <>
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full border border-line bg-white">
+                    <ShareTargetIcon target={target} />
+                  </span>
+                  <span className="text-center text-[9.5px] leading-tight text-inksoft">
+                    {target.label}
+                  </span>
+                </>
+              );
+              const className =
+                "flex w-[68px] shrink-0 flex-col items-center gap-1.5";
+
+              return target.nativeShare ? (
+                <button
+                  key={target.id}
+                  type="button"
+                  aria-label="Share to Instagram"
+                  onClick={() => void shareToInstagram(target)}
+                  className={`${className} cursor-pointer`}
+                >
+                  {content}
+                </button>
+              ) : (
+                <a
+                  key={target.id}
+                  href={target.href(shareText, permalink)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={onClose}
+                  className={className}
+                >
+                  {content}
+                </a>
+              );
+            })}
             <button
               type="button"
               onClick={() => void copyLink()}
@@ -293,7 +351,7 @@ export function ExchangeShareSheet({
             {hasNativeShare ? (
               <button
                 type="button"
-                onClick={() => void navigator.share({ text: shareText, url: permalink }).catch(() => undefined)}
+                onClick={() => void shareMoreApps()}
                 className="flex w-[68px] shrink-0 cursor-pointer flex-col items-center gap-1.5"
               >
                 <span className="flex h-9 w-9 items-center justify-center rounded-full bg-cream text-ink">

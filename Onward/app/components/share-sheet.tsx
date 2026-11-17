@@ -1,14 +1,31 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Mail } from "lucide-react";
+import {
+  siFacebook,
+  siGmail,
+  siInstagram,
+  siWhatsapp,
+  siX,
+} from "simple-icons";
 import { Modal } from "@/components/modal";
 import { TextArea } from "@/components/ui";
+import { toastError, toastSuccess } from "@/components/toast";
 
+type BrandIconData = { title: string; hex: string; path: string; viewBox?: string };
+const LINKEDIN_ICON: BrandIconData = {
+  title: "LinkedIn",
+  hex: "0A66C2",
+  viewBox: "0 0 24 24",
+  path:
+    "M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.35V9h3.414v1.561h.049c.476-.9 1.637-1.85 3.37-1.85 3.601 0 4.268 2.37 4.268 5.455v6.286ZM5.337 7.433a2.062 2.062 0 1 1 0-4.124 2.062 2.062 0 0 1 0 4.124ZM7.119 20.452H3.555V9h3.564v11.452ZM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003Z",
+};
 export type Target = {
   id: string;
   label: string;
-  badge: string;
+  icon: BrandIconData | "mail";
+  nativeShare?: boolean;
   href: (shareText: string, url: string) => string;
 };
 
@@ -18,38 +35,73 @@ export const TARGETS: Target[] = [
   {
     id: "linkedin",
     label: "LinkedIn post",
-    badge: "in",
+    icon: LINKEDIN_ICON,
     href: (text, url) =>
       `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(`${text}\n\n${url}`)}`,
   },
   {
     id: "x",
     label: "X / Twitter",
-    badge: "X",
+    icon: siX,
     href: (text, url) =>
       `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
   },
   {
     id: "whatsapp",
     label: "WhatsApp",
-    badge: "W",
+    icon: siWhatsapp,
     href: (text, url) => `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`,
   },
   {
     id: "facebook",
     label: "Facebook",
-    badge: "f",
+    icon: siFacebook,
     href: (_text, url) =>
       `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
   },
   {
+    id: "gmail",
+    label: "Gmail",
+    icon: siGmail,
+    href: (text, url) =>
+      `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent("Shared from onWard")}&body=${encodeURIComponent(`${text}\n\n${url}`)}`,
+  },
+  {
+    id: "instagram",
+    label: "Instagram",
+    icon: siInstagram,
+    nativeShare: true,
+    href: () => "https://www.instagram.com/",
+  },
+  {
     id: "email",
     label: "Email",
-    badge: "@",
+    icon: "mail",
     href: (text, url) =>
-      `mailto:?body=${encodeURIComponent(`${text}\n\n${url}`)}`,
+      `mailto:?subject=${encodeURIComponent("Shared from onWard")}&body=${encodeURIComponent(`${text}\n\n${url}`)}`,
   },
 ];
+
+export function ShareTargetIcon({
+  target,
+  className = "h-[18px] w-[18px]",
+}: {
+  target: Target;
+  className?: string;
+}) {
+  if (target.icon === "mail") {
+    return <Mail className={`${className} text-inksoft`} aria-hidden="true" />;
+  }
+  return (
+    <svg
+      viewBox={target.icon.viewBox ?? "0 0 24 24"}
+      className={className}
+      aria-hidden="true"
+    >
+      <path d={target.icon.path} fill={`#${target.icon.hex}`} />
+    </svg>
+  );
+}
 
 export function ShareSheet({
   open,
@@ -82,15 +134,41 @@ export function ShareSheet({
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
-      /* clipboard unavailable */
+      toastError("Couldn't copy the share text");
+    }
+  }
+
+  async function shareToInstagram(target: Target) {
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ text, url });
+        onClose();
+      } catch (error) {
+        if (!(error instanceof Error && error.name === "AbortError")) {
+          toastError("Couldn't open Instagram sharing");
+        }
+      }
+      return;
+    }
+
+    window.open(target.href(text, url), "_blank", "noopener,noreferrer");
+    try {
+      await navigator.clipboard.writeText(`${text}\n\n${url}`);
+      setCopied(true);
+      toastSuccess("Copied. Paste the link into Instagram.");
+      onClose();
+    } catch {
+      toastError("Couldn't copy the link for Instagram");
     }
   }
 
   async function nativeShare() {
     try {
       await navigator.share({ text, url });
-    } catch {
-      /* user dismissed the sheet */
+    } catch (error) {
+      if (!(error instanceof Error && error.name === "AbortError")) {
+        toastError("Couldn't open the share options");
+      }
     }
   }
 
@@ -106,23 +184,42 @@ export function ShareSheet({
         aria-label="Share text"
       />
       <div className="mt-4 grid grid-cols-3 gap-2">
-        {TARGETS.map((t) => (
-          <a
-            key={t.id}
-            href={t.href(text, url)}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={onClose}
-            className="flex flex-col items-center gap-2 rounded-2xl border border-line bg-paper px-2 py-3.5 transition hover:border-lime-deep/60 active:scale-[0.98]"
-          >
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-lime-soft text-[13px] font-bold text-ink">
-              {t.badge}
-            </span>
-            <span className="text-[10.5px] font-semibold leading-tight text-inksoft">
-              {t.label}
-            </span>
-          </a>
-        ))}
+        {TARGETS.map((target) => {
+          const content = (
+            <>
+              <span className="flex h-9 w-9 items-center justify-center rounded-full border border-line bg-white">
+                <ShareTargetIcon target={target} />
+              </span>
+              <span className="text-[10.5px] font-semibold leading-tight text-inksoft">
+                {target.label}
+              </span>
+            </>
+          );
+          const className =
+            "flex flex-col items-center gap-2 rounded-2xl border border-line bg-paper px-2 py-3.5 transition hover:border-lime-deep/60 active:scale-[0.98]";
+
+          return target.nativeShare ? (
+            <button
+              key={target.id}
+              type="button"
+              onClick={() => void shareToInstagram(target)}
+              className={`${className} cursor-pointer`}
+            >
+              {content}
+            </button>
+          ) : (
+            <a
+              key={target.id}
+              href={target.href(text, url)}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={onClose}
+              className={className}
+            >
+              {content}
+            </a>
+          );
+        })}
         <button
           type="button"
           onClick={copy}
