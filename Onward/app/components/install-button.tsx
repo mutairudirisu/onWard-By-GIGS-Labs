@@ -73,6 +73,15 @@ export function InstallPromptOnVisit() {
   }
 
   async function install() {
+    if (!canInstall) {
+      setInstallError(
+        ios
+          ? "Follow the Share and Add to Home Screen steps above to install onWard."
+          : "Choose “Install onWard” or “Add to Home Screen” from your browser menu to continue.",
+      );
+      return;
+    }
+
     try {
       await promptInstall();
       dismiss();
@@ -121,24 +130,14 @@ export function InstallPromptOnVisit() {
         ) : null}
 
         <div className="flex gap-2">
-          {canInstall ? (
-            <button
-              type="button"
-              onClick={() => void install()}
-              className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-ink px-4 text-[13px] font-bold text-paper transition hover:bg-dark"
-            >
-              <Download className="h-4 w-4" />
-              Install onWard
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={dismiss}
-              className="min-h-11 flex-1 rounded-xl bg-ink px-4 text-[13px] font-bold text-paper transition hover:bg-dark"
-            >
-              Got it
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => void install()}
+            className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-lime px-4 text-[13px] font-bold text-dark transition hover:bg-lime-deep"
+          >
+            <Download className="h-4 w-4" />
+            Install now
+          </button>
           <button
             type="button"
             onClick={dismiss}
