@@ -5,7 +5,6 @@ import { Check, Download, Share, Smartphone } from "lucide-react";
 import { Modal } from "@/components/modal";
 
 type BIPEvent = Event & { prompt: () => void; userChoice: Promise<{ outcome: string }> };
-const INSTALL_PROMPT_KEY = "onward.install-prompt-dismissed.v1";
 
 export function useInstallPrompt() {
   const [deferred, setDeferred] = useState<BIPEvent | null>(null);
@@ -66,22 +65,10 @@ export function InstallPromptOnVisit() {
       setOpen(false);
       return;
     }
-
-    try {
-      if (window.localStorage.getItem(INSTALL_PROMPT_KEY) !== "dismissed") {
-        setOpen(true);
-      }
-    } catch {
-      setOpen(true);
-    }
+    setOpen(true);
   }, [checked, installed]);
 
   function dismiss() {
-    try {
-      window.localStorage.setItem(INSTALL_PROMPT_KEY, "dismissed");
-    } catch {
-      // Keep the prompt usable for this visit if storage is unavailable.
-    }
     setOpen(false);
   }
 

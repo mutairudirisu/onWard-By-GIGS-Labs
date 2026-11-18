@@ -6,7 +6,7 @@
     <path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z" />
     <path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z" />
   </g>
-  <text x="72" y="48" font-family="Comfortaa, 'Helvetica Neue', Arial, sans-serif" font-size="35" font-weight="700" letter-spacing="-0.8" fill="#101108">onWard</text>
+  <text x="72" y="48" font-family="Comfortaa, 'Helvetica Neue', Arial, sans-serif" font-size="35" font-weight="700" letter-spacing="-0.8"><tspan fill="#B4E13A">o</tspan><tspan fill="#101108">nWard</tspan></text>
   <path d="M226 15v38" stroke="#86877B" stroke-opacity=".55" />
   <text x="242" y="30" font-family="Comfortaa, 'Helvetica Neue', Arial, sans-serif" font-size="10" font-weight="500" fill="#86877B">by</text>
   <text x="242" y="47" font-family="Comfortaa, 'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="700" fill="#101108">GIGS Labs</text>

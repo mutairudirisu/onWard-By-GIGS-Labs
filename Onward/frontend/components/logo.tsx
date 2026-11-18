@@ -47,7 +47,7 @@ export function Logo({
           dark ? "text-paper" : "text-ink"
         }`}
       >
-        onWard
+        <span className="text-lime-deep">o</span>nWard
       </span>
       <span className="ml-0.5 flex flex-col items-start leading-[1.05]">
         <span className={`text-[5px] font-medium ${dark ? "text-paper/55" : "text-muted"}`}>

@@ -35,7 +35,9 @@ export function Wordmark({
       } ${className}`}
     >
       <LogoMark />
-      <span>onWard</span>
+      <span>
+        <span className="text-lime-deep">o</span>nWard
+      </span>
       {suffix ? (
         <span
           className={`ml-1 rounded-md px-1.5 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wider ${

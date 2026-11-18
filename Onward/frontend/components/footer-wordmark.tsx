@@ -125,7 +125,7 @@ export function FooterWordmark() {
                   letterRefs.current[i] = el;
                 }}
                 className={`inline-block will-change-transform ${
-                  accent ? "text-lime" : "bg-clip-text text-transparent"
+                  accent ? "text-lime-deep" : "bg-clip-text text-transparent"
                 }`}
                 style={
                   accent
