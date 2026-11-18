@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseUrl =
+  process.env.NEXT_PUBLIC_SUPABASE_URL ??
+  "https://lakpaqruemdjyvwprfme.supabase.co";
 const supabaseOrigin = supabaseUrl ? new URL(supabaseUrl).origin : "";
 const supabaseWebsocket = supabaseUrl
   ? `${supabaseUrl.startsWith("https:") ? "wss:" : "ws:"}//${new URL(supabaseUrl).host}`
