@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { InstallButton } from "@/components/install-button";
 import { Wordmark } from "@/components/wordmark";
 import { useCurrentUser } from "@/components/auth";
 import { UnreadDot, useNotifications } from "@/components/notifications";
@@ -159,8 +158,6 @@ export function Sidebar() {
         <NavGroup title="Menu" items={MENU} pathname={pathname} unread={unread} newPosts={newPosts} />
         <NavGroup title="Progress" items={PROGRESS} pathname={pathname} />
       </nav>
-
-      <InstallButton className="mb-2 justify-center rounded-xl border border-dash px-3 py-2 text-[11.5px] font-semibold text-inksoft transition hover:border-lime-deep hover:text-ink" />
 
       <Link
         href="/profile"

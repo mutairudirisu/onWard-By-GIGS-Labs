@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { Avatar } from "@/components/feed-post";
 import { HeatLegend, HeatMap } from "@/components/heat-map";
-import { InstallButton } from "@/components/install-button";
 import { PhoneShell } from "@/components/phone-shell";
 import { ReferralCard } from "@/components/referral-card";
 import { ShareButton } from "@/components/share-button";
@@ -276,7 +275,6 @@ export default function ProfilePage() {
               </span>
               <span className="text-[11px] font-semibold text-muted">Theme, notifications</span>
             </Link>
-            <InstallButton className="card w-full items-center px-4 py-3.5 text-[13px] font-semibold text-ink lg:text-[14px]" />
           </div>
 
           <Button href="/portfolio" iconLeft={<FileText className="h-4 w-4" />}>
