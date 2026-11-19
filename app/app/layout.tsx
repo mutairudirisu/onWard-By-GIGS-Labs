@@ -1,12 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Comfortaa } from "next/font/google";
-import Script from "next/script";
 import { headers } from "next/headers";
 import "./globals.css";
 import { AuthGate, AuthProvider } from "@/components/auth";
 import { ChecklistReminderScheduler } from "@/components/checklist-widget";
 import { FeedbackPrompt } from "@/components/feedback-prompt";
-import { InstallFromLink } from "@/components/install-from-link";
 import { NotificationsProvider } from "@/components/notifications";
 import { NavigationHistoryTracker } from "@/components/navigation-history";
 import { FocusTimerScheduler } from "@/components/pomodoro-widget";
@@ -54,50 +52,11 @@ export const viewport: Viewport = {
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const requestHeaders = await headers();
-  const nonce = requestHeaders.get("x-nonce") ?? undefined;
+  await headers();
   return (
     <html lang="en" className={comfortaa.variable}>
       <body>
-        <Script id="onward-install-capture" strategy="beforeInteractive" nonce={nonce}>
-          {`(() => {
-            const url = new URL(window.location.href);
-            if (url.searchParams.get("install") !== "1") return;
-
-            const standalone =
-              window.matchMedia("(display-mode: standalone)").matches ||
-              window.navigator.standalone === true;
-            const state = window.__onWardInstallState = {
-              requested: !standalone,
-              installed: standalone,
-              prompt: null
-            };
-
-            url.searchParams.delete("install");
-            window.history.replaceState(
-              window.history.state,
-              "",
-              url.pathname + url.search + url.hash
-            );
-
-            if (standalone) return;
-
-            window.addEventListener("beforeinstallprompt", (event) => {
-              event.preventDefault();
-              if (!state.requested) return;
-              state.prompt = event;
-              window.dispatchEvent(new Event("onwardinstallpromptready"));
-            });
-            window.addEventListener("appinstalled", () => {
-              state.installed = true;
-              state.requested = false;
-              state.prompt = null;
-              window.dispatchEvent(new Event("onwardappinstalled"));
-            });
-          })();`}
-        </Script>
         <AuthProvider>
-          <InstallFromLink />
           <StoreProvider>
             <AuthGate>
               <NotificationsProvider>
