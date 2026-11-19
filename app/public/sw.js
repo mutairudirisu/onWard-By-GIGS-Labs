@@ -1,5 +1,10 @@
-const CACHE = "onward-shell-v3";
-const SHELL = ["/offline.html", "/manifest.webmanifest", "/icons/icon.svg"];
+const CACHE = "onward-shell-v4";
+const SHELL = [
+  "/offline.html",
+  "/manifest.webmanifest",
+  "/icons/icon.svg",
+  "/icons/icon-192.png",
+];
 
 self.addEventListener("install", (event) => {
   // No skipWaiting here: a new bundle stays in the wings until the page asks

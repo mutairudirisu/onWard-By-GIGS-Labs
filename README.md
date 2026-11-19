@@ -258,70 +258,36 @@ npm run lint
 npm audit --audit-level=high
 ```
 
-```powershell
-cd admin
-npm run build
-npm run lint
-npm audit --audit-level=high
-```
+Repeat `npm run build` and `npm audit --audit-level=high` for `admin/` and `frontend/`. The repository workflow also performs dependency audits and CodeQL analysis for JavaScript and TypeScript.
 
-```powershell
-cd frontend
-npm run build
-npm audit --audit-level=high
-```
+## PWA and push notifications
 
-The repository also runs dependency audits and CodeQL analysis through GitHub Actions.
+The main application includes:
 
----
+- Installable PWA metadata and icons.
+- A service worker for app updates and offline fallback.
+- Browser push subscriptions.
+- Scheduled checklist and focus reminders.
+- Server-side social, community, comment, reply, and connection notifications.
+- Supabase Cron delivery for deployed environments.
 
-## Deployment notes
+Push delivery requires HTTPS, VAPID keys, server secrets, the push database migrations, and scheduled cron configuration.
 
-- Apply database migrations before deploying routes that depend on new tables or RPC functions.
-- Deploy all three applications from their own directories.
-- Configure every required environment variable in the hosting platform.
-- Use HTTPS for PWA installation, OAuth, Storage uploads, and browser push.
-- Configure CSP and security response headers in the Next.js middleware for production.
-- Configure Supabase trusted-IP rate limits only on a platform that overwrites or validates the forwarding header.
-- Verify Supabase Storage policies, database backups, restore procedures, and account deletion behavior.
-- Rotate secrets after accidental exposure and invalidate any affected push subscriptions or sessions.
+## Security
 
----
+The application uses Supabase Row Level Security and server-side authorization for sensitive operations. Production deployments should also:
 
-## Security architecture
+- Apply all required database migrations before deploying related routes.
+- Keep the Supabase service-role key and API secrets out of browser code.
+- Configure trusted-IP API protection on a compatible hosting platform.
+- Set CSP and security headers in every deployed application.
+- Verify Storage and backup policies in the Supabase project.
+- Review [SECURITY-REVIEW.md](SECURITY-REVIEW.md) before public launch.
 
-**Row Level Security.** Supabase RLS is the primary authorization boundary for direct browser database and Storage access. Policies compare authenticated identity with profile or owner IDs and enforce participant membership for private conversations and network records.
+## Contributing
 
-**Public sharing.** Public portfolio, post media, community, and selected community-idea routes are intentionally limited to explicit public records or public buckets. Anonymous access should remain restricted to product-approved data.
-
-**Admin authorization.** The admin API validates a bearer token with Supabase Auth, calls `admin_me`, and only then executes approved admin RPC actions. Admin responses use private no-store cache behavior.
-
-**Privileged operations.** The Supabase service-role key is used only in server routes for operations that intentionally bypass RLS, such as push delivery and push job claims.
-
-**Storage isolation.** Public buckets serve public posts and community media. Private ward evidence and direct-message media use owner or conversation participant policies and signed or authorized access.
-
-**API protection.** Sensitive routes validate request size and input, use Zod schemas, and apply user- and IP-based rate limits. Authentication failure logs avoid raw tokens and plaintext IP addresses.
-
-**Security headers.** The applications use nonce-based CSP where configured, no-sniff, frame denial, referrer policy, and production HSTS.
-
-For known findings and deployment follow-ups, review [SECURITY-REVIEW.md](SECURITY-REVIEW.md).
-
----
-
-## Architecture documentation
-
-- [SUPABASE-ARCHITECTURE.md](SUPABASE-ARCHITECTURE.md) — Supabase use cases, responsibility boundary, DFD diagrams, entity relationships, and push sequences.
-- [architecture-diagram.md](.github/modernize/assessment/engines/facts/architecture-diagram.md) — application architecture and component relationships.
-- [app/PUSH-NOTIFICATIONS.md](app/PUSH-NOTIFICATIONS.md) — complete push notification setup and operations guide.
-
----
-
-## User roles
-
-- **Registered member** — manages daily work, onWards, skills, evidence, CV and portfolio content, social activity, communities, and notifications.
-- **Community owner or moderator** — manages community settings and approved community content according to implemented permissions.
-- **Administrator** — reviews metrics and users, manages feedback and support, sends broadcasts, and configures approved push automations.
-
----
-
-*onWard by GIGS Labs*
+1. Create a focused branch for the change.
+2. Make and test changes in the relevant application.
+3. Run the smallest relevant build, lint, and security checks.
+4. Verify database changes against the migration set and sensitive operations across authorized and unauthorized users.
+5. Open a pull request with the affected app, setup changes, and validation performed.

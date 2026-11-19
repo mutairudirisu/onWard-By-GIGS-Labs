@@ -5,7 +5,7 @@ import "./globals.css";
 import { AuthGate, AuthProvider } from "@/components/auth";
 import { ChecklistReminderScheduler } from "@/components/checklist-widget";
 import { FeedbackPrompt } from "@/components/feedback-prompt";
-import { InstallPromptOnVisit } from "@/components/install-button";
+import { InstallInstructionsOnRequest } from "@/components/install-instructions-on-request";
 import { NotificationsProvider } from "@/components/notifications";
 import { NavigationHistoryTracker } from "@/components/navigation-history";
 import { FocusTimerScheduler } from "@/components/pomodoro-widget";
@@ -24,7 +24,7 @@ const comfortaa = Comfortaa({
 });
 
 export const metadata: Metadata = {
-  title: "onWard — your everyday, going places",
+  title: "onWard",
   description:
     "Plan your day, capture your wins and build a story of your work you're proud to share.",
   manifest: "/manifest.webmanifest",
@@ -58,8 +58,8 @@ export default async function RootLayout({
     <html lang="en" className={comfortaa.variable}>
       <body>
         <AuthProvider>
+          <InstallInstructionsOnRequest />
           <StoreProvider>
-            <InstallPromptOnVisit />
             <AuthGate>
               <NotificationsProvider>
                 <NavigationHistoryTracker />
