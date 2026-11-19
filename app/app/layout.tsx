@@ -23,7 +23,7 @@ const comfortaa = Comfortaa({
 });
 
 export const metadata: Metadata = {
-  title: "onWard — your everyday, going places",
+  title: "onWard",
   description:
     "Plan your day, capture your wins and build a story of your work you're proud to share.",
   manifest: "/manifest.webmanifest",
