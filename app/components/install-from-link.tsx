@@ -43,6 +43,7 @@ export function InstallFromLink() {
       if (!installIntent.current) return;
       setDeferredPrompt(event as BeforeInstallPromptEvent);
       setChecking(false);
+      setInstallError("");
     };
     const onInstalled = () => {
       installIntent.current = false;
@@ -66,7 +67,15 @@ export function InstallFromLink() {
   }
 
   async function install() {
-    if (!deferredPrompt) return;
+    if (!deferredPrompt) {
+      setInstallError(
+        ios
+          ? "Safari requires installing from the Share menu using “Add to Home Screen.”"
+          : "This browser has not offered a direct install prompt. Use the browser menu and choose “Install app” or “Add to Home screen.”",
+      );
+      return;
+    }
+
     try {
       await deferredPrompt.prompt();
       await deferredPrompt.userChoice;
@@ -84,16 +93,7 @@ export function InstallFromLink() {
           Install onWard for a quicker, app-like way to plan, capture progress, and stay connected.
         </p>
 
-        {deferredPrompt ? (
-          <button
-            type="button"
-            onClick={() => void install()}
-            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-lime px-4 text-[13px] font-bold text-dark transition hover:bg-lime-deep"
-          >
-            <Download className="h-4 w-4" />
-            Install app
-          </button>
-        ) : checking ? (
+        {checking ? (
           <p
             role="status"
             className="rounded-2xl border border-line bg-cream p-4 text-[12px] text-inksoft"
@@ -113,6 +113,16 @@ export function InstallFromLink() {
             Open your browser menu and choose “Install app” or “Add to Home screen.”
           </p>
         )}
+
+        <button
+          type="button"
+          onClick={() => void install()}
+          disabled={checking}
+          className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-lime px-4 text-[13px] font-bold text-dark transition hover:bg-lime-deep disabled:cursor-wait disabled:opacity-70"
+        >
+          <Download className="h-4 w-4" />
+          Install app
+        </button>
 
         {installError ? (
           <p role="alert" className="text-[12px] font-semibold text-red-700">
