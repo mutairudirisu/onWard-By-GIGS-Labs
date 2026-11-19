@@ -1,145 +1,255 @@
 # onWard
 
-onWard is a personal progress and work-tracking platform built for students and professionals. It combines daily planning, progress journals, CV and portfolio tools, communities, social posts, direct messaging, achievements, and push notifications in one focused experience.
+A personal progress and work-tracking platform for students and professionals.
 
-This repository contains three Next.js applications plus the Supabase database migrations used by the platform:
+onWard combines daily planning, progress journals, CV and portfolio tools, social communities, direct messaging, achievements, and push notifications in one focused PWA.
+
+The repository contains three Next.js applications backed by one Supabase project:
 
 | App | Directory | Purpose | Local port |
-|---|---|---|---|
-| Main PWA | `app/` | Daily activity tracking, onWards, feed, communities, network, CV, portfolio, messaging, and notifications | `3000` |
-| Admin console | `admin/` | User, analytics, feedback, support, broadcast, and notification administration | `3001` |
-| Marketing website | `frontend/` | Public product pages, pricing, FAQ, legal information, press, careers, and contact | `3002` |
+| --- | --- | --- | --- |
+| Main PWA | `app/` | Daily tracking, onWards, Exchange, communities, network, CV, portfolio, and messaging | `3000` |
+| Admin console | `admin/` | Users, analytics, feedback, support, broadcasts, and notification automation | `3001` |
+| Marketing website | `frontend/` | Public product, pricing, FAQ, legal, press, careers, and contact pages | `3002` |
 
-## Key features
+---
 
-- **Plan the day** with tasks, checklists, streaks, focus sessions, and reminders.
-- **Capture progress** through onWards that record completed work, evidence, skills, and reflection.
-- **Review growth** with insights, achievements, heat maps, usage reports, and leaderboards.
-- **Build a professional story** with a CV and shareable portfolio.
-- **Connect and share** through the Exchange feed, polls, comments, communities, profiles, and direct messages.
-- **Receive notifications** through in-app alerts and installable PWA web push notifications.
-- **Manage the platform** through the authenticated admin console.
+## Contents
 
-## Technology
+- [Features](#features)
+- [Tech stack](#tech-stack)
+- [Repository layout](#repository-layout)
+- [Prerequisites](#prerequisites)
+- [Quick start](#quick-start)
+- [Supabase setup](#supabase-setup)
+- [Push notification setup](#push-notification-setup)
+- [Environment variables](#environment-variables)
+- [Running in development](#running-in-development)
+- [Building for production](#building-for-production)
+- [Deployment notes](#deployment-notes)
+- [Security architecture](#security-architecture)
+- [Architecture documentation](#architecture-documentation)
+- [User roles](#user-roles)
 
-- Next.js 15 App Router
-- React 19
-- TypeScript
-- Tailwind CSS
-- Supabase Auth, PostgreSQL, RPCs, Storage, and Row Level Security
-- Web Push and a PWA service worker
-- OpenAI for the Exchange Proofread server route
+---
+
+## Features
+
+**For users**
+- Plan the day with tasks, checklists, streaks, focus sessions, and reminders.
+- Capture completed work as onWards with impact, evidence, reflections, and skills.
+- Review growth through insights, heat maps, achievements, usage reports, and leaderboards.
+- Build a CV and create a shareable portfolio from selected work.
+- Share posts, polls, comments, replies, achievements, and documents through the Exchange.
+- Join communities, find people, manage connections, and send direct messages.
+- Receive in-app and installable PWA web push notifications.
+
+**For administrators**
+- Review live user, activity, and subscription metrics.
+- Search users and inspect account details.
+- Manage feedback and support activity.
+- Create broadcasts and control optional push automation campaigns.
+- Review audit and platform activity.
+
+---
+
+## Tech stack
+
+**Frontend** — Next.js 15 App Router, React 19, TypeScript, Tailwind CSS, Lucide icons, and PWA browser APIs.
+
+**Backend** — Supabase Auth, PostgreSQL, Row Level Security, RPC functions, Storage, pg_cron, pg_net, and Vault.
+
+**Integrations** — Web Push using VAPID, Supabase Realtime, OpenAI-powered proofreading and transcription, and Vercel-compatible server routes.
+
+---
 
 ## Repository layout
 
 ```text
-app/
-  app/             Main PWA routes
-  components/      PWA components
-  lib/             Client, data, push, CV, and portfolio utilities
-  public/          PWA manifest, icons, service worker, and offline page
-  supabase/        Database migrations and operational SQL
-admin/
-  app/             Admin routes and server API
-  components/      Admin interface components
-  lib/             Admin data and session utilities
-frontend/
-  app/             Public website routes
-  components/      Marketing and legal page components
-  lib/             Shared public-site configuration
-.github/workflows/ Dependency and CodeQL security audits
+onWard/
+├── README.md
+├── SECURITY-REVIEW.md
+├── SUPABASE-ARCHITECTURE.md
+├── app/                         # Main PWA
+│   ├── app/                     # App Router pages and API routes
+│   ├── components/              # PWA components
+│   ├── lib/                     # Data, auth, push, CV, and utility modules
+│   ├── public/                  # Manifest, icons, offline page, and service worker
+│   ├── supabase/                # Migrations and operational SQL
+│   ├── .env.example
+│   └── package.json
+├── admin/                       # Authenticated admin console
+│   ├── app/                     # Admin pages and server API
+│   ├── components/              # Admin interface components
+│   ├── lib/                     # Admin session and data modules
+│   ├── .env.example
+│   └── package.json
+├── frontend/                    # Public marketing website
+│   ├── app/                     # Public and legal routes
+│   ├── components/              # Marketing components
+│   ├── lib/                     # Public-site configuration
+│   ├── .env.example
+│   └── package.json
+└── .github/workflows/           # Dependency audit and CodeQL workflows
 ```
+
+---
 
 ## Prerequisites
 
-- Node.js 22
-- npm
-- A Supabase project
-- Vercel or another Next.js-compatible deployment platform
+- **Node.js 22+** and npm
+- **A Supabase project** with Auth, PostgreSQL, Storage, and RLS
+- **Vercel or another Next.js-compatible deployment platform**
+- **HTTPS** for PWA installation and browser push notifications
+- *(Optional)* an OpenAI API key for proofreading and transcription
 
-## Local setup
+---
 
-Install dependencies separately in each application:
+## Quick start
 
 ```powershell
+# 1. Install dependencies in each application
 cd app
 npm ci
-
 cd ..\admin
 npm ci
-
 cd ..\frontend
 npm ci
-```
+cd ..
 
-Create each app's local environment file from its example:
-
-```powershell
+# 2. Create local environment files
 Copy-Item app\.env.example app\.env.local
 Copy-Item admin\.env.example admin\.env.local
 Copy-Item frontend\.env.example frontend\.env.local
 ```
 
-Update `app/.env.local` with the Supabase and optional integration values.
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<publishable-anon-key>
-OPENAI_API_KEY=
-NEXT_PUBLIC_VAPID_PUBLIC_KEY=
-VAPID_PRIVATE_KEY=
-VAPID_SUBJECT=mailto:<monitored-address>
-SUPABASE_SERVICE_ROLE_KEY=
-CRON_SECRET=
-```
-
-Keep service-role, private, OpenAI, VAPID-private, and cron values server-only. Never prefix secrets with `NEXT_PUBLIC_`.
-
-The marketing site can optionally set:
-
-```env
-NEXT_PUBLIC_APP_URL=https://your-main-app.example
-NEXT_PUBLIC_MAIL_DOMAIN=your-domain.example
-```
-
-## Run locally
-
-Open separate terminals from the repository root:
+Configure at least the Supabase URL and publishable key in `app/.env.local` and `admin/.env.local`, then run the applications in separate terminals.
 
 ```powershell
 cd app
 npm run dev
 ```
-
-The main PWA is available at `http://localhost:3000`.
 
 ```powershell
 cd admin
 npm run dev
 ```
 
-The admin console is available at `http://localhost:3001`.
+```powershell
+cd frontend
+npm run dev
+```
+
+- Main PWA: `http://localhost:3000`
+- Admin console: `http://localhost:3001`
+- Marketing website: `http://localhost:3002`
+
+---
+
+## Supabase setup
+
+Create a Supabase project and apply the SQL migrations in `app/supabase/migrations/` in timestamped filename order.
+
+The migrations cover:
+- Profiles and account bootstrap
+- Tasks, notes, onWards, skills, evidence, and activity
+- CV and portfolio sharing
+- Feed posts, polls, comments, reactions, and media
+- Communities and dynamic taxonomy
+- Connections and direct messaging
+- Admin RPC functions
+- API and IP rate limits
+- Push subscriptions, push jobs, and automated campaigns
+- Storage buckets and Storage policies
+
+Use the Supabase dashboard SQL editor or a migration workflow to apply every required migration before deploying the application code that depends on it.
+
+The publishable/anon key is intended for browser use when every public table and Storage object is protected by RLS. Never place the service-role key in browser code or a `NEXT_PUBLIC_*` variable.
+
+---
+
+## Push notification setup
+
+The main PWA supports installable PWA web push with scheduled and social notifications.
+
+1. Apply the push migrations and the API rate-limit migrations.
+2. Generate a VAPID key pair in `app/`:
+
+   ```powershell
+   cd app
+   npx web-push generate-vapid-keys
+   ```
+
+3. Configure the VAPID, Supabase service-role, and cron secrets.
+4. Enable the `pg_cron`, `pg_net`, and Vault Supabase extensions.
+5. Create a Vault secret named `onward_cron_secret` containing the same value as `CRON_SECRET`.
+6. Deploy the PWA, then run `app/supabase/push-cron-setup.sql` in the Supabase SQL editor.
+
+Supabase Cron calls `/api/cron/push` once per minute in the configured deployment. The route claims due jobs, checks notification preferences and subscriptions, sends VAPID notifications, removes expired endpoints, and retries temporary delivery failures.
+
+See [app/PUSH-NOTIFICATIONS.md](app/PUSH-NOTIFICATIONS.md) for setup details and operational checks.
+
+---
+
+## Environment variables
+
+### Main PWA — `app/.env.local`
+
+| Variable | Description |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase publishable/anon key used in browser and authenticated clients. |
+| `OPENAI_API_KEY` | Server-only key for proofreading and transcription. |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Browser-safe VAPID public key. |
+| `VAPID_PRIVATE_KEY` | Server-only VAPID private key. |
+| `VAPID_SUBJECT` | Monitored `mailto:` address or production site URL. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-only key for privileged push and operational routes. |
+| `CRON_SECRET` | Long random secret used to authenticate Supabase Cron requests. |
+
+### Admin console — `admin/.env.local`
+
+| Variable | Description |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase publishable/anon key. |
+
+### Marketing website — `frontend/.env.local`
+
+| Variable | Description |
+| --- | --- |
+| `NEXT_PUBLIC_APP_URL` | Main PWA URL used for sign-in and sign-up links. Defaults to `https://myonward.vercel.app`. |
+| `NEXT_PUBLIC_MAIL_DOMAIN` | Domain used to build public contact addresses. |
+
+Keep `OPENAI_API_KEY`, `VAPID_PRIVATE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `CRON_SECRET` server-only.
+
+---
+
+## Running in development
+
+Run the applications in separate terminals:
+
+```powershell
+cd app
+npm run dev
+```
+
+```powershell
+cd admin
+npm run dev
+```
 
 ```powershell
 cd frontend
 npm run dev
 ```
 
-The marketing website is available at `http://localhost:3002`.
+Supabase Cron is not invoked by local development. Test push schedules only after applying the migrations and deploying the PWA with working server secrets.
 
-## Supabase setup
+---
 
-Apply the SQL migrations in `app/supabase/migrations/` to the project in timestamped filename order. The migrations cover authentication, profiles, activity, social feeds, communities, CV data, messaging, storage, admin access, rate limits, and push notifications.
+## Building for production
 
-For push notifications, follow [app/PUSH-NOTIFICATIONS.md](app/PUSH-NOTIFICATIONS.md). It documents the required migrations, VAPID configuration, Supabase Cron setup, delivery behavior, and operational checks.
-
-For deployment security considerations and known operational follow-ups, see [SECURITY-REVIEW.md](SECURITY-REVIEW.md).
-
-For a system-level use case and DFD explanation of Supabase, see [SUPABASE-ARCHITECTURE.md](SUPABASE-ARCHITECTURE.md). The generated application architecture diagrams are in [architecture-diagram.md](.github/modernize/assessment/engines/facts/architecture-diagram.md).
-
-## Build and validation
-
-Run each application independently:
+Run validation in each application independently:
 
 ```powershell
 cd app
@@ -148,36 +258,70 @@ npm run lint
 npm audit --audit-level=high
 ```
 
-Repeat `npm run build` and `npm audit --audit-level=high` for `admin/` and `frontend/`. The repository workflow also performs dependency audits and CodeQL analysis for JavaScript and TypeScript.
+```powershell
+cd admin
+npm run build
+npm run lint
+npm audit --audit-level=high
+```
 
-## PWA and push notifications
+```powershell
+cd frontend
+npm run build
+npm audit --audit-level=high
+```
 
-The main application includes:
+The repository also runs dependency audits and CodeQL analysis through GitHub Actions.
 
-- Installable PWA metadata and icons.
-- A service worker for app updates and offline fallback.
-- Browser push subscriptions.
-- Scheduled checklist and focus reminders.
-- Server-side social, community, comment, reply, and connection notifications.
-- Supabase Cron delivery for deployed environments.
+---
 
-Push delivery requires HTTPS, VAPID keys, server secrets, the push database migrations, and scheduled cron configuration.
+## Deployment notes
 
-## Security
+- Apply database migrations before deploying routes that depend on new tables or RPC functions.
+- Deploy all three applications from their own directories.
+- Configure every required environment variable in the hosting platform.
+- Use HTTPS for PWA installation, OAuth, Storage uploads, and browser push.
+- Configure CSP and security response headers in the Next.js middleware for production.
+- Configure Supabase trusted-IP rate limits only on a platform that overwrites or validates the forwarding header.
+- Verify Supabase Storage policies, database backups, restore procedures, and account deletion behavior.
+- Rotate secrets after accidental exposure and invalidate any affected push subscriptions or sessions.
 
-The application uses Supabase Row Level Security and server-side authorization for sensitive operations. Production deployments should also:
+---
 
-- Apply all required database migrations before deploying related routes.
-- Keep the Supabase service-role key and API secrets out of browser code.
-- Configure trusted-IP API protection on a compatible hosting platform.
-- Set CSP and security headers in every deployed application.
-- Verify Storage and backup policies in the Supabase project.
-- Review [SECURITY-REVIEW.md](SECURITY-REVIEW.md) before public launch.
+## Security architecture
 
-## Contributing
+**Row Level Security.** Supabase RLS is the primary authorization boundary for direct browser database and Storage access. Policies compare authenticated identity with profile or owner IDs and enforce participant membership for private conversations and network records.
 
-1. Create a focused branch for the change.
-2. Make and test changes in the relevant application.
-3. Run the smallest relevant build, lint, and security checks.
-4. Verify database changes against the migration set and sensitive operations across authorized and unauthorized users.
-5. Open a pull request with the affected app, setup changes, and validation performed.
+**Public sharing.** Public portfolio, post media, community, and selected community-idea routes are intentionally limited to explicit public records or public buckets. Anonymous access should remain restricted to product-approved data.
+
+**Admin authorization.** The admin API validates a bearer token with Supabase Auth, calls `admin_me`, and only then executes approved admin RPC actions. Admin responses use private no-store cache behavior.
+
+**Privileged operations.** The Supabase service-role key is used only in server routes for operations that intentionally bypass RLS, such as push delivery and push job claims.
+
+**Storage isolation.** Public buckets serve public posts and community media. Private ward evidence and direct-message media use owner or conversation participant policies and signed or authorized access.
+
+**API protection.** Sensitive routes validate request size and input, use Zod schemas, and apply user- and IP-based rate limits. Authentication failure logs avoid raw tokens and plaintext IP addresses.
+
+**Security headers.** The applications use nonce-based CSP where configured, no-sniff, frame denial, referrer policy, and production HSTS.
+
+For known findings and deployment follow-ups, review [SECURITY-REVIEW.md](SECURITY-REVIEW.md).
+
+---
+
+## Architecture documentation
+
+- [SUPABASE-ARCHITECTURE.md](SUPABASE-ARCHITECTURE.md) — Supabase use cases, responsibility boundary, DFD diagrams, entity relationships, and push sequences.
+- [architecture-diagram.md](.github/modernize/assessment/engines/facts/architecture-diagram.md) — application architecture and component relationships.
+- [app/PUSH-NOTIFICATIONS.md](app/PUSH-NOTIFICATIONS.md) — complete push notification setup and operations guide.
+
+---
+
+## User roles
+
+- **Registered member** — manages daily work, onWards, skills, evidence, CV and portfolio content, social activity, communities, and notifications.
+- **Community owner or moderator** — manages community settings and approved community content according to implemented permissions.
+- **Administrator** — reviews metrics and users, manages feedback and support, sends broadcasts, and configures approved push automations.
+
+---
+
+*onWard by GIGS Labs*
