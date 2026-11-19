@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Download, Share } from "lucide-react";
 import { Modal } from "@/components/modal";
 
@@ -9,26 +9,53 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
+type InstallCaptureState = {
+  requested: boolean;
+  installed: boolean;
+  prompt: BeforeInstallPromptEvent | null;
+};
+
+declare global {
+  interface Window {
+    __onWardInstallState?: InstallCaptureState;
+  }
+}
+
 export function InstallFromLink() {
-  const installIntent = useRef(false);
   const [open, setOpen] = useState(false);
   const [checking, setChecking] = useState(false);
   const [ios, setIos] = useState(false);
+  const [installed, setInstalled] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [installError, setInstallError] = useState("");
+  const [installNotice, setInstallNotice] = useState("");
 
   useEffect(() => {
     const url = new URL(window.location.href);
-    if (url.searchParams.get("install") !== "1") return;
-    installIntent.current = true;
+    const installRequested = url.searchParams.get("install") === "1";
+    let capture = window.__onWardInstallState;
+    if (!capture && installRequested) {
+      capture = { requested: true, installed: false, prompt: null };
+      window.__onWardInstallState = capture;
+    }
+    if (!capture?.requested) return;
 
-    url.searchParams.delete("install");
-    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    if (installRequested) {
+      url.searchParams.delete("install");
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${url.pathname}${url.search}${url.hash}`,
+      );
+    }
 
     const standalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
-    if (standalone) return;
+    if (standalone || capture.installed) {
+      capture.requested = false;
+      setInstalled(true);
+      return;
+    }
 
     const userAgent = window.navigator.userAgent || "";
     setIos(
@@ -38,53 +65,80 @@ export function InstallFromLink() {
     setChecking(true);
     setOpen(true);
 
-    const onBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      if (!installIntent.current) return;
-      setDeferredPrompt(event as BeforeInstallPromptEvent);
+    const syncPrompt = () => {
+      if (!capture?.prompt || !capture.requested) return;
+      setDeferredPrompt(capture.prompt);
       setChecking(false);
-      setInstallError("");
+      setInstallNotice("");
     };
     const onInstalled = () => {
-      installIntent.current = false;
+      if (capture) {
+        capture.installed = true;
+        capture.requested = false;
+        capture.prompt = null;
+      }
+      setInstalled(true);
+      setDeferredPrompt(null);
       setOpen(false);
     };
 
-    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    window.addEventListener("onwardinstallpromptready", syncPrompt);
+    window.addEventListener("onwardappinstalled", onInstalled);
     window.addEventListener("appinstalled", onInstalled);
-    const timeout = window.setTimeout(() => setChecking(false), 1500);
+    syncPrompt();
+    const timeout = window.setTimeout(() => setChecking(false), 2500);
 
     return () => {
       window.clearTimeout(timeout);
-      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+      window.removeEventListener("onwardinstallpromptready", syncPrompt);
+      window.removeEventListener("onwardappinstalled", onInstalled);
       window.removeEventListener("appinstalled", onInstalled);
     };
   }, []);
 
   function dismiss() {
-    installIntent.current = false;
+    const capture = window.__onWardInstallState;
+    if (capture) {
+      capture.requested = false;
+      capture.prompt = null;
+    }
+    setDeferredPrompt(null);
     setOpen(false);
   }
 
   async function install() {
     if (!deferredPrompt) {
-      setInstallError(
+      setInstallNotice(
         ios
-          ? "Safari requires installing from the Share menu using “Add to Home Screen.”"
-          : "This browser has not offered a direct install prompt. Use the browser menu and choose “Install app” or “Add to Home screen.”",
+          ? "Follow the iPhone or iPad steps above to add onWard."
+          : "Use the browser menu steps above to add onWard.",
       );
       return;
     }
 
+    const prompt = deferredPrompt;
+    setDeferredPrompt(null);
     try {
-      await deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
-      setDeferredPrompt(null);
+      await prompt.prompt();
+      const { outcome } = await prompt.userChoice;
+      const capture = window.__onWardInstallState;
+      if (capture) {
+        capture.prompt = null;
+        if (outcome === "accepted") {
+          capture.installed = true;
+          capture.requested = false;
+        }
+      }
+      if (outcome === "accepted") setInstalled(true);
       setOpen(false);
     } catch {
-      setInstallError("The install prompt could not be opened. Try your browser menu instead.");
+      const capture = window.__onWardInstallState;
+      if (capture) capture.prompt = null;
+      setInstallNotice("The browser could not open its install dialog. Use the browser menu instead.");
     }
   }
+
+  if (installed) return null;
 
   return (
     <Modal open={open} onClose={dismiss} title="Install onWard">
@@ -100,12 +154,16 @@ export function InstallFromLink() {
           >
             Checking whether this browser can install onWard…
           </p>
+        ) : deferredPrompt ? (
+          <p className="rounded-2xl border border-line bg-cream p-4 text-[12px] text-inksoft">
+            Your browser can install onWard. Continue to open its install dialog.
+          </p>
         ) : ios ? (
           <div className="rounded-2xl border border-line bg-cream p-4">
             <p className="text-[12px] font-bold text-ink">Install on iPhone or iPad</p>
             <p className="mt-2 flex items-start gap-2 text-[12px] leading-relaxed text-inksoft">
               <Share className="mt-0.5 h-4 w-4 shrink-0 text-lime-deep" />
-              In Safari, tap Share, choose “Add to Home Screen,” then tap “Add.”
+              Tap Share, choose “Add to Home Screen,” then tap “Add.”
             </p>
           </div>
         ) : (
@@ -121,12 +179,12 @@ export function InstallFromLink() {
           className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-lime px-4 text-[13px] font-bold text-dark transition hover:bg-lime-deep disabled:cursor-wait disabled:opacity-70"
         >
           <Download className="h-4 w-4" />
-          Install app
+          {checking ? "Checking…" : deferredPrompt ? "Install app" : "How to install"}
         </button>
 
-        {installError ? (
-          <p role="alert" className="text-[12px] font-semibold text-red-700">
-            {installError}
+        {installNotice ? (
+          <p role="status" className="text-[12px] font-semibold text-inksoft">
+            {installNotice}
           </p>
         ) : null}
 

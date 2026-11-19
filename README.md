@@ -155,6 +155,9 @@ Repeat `npm run build` and `npm audit --audit-level=high` for `admin/` and `fron
 The main application includes:
 
 - Installable PWA metadata and icons.
+- Chromium installation uses 192px and 512px manifest icons. The install link
+  defers the native prompt until the user taps **Install app**; iOS uses
+  Share → Add to Home Screen.
 - A service worker for app updates and offline fallback.
 - Browser push subscriptions.
 - Scheduled checklist and focus reminders.
