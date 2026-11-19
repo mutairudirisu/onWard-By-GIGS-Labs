@@ -5,6 +5,7 @@ import "./globals.css";
 import { AuthGate, AuthProvider } from "@/components/auth";
 import { ChecklistReminderScheduler } from "@/components/checklist-widget";
 import { FeedbackPrompt } from "@/components/feedback-prompt";
+import { InstallInstructionsOnRequest } from "@/components/install-instructions-on-request";
 import { NotificationsProvider } from "@/components/notifications";
 import { NavigationHistoryTracker } from "@/components/navigation-history";
 import { FocusTimerScheduler } from "@/components/pomodoro-widget";
@@ -57,6 +58,7 @@ export default async function RootLayout({
     <html lang="en" className={comfortaa.variable}>
       <body>
         <AuthProvider>
+          <InstallInstructionsOnRequest />
           <StoreProvider>
             <AuthGate>
               <NotificationsProvider>
