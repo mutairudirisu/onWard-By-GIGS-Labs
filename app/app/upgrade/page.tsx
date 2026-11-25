@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { Check, Minus, Sparkles } from "lucide-react";
-import { PhoneShell } from "@/components/phone-shell";
-import { BackLink } from "@/components/ui";
-import { ProBadge } from "@/components/pro";
-import { useStore } from "@/components/store";
-import { useCurrentUser } from "@/components/auth";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { BackLink } from "@/components/ui/ui";
+import { ProBadge } from "@/components/overlays/pro";
+import { useStore } from "@/components/providers/store";
+import { useCurrentUser } from "@/components/providers/auth";
 import { PLAN_FEATURES, PRO_PRICING, STUDENT_PRICING } from "@/lib/data";
 import { isStudentRole, pricingFor } from "@/lib/student";
 

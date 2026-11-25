@@ -15,12 +15,12 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import { useAuth } from "@/components/auth";
-import { CommunityIcon, CommunityTopicIcon } from "@/components/community-card";
-import { PhoneShell } from "@/components/phone-shell";
-import { useSmartBack, useTrackedReplace } from "@/components/navigation-history";
-import { Toggle } from "@/components/ui";
-import { Wordmark } from "@/components/wordmark";
+import { useAuth } from "@/components/providers/auth";
+import { CommunityIcon, CommunityTopicIcon } from "@/components/communities/community-card";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { useSmartBack, useTrackedReplace } from "@/components/providers/navigation-history";
+import { Toggle } from "@/components/ui/ui";
+import { Wordmark } from "@/components/ui/wordmark";
 import {
   COMMUNITY_SUBCATEGORIES,
   COMMUNITY_TOPICS,

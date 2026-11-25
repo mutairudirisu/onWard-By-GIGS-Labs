@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useAuth } from "@/components/auth";
+import { useAuth } from "@/components/providers/auth";
 import { addDays, parseISO, startOfWeek, toISO } from "@/lib/dates";
 import { fetchActivity, type ActivityDay, type StreakStats } from "@/lib/db";
 import type { HeatCell } from "@/lib/data";

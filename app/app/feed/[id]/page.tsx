@@ -4,19 +4,19 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ThumbsUp, Trash2 } from "lucide-react";
-import { PhoneShell } from "@/components/phone-shell";
-import { BackLink } from "@/components/ui";
-import { Modal } from "@/components/modal";
-import { ExchangeShareSheet } from "@/components/exchange-share-sheet";
-import { CommentsSheet } from "@/components/comments-sheet";
-import { CommentComposer } from "@/components/comment-composer";
-import { PostMediaPreview } from "@/components/post-media-preview";
-import { useAuth, useCurrentUser } from "@/components/auth";
-import { toastError, toastSuccess, toastUndoable } from "@/components/toast";
-import { Avatar, PostBlock } from "@/components/feed-post";
-import { ReshareSheet } from "@/components/reshare-sheet";
-import { withVote } from "@/components/post-poll";
-import { PostSkeleton } from "@/components/skeleton";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { BackLink } from "@/components/ui/ui";
+import { Modal } from "@/components/ui/modal";
+import { ExchangeShareSheet } from "@/components/feed/exchange-share-sheet";
+import { CommentsSheet } from "@/components/feed/comments-sheet";
+import { CommentComposer } from "@/components/feed/comment-composer";
+import { PostMediaPreview } from "@/components/feed/post-media-preview";
+import { useAuth, useCurrentUser } from "@/components/providers/auth";
+import { toastError, toastSuccess, toastUndoable } from "@/components/ui/toast";
+import { Avatar, PostBlock } from "@/components/feed/feed-post";
+import { ReshareSheet } from "@/components/feed/reshare-sheet";
+import { withVote } from "@/components/feed/post-poll";
+import { PostSkeleton } from "@/components/ui/skeleton";
 import {
   addComment,
   deleteComment,

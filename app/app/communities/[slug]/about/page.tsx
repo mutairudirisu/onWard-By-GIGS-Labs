@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, CalendarDays, Eye, Globe, Lightbulb, LockKeyhole } from "lucide-react";
-import { BackLink } from "@/components/ui";
-import { CommunityTopicIcon } from "@/components/community-card";
-import { PhoneShell } from "@/components/phone-shell";
+import { BackLink } from "@/components/ui/ui";
+import { CommunityTopicIcon } from "@/components/communities/community-card";
+import { PhoneShell } from "@/components/layout/phone-shell";
 import {
   COMMUNITY_TYPE_OPTIONS,
   communityMediaUrl,

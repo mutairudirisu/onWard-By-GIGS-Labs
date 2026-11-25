@@ -2,22 +2,22 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { PhoneShell } from "@/components/phone-shell";
-import { NewButton, PageHeader, Tag } from "@/components/ui";
-import { WardSkeleton } from "@/components/skeleton";
-import { useStore } from "@/components/store";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { NewButton, PageHeader, Tag } from "@/components/ui/ui";
+import { WardSkeleton } from "@/components/ui/skeleton";
+import { useStore } from "@/components/providers/store";
 import type { Evidence, OnWard } from "@/lib/data";
 import { dayHeading, formatDue } from "@/lib/dates";
 import { CalendarDays, FileText, Globe, Image, Share2, Star, Search, Trophy, X } from "lucide-react";
-import { ShareSheet, wardShareText } from "@/components/share-sheet";
+import { ShareSheet, wardShareText } from "@/components/overlays/share-sheet";
 import { haptic } from "@/lib/haptics";
 import { signedWardEvidenceUrl } from "@/lib/db";
-import { PortfolioShareControls } from "@/components/portfolio-share-controls";
-import { PostMediaFrame } from "@/components/post-media-carousel";
+import { PortfolioShareControls } from "@/components/portfolio/portfolio-share-controls";
+import { PostMediaFrame } from "@/components/feed/post-media-carousel";
 import {
   EvidenceImageViewer,
   type EvidenceImagePreview,
-} from "@/components/evidence-image-viewer";
+} from "@/components/portfolio/evidence-image-viewer";
 
 const TABS = ["Timeline", "By skill", "Portfolio"] as const;
 type Tab = (typeof TABS)[number];

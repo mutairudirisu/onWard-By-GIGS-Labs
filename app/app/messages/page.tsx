@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@/components/auth";
-import { Modal } from "@/components/modal";
-import { PresenceAvatar } from "@/components/presence-avatar";
-import { PhoneShell } from "@/components/phone-shell";
-import { BackLink, Toggle } from "@/components/ui";
-import { toastError } from "@/components/toast";
-import { useStore } from "@/components/store";
+import { useAuth } from "@/components/providers/auth";
+import { Modal } from "@/components/ui/modal";
+import { PresenceAvatar } from "@/components/ui/presence-avatar";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { BackLink, Toggle } from "@/components/ui/ui";
+import { toastError } from "@/components/ui/toast";
+import { useStore } from "@/components/providers/store";
 import {
   fetchDirectMessageInbox,
   subscribeToDirectConversationPresence,

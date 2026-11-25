@@ -26,22 +26,22 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { PhoneShell } from "@/components/phone-shell";
-import { Avatar } from "@/components/feed-post";
-import { Modal } from "@/components/modal";
-import { CommunityTopicIcon } from "@/components/community-card";
-import { PostEditor } from "@/components/post-editor";
-import { mediaAspectRatio, PostMediaFrame } from "@/components/post-media-carousel";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { Avatar } from "@/components/feed/feed-post";
+import { Modal } from "@/components/ui/modal";
+import { CommunityTopicIcon } from "@/components/communities/community-card";
+import { PostEditor } from "@/components/feed/post-editor";
+import { mediaAspectRatio, PostMediaFrame } from "@/components/feed/post-media-carousel";
 import type { Evidence } from "@/lib/data";
 import {
   PollComposer,
   newPollDraft,
   pollEndsAt,
   type PollComposerDraft,
-} from "@/components/poll-composer";
-import { useStore } from "@/components/store";
-import { useAuth, useCurrentUser } from "@/components/auth";
-import { toastError, toastSuccess } from "@/components/toast";
+} from "@/components/feed/poll-composer";
+import { useStore } from "@/components/providers/store";
+import { useAuth, useCurrentUser } from "@/components/providers/auth";
+import { toastError, toastSuccess } from "@/components/ui/toast";
 import {
   POST_BODY_MAX,
   POST_MEDIA_MAX_PER_POST,

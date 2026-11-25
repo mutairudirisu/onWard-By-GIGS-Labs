@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { PhoneShell } from "@/components/phone-shell";
-import { DateStrip } from "@/components/date-strip";
-import { Avatar } from "@/components/feed-post";
-import { HomeWidgets } from "@/components/home-widgets";
-import { Button } from "@/components/ui";
-import { useStore } from "@/components/store";
-import { useCurrentUser } from "@/components/auth";
-import { useNotifications } from "@/components/notifications";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { DateStrip } from "@/components/widgets/date-strip";
+import { Avatar } from "@/components/feed/feed-post";
+import { HomeWidgets } from "@/components/widgets/home-widgets";
+import { Button } from "@/components/ui/ui";
+import { useStore } from "@/components/providers/store";
+import { useCurrentUser } from "@/components/providers/auth";
+import { useNotifications } from "@/components/providers/notifications";
 import type { OnWard } from "@/lib/data";
 import { formatLong } from "@/lib/dates";
 import { Bell, ChevronRight, Plus, Sprout } from "lucide-react";

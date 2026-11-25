@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { PhoneShell } from "@/components/phone-shell";
-import { Button, TextInput } from "@/components/ui";
-import { BackLink } from "@/components/ui";
-import { useAuth, useCurrentUser } from "@/components/auth";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { Button, TextInput } from "@/components/ui/ui";
+import { BackLink } from "@/components/ui/ui";
+import { useAuth, useCurrentUser } from "@/components/providers/auth";
 import { roles, STUDENT_PRICING } from "@/lib/data";
 import { isStudentRole } from "@/lib/student";
 import { Check, Plus } from "lucide-react";

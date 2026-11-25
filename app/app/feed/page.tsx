@@ -22,20 +22,20 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import { PhoneShell } from "@/components/phone-shell";
-import { FeedSkeleton } from "@/components/skeleton";
-import { Modal } from "@/components/modal";
-import { CommentsSheet } from "@/components/comments-sheet";
-import { ExchangeShareSheet, type ShareTarget } from "@/components/exchange-share-sheet";
-import { ExchangeSearchSheet } from "@/components/exchange-search-sheet";
-import { Avatar, PostBlock } from "@/components/feed-post";
-import { withVote } from "@/components/post-poll";
-import { ReshareSheet, type ReshareTarget } from "@/components/reshare-sheet";
-import { PostOptionsSheet } from "@/components/post-options-sheet";
-import { useAuth, useCurrentUser } from "@/components/auth";
-import { useNotifications } from "@/components/notifications";
-import { Wordmark } from "@/components/wordmark";
-import { toastError, toastSuccess, toastUndoable } from "@/components/toast";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { FeedSkeleton } from "@/components/ui/skeleton";
+import { Modal } from "@/components/ui/modal";
+import { CommentsSheet } from "@/components/feed/comments-sheet";
+import { ExchangeShareSheet, type ShareTarget } from "@/components/feed/exchange-share-sheet";
+import { ExchangeSearchSheet } from "@/components/feed/exchange-search-sheet";
+import { Avatar, PostBlock } from "@/components/feed/feed-post";
+import { withVote } from "@/components/feed/post-poll";
+import { ReshareSheet, type ReshareTarget } from "@/components/feed/reshare-sheet";
+import { PostOptionsSheet } from "@/components/feed/post-options-sheet";
+import { useAuth, useCurrentUser } from "@/components/providers/auth";
+import { useNotifications } from "@/components/providers/notifications";
+import { Wordmark } from "@/components/ui/wordmark";
+import { toastError, toastSuccess, toastUndoable } from "@/components/ui/toast";
 import { askAfterUpvote } from "@/lib/feedback";
 import { timeAgo } from "@/lib/dates";
 import {

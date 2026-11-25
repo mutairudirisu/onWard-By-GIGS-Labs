@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AuthShell } from "@/components/auth-shell";
-import { PhoneShell } from "@/components/phone-shell";
-import { ArrowIcon, Button, Divider, TextInput } from "@/components/ui";
-import { AuthBrand, DotField, GoogleAuthButton, LastUsedTag } from "@/components/auth-decor";
-import { readAuthMethod, useAuth, type AuthMethod } from "@/components/auth";
+import { AuthShell } from "@/components/auth/auth-shell";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { ArrowIcon, Button, Divider, TextInput } from "@/components/ui/ui";
+import { AuthBrand, DotField, GoogleAuthButton, LastUsedTag } from "@/components/auth/auth-decor";
+import { readAuthMethod, useAuth, type AuthMethod } from "@/components/providers/auth";
 import {
   Check,
   ListChecks,

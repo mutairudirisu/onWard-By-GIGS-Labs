@@ -4,13 +4,13 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import Image from "next/image";
-import { useAuth } from "@/components/auth";
-import { Avatar } from "@/components/feed-post";
-import { PresenceAvatar } from "@/components/presence-avatar";
-import { PhoneShell } from "@/components/phone-shell";
-import { BackLink, TextInput } from "@/components/ui";
-import { useStore } from "@/components/store";
-import { toastError } from "@/components/toast";
+import { useAuth } from "@/components/providers/auth";
+import { Avatar } from "@/components/feed/feed-post";
+import { PresenceAvatar } from "@/components/ui/presence-avatar";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { BackLink, TextInput } from "@/components/ui/ui";
+import { useStore } from "@/components/providers/store";
+import { toastError } from "@/components/ui/toast";
 import {
   fetchDirectMessageInbox,
   fetchDirectMessages,

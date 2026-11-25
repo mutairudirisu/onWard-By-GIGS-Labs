@@ -4,12 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronRight, Compass, Plus, Search, UsersRound } from "lucide-react";
-import { useAuth } from "@/components/auth";
-import { BackLink } from "@/components/ui";
-import { CommunityTopicIcon } from "@/components/community-card";
-import { CommunityCarousel } from "@/components/community-carousel";
-import { PhoneShell } from "@/components/phone-shell";
-import { toastError, toastSuccess } from "@/components/toast";
+import { useAuth } from "@/components/providers/auth";
+import { BackLink } from "@/components/ui/ui";
+import { CommunityTopicIcon } from "@/components/communities/community-card";
+import { CommunityCarousel } from "@/components/communities/community-carousel";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { toastError, toastSuccess } from "@/components/ui/toast";
 import {
   communityTopicSlug,
   defaultCommunityTaxonomy,

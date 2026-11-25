@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/components/auth";
-import { Avatar } from "@/components/feed-post";
-import { PhoneShell } from "@/components/phone-shell";
-import { BackLink, TextInput } from "@/components/ui";
-import { toastError } from "@/components/toast";
+import { useAuth } from "@/components/providers/auth";
+import { Avatar } from "@/components/feed/feed-post";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { BackLink, TextInput } from "@/components/ui/ui";
+import { toastError } from "@/components/ui/toast";
 import {
   fetchDirectMessageInbox,
   openDirectConversation,

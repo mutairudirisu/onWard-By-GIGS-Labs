@@ -1,11 +1,11 @@
 "use client";
 
-import { PhoneShell } from "@/components/phone-shell";
-import { PortfolioDetails } from "@/components/portfolio-details";
-import { PortfolioDownloadButton, usePortfolio } from "@/components/portfolio-download";
-import { CvEntryButton } from "@/components/cv-entry-button";
-import { BackButton } from "@/components/ui";
-import { Wordmark } from "@/components/wordmark";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { PortfolioDetails } from "@/components/portfolio/portfolio-details";
+import { PortfolioDownloadButton, usePortfolio } from "@/components/portfolio/portfolio-download";
+import { CvEntryButton } from "@/components/portfolio/cv-entry-button";
+import { BackButton } from "@/components/ui/ui";
+import { Wordmark } from "@/components/ui/wordmark";
 import { ArrowRight, FileText, Mail } from "lucide-react";
 
 export default function EmployerPortfolioPage() {

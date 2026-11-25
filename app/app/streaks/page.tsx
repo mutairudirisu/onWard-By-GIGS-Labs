@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { HeatLegend, HeatMap } from "@/components/heat-map";
-import { PhoneShell } from "@/components/phone-shell";
-import { ShareButton } from "@/components/share-button";
-import { BackLink } from "@/components/ui";
-import { useAuth } from "@/components/auth";
+import { HeatLegend, HeatMap } from "@/components/widgets/heat-map";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { ShareButton } from "@/components/overlays/share-button";
+import { BackLink } from "@/components/ui/ui";
+import { useAuth } from "@/components/providers/auth";
 import { useActivity, bestWeekday, heatmapFrom } from "@/lib/activity";
 import { formatMedium } from "@/lib/dates";
 import { CalendarHeart, Flame, Medal, Sprout } from "lucide-react";

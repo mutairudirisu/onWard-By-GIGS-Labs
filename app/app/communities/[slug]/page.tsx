@@ -19,15 +19,15 @@ import {
   Share2,
   UsersRound,
 } from "lucide-react";
-import { useAuth } from "@/components/auth";
-import { CommunityTopicIcon, LeaveCommunityDialog } from "@/components/community-card";
-import { PostBlock } from "@/components/feed-post";
-import { Modal } from "@/components/modal";
-import { PhoneShell } from "@/components/phone-shell";
-import { BackLink } from "@/components/ui";
-import { ShareSheet } from "@/components/share-sheet";
-import { toastError, toastSuccess } from "@/components/toast";
-import { withVote } from "@/components/post-poll";
+import { useAuth } from "@/components/providers/auth";
+import { CommunityTopicIcon, LeaveCommunityDialog } from "@/components/communities/community-card";
+import { PostBlock } from "@/components/feed/feed-post";
+import { Modal } from "@/components/ui/modal";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { BackLink } from "@/components/ui/ui";
+import { ShareSheet } from "@/components/overlays/share-sheet";
+import { toastError, toastSuccess } from "@/components/ui/toast";
+import { withVote } from "@/components/feed/post-poll";
 import {
   COMMUNITY_TYPE_OPTIONS,
   communityMediaUrl,

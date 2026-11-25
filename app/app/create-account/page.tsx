@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AuthHeader } from "@/components/phone-shell";
-import { AuthShell } from "@/components/auth-shell";
-import { ArrowIcon, BackLink, Button, Divider, Field, TextInput } from "@/components/ui";
-import { useAuth } from "@/components/auth";
-import { GoogleAuthButton } from "@/components/auth-decor";
+import { AuthHeader } from "@/components/layout/phone-shell";
+import { AuthShell } from "@/components/auth/auth-shell";
+import { ArrowIcon, BackLink, Button, Divider, Field, TextInput } from "@/components/ui/ui";
+import { useAuth } from "@/components/providers/auth";
+import { GoogleAuthButton } from "@/components/auth/auth-decor";
 import { Check, Eye, EyeOff, Mail, MailCheck } from "lucide-react";
 
 function strengthOf(password: string) {
