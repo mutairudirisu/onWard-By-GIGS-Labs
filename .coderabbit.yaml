@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "en-US"
+early_access: false
+reviews:
+  profile: "assertive"
+  request_changes_workflow: true
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - "^QA$"
+    ignore_title_keywords:
+      - "WIP"
+      - "DO NOT MERGE"
+  path_filters:
+    - "!**/node_modules/**"
+    - "!**/dist/**"
+    - "!**/build/**"
+    - "!**/*.lock"
+    - "!**/package-lock.json"
+  path_instructions:
+    - path: "**"
+      instructions: >-
+        Review as a QA gate before code reaches staging and production.
+        Flag bugs, security problems, hard-coded secrets, missing error
+        handling, unused code and unused imports, and new logic that has
+        no tests. Keep comments short and specific.
+
+chat:
+  auto_reply: true
