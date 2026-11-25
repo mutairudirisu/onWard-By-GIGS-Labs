@@ -1,0 +1,177 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Wordmark } from "@/components/ui/wordmark";
+import { useCurrentUser } from "@/components/providers/auth";
+import { UnreadDot, useNotifications } from "@/components/providers/notifications";
+import { useExchangeBadge } from "@/lib/exchange-badge";
+import {
+  BarChart3,
+  Bell,
+  Compass,
+  FileText,
+  Flame,
+  GraduationCap,
+  Home,
+  MessagesSquare,
+  Plus,
+  Sprout,
+  Trophy,
+  User,
+  UsersRound,
+} from "lucide-react";
+
+const MENU = [
+  { href: "/communities", label: "Discover communities", Icon: Compass },
+  { href: "/communities/new", label: "Create a community", Icon: Plus },
+  { href: "/today", label: "Home", Icon: Home },
+  { href: "/onwards", label: "onWards", Icon: Sprout },
+  { href: "/feed", label: "Exchange", Icon: MessagesSquare },
+  { href: "/network", label: "My Network", Icon: UsersRound },
+  { href: "/notifications", label: "Notifications", Icon: Bell, badge: true },
+  { href: "/profile", label: "You", Icon: User },
+];
+
+const PROGRESS = [
+  { href: "/streaks", label: "Streaks", Icon: Flame },
+  { href: "/leaderboard", label: "Leaderboard", Icon: Trophy },
+  { href: "/insights", label: "Insights", Icon: BarChart3 },
+  { href: "/student", label: "Student space", Icon: GraduationCap },
+  { href: "/cv", label: "CV Builder", Icon: FileText, comingSoon: process.env.NODE_ENV === "production" },
+];
+
+const AUTH_ROUTES = [
+  "/",
+  "/verify",
+  "/usage",
+  "/sign-in",
+  "/create-account",
+  "/forgot-password",
+];
+
+function isActive(pathname: string, href: string) {
+  if (href === "/communities/new") return pathname === href;
+  if (href === "/communities") {
+    return pathname === href || (pathname.startsWith(`${href}/`) && pathname !== "/communities/new");
+  }
+  if (href === "/profile") {
+    return pathname === "/profile" || pathname.startsWith("/profile/");
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function NavGroup({
+  title,
+  items,
+  pathname,
+  unread = 0,
+  newPosts = 0,
+}: {
+  title: string;
+  items: {
+    href: string;
+    label: string;
+    Icon: typeof Home;
+    badge?: boolean;
+    comingSoon?: boolean;
+  }[];
+  pathname: string;
+  unread?: number;
+  newPosts?: number;
+}) {
+  return (
+    <div>
+      <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-faint">
+        {title}
+      </p>
+      <div className="space-y-0.5">
+        {items.map(({ href, label, Icon, badge, comingSoon }) => {
+          const active = isActive(pathname, href);
+          const count = badge ? unread : href === "/feed" ? newPosts : 0;
+          if (comingSoon) {
+            return (
+              <div
+                key={href}
+                aria-disabled="true"
+                className="flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-semibold text-inksoft opacity-65"
+              >
+                <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+                <span>{label}</span>
+                <span className="ml-auto rounded-full bg-cream px-1.5 py-0.5 text-[7px] font-bold uppercase tracking-[0.06em] text-muted">
+                  Coming soon
+                </span>
+              </div>
+            );
+          }
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-semibold transition ${
+                active
+                  ? "bg-lime-soft text-ink"
+                  : "text-inksoft hover:bg-cream hover:text-ink"
+              }`}
+            >
+              <Icon
+                className={`h-[18px] w-[18px] ${active ? "text-lime-deep" : ""}`}
+                strokeWidth={active ? 2.3 : 2}
+              />
+              {label}
+              {count > 0 ? (
+                <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white tabular-nums ring-2 ring-paper">
+                  {count > 99 ? "99+" : badge ? count : `+${count}`}
+                </span>
+              ) : null}
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function Sidebar() {
+  const pathname = usePathname();
+  const user = useCurrentUser();
+  const { unread } = useNotifications();
+  const newPosts = useExchangeBadge(isActive(pathname, "/feed"));
+  if (AUTH_ROUTES.includes(pathname)) return null;
+
+  return (
+    <aside className="sticky top-0 hidden h-dvh w-[220px] shrink-0 flex-col border-r border-line bg-paper px-3 py-5 md:flex lg:w-[248px]">
+      <Link href="/today" className="mb-5 flex items-center gap-1 px-2">
+        <Wordmark className="text-[17px]" />
+      </Link>
+
+      <Link
+        href="/onwards/new"
+        className="mb-6 flex items-center justify-center gap-2 rounded-btn bg-lime px-3 py-2.5 text-[13px] font-semibold text-dark transition hover:bg-lime-deep"
+      >
+        <Plus className="h-4 w-4" strokeWidth={2.4} />
+        New onWard
+      </Link>
+
+      <nav className="flex-1 space-y-5 overflow-y-auto">
+        <NavGroup title="Menu" items={MENU} pathname={pathname} unread={unread} newPosts={newPosts} />
+        <NavGroup title="Progress" items={PROGRESS} pathname={pathname} />
+      </nav>
+
+      <Link
+        href="/profile"
+        className="flex items-center gap-2.5 rounded-xl px-2 py-2 transition hover:bg-cream"
+      >
+        <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-lime-soft text-[10px] font-bold text-ink">
+          {user.initials}
+          <UnreadDot />
+        </span>
+        <span className="min-w-0">
+          <span className="block truncate text-[12px] font-bold text-ink">{user.name}</span>
+          <span className="block truncate text-[10px] text-muted">{user.role}</span>
+        </span>
+      </Link>
+    </aside>
+  );
+}
