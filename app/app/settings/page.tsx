@@ -3,12 +3,12 @@
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { PhoneShell } from "@/components/phone-shell";
-import { BackLink, Button, Chip, PageHeader, Toggle } from "@/components/ui";
-import { ProBadge } from "@/components/pro";
-import { useStore } from "@/components/store";
-import { useAuth } from "@/components/auth";
-import { useNotifications } from "@/components/notifications";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { BackLink, Button, Chip, PageHeader, Toggle } from "@/components/ui/ui";
+import { ProBadge } from "@/components/overlays/pro";
+import { useStore } from "@/components/providers/store";
+import { useAuth } from "@/components/providers/auth";
+import { useNotifications } from "@/components/providers/notifications";
 import { canVibrate, haptic } from "@/lib/haptics";
 import { resolveTheme, useSystemDark } from "@/lib/theme";
 import {

@@ -2,19 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { Comfortaa } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
-import { AuthGate, AuthProvider } from "@/components/auth";
-import { ChecklistReminderScheduler } from "@/components/checklist-widget";
-import { FeedbackPrompt } from "@/components/feedback-prompt";
-import { InstallInstructionsOnRequest } from "@/components/install-instructions-on-request";
-import { NotificationsProvider } from "@/components/notifications";
-import { NavigationHistoryTracker } from "@/components/navigation-history";
-import { FocusTimerScheduler } from "@/components/pomodoro-widget";
-import { ServiceWorkerRegister } from "@/components/service-worker-register";
-import { Sidebar } from "@/components/sidebar";
-import { StoreProvider } from "@/components/store";
-import { ThemeManager } from "@/components/theme-manager";
-import { ToastHost } from "@/components/toast";
-import { UpdatePrompt } from "@/components/update-prompt";
+import { AppProviders, AppEffects, AppOverlays, ServiceWorkerRegister } from "@/components/providers";
+import { AppShell } from "@/components/layout";
+import { ToastHost } from "@/components/ui";
 
 const comfortaa = Comfortaa({
   subsets: ["latin"],
@@ -57,27 +47,13 @@ export default async function RootLayout({
   return (
     <html lang="en" className={comfortaa.variable}>
       <body>
-        <AuthProvider>
-          <InstallInstructionsOnRequest />
-          <StoreProvider>
-            <AuthGate>
-              <NotificationsProvider>
-                <NavigationHistoryTracker />
-                <ThemeManager />
-                <ChecklistReminderScheduler />
-                <FocusTimerScheduler />
-                <div className="flex min-h-dvh w-full flex-col bg-cream md:flex-row">
-                  <Sidebar />
-                  <div className="flex min-h-dvh flex-1 flex-col">{children}</div>
-                </div>
-                <ServiceWorkerRegister />
-                <UpdatePrompt />
-                <FeedbackPrompt />
-                <ToastHost />
-              </NotificationsProvider>
-            </AuthGate>
-          </StoreProvider>
-        </AuthProvider>
+        <AppProviders>
+          <AppEffects />
+          <AppShell>{children}</AppShell>
+          <AppOverlays />
+        </AppProviders>
+        <ServiceWorkerRegister />
+        <ToastHost />
       </body>
     </html>
   );

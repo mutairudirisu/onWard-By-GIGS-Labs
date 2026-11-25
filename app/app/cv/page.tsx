@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PhoneShell } from "@/components/phone-shell";
-import { BackButton, Button, Field, TextArea, TextInput } from "@/components/ui";
-import { Wordmark } from "@/components/wordmark";
-import { CvPreview } from "@/components/cv-preview";
-import { useAuth, useCurrentUser } from "@/components/auth";
-import { useStore } from "@/components/store";
-import { ProBadge, UpgradeModal } from "@/components/pro";
-import { Modal } from "@/components/modal";
-import { toastError, toastSuccess } from "@/components/toast";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { BackButton, Button, Field, TextArea, TextInput } from "@/components/ui/ui";
+import { Wordmark } from "@/components/ui/wordmark";
+import { CvPreview } from "@/components/portfolio/cv-preview";
+import { useAuth, useCurrentUser } from "@/components/providers/auth";
+import { useStore } from "@/components/providers/store";
+import { ProBadge, UpgradeModal } from "@/components/overlays/pro";
+import { Modal } from "@/components/ui/modal";
+import { toastError, toastSuccess } from "@/components/ui/toast";
 import { useActivity } from "@/lib/activity";
 import { downloadBlob } from "@/lib/download";
 import { fetchCvDoc, saveCvDoc, uuid } from "@/lib/db";

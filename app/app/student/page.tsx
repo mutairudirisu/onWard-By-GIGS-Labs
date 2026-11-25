@@ -12,12 +12,12 @@ import {
   Store,
   Users,
 } from "lucide-react";
-import { PhoneShell } from "@/components/phone-shell";
-import { PortfolioDownloadButton, usePortfolio } from "@/components/portfolio-download";
-import { BackLink, ProgressBar, Tag } from "@/components/ui";
-import { Wordmark } from "@/components/wordmark";
-import { useCurrentUser } from "@/components/auth";
-import { useStore } from "@/components/store";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { PortfolioDownloadButton, usePortfolio } from "@/components/portfolio/portfolio-download";
+import { BackLink, ProgressBar, Tag } from "@/components/ui/ui";
+import { Wordmark } from "@/components/ui/wordmark";
+import { useCurrentUser } from "@/components/providers/auth";
+import { useStore } from "@/components/providers/store";
 import { useActivity } from "@/lib/activity";
 import { PRO_PRICING } from "@/lib/data";
 import { haptic } from "@/lib/haptics";

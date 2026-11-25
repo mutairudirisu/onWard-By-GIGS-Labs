@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AuthHeader } from "@/components/phone-shell";
-import { AuthShell } from "@/components/auth-shell";
-import { ArrowIcon, Button, Divider, Field, TextInput } from "@/components/ui";
-import { useAuth, readAuthMethod, type AuthMethod } from "@/components/auth";
-import { GoogleAuthButton, LastUsedTag } from "@/components/auth-decor";
+import { AuthHeader } from "@/components/layout/phone-shell";
+import { AuthShell } from "@/components/auth/auth-shell";
+import { ArrowIcon, Button, Divider, Field, TextInput } from "@/components/ui/ui";
+import { useAuth, readAuthMethod, type AuthMethod } from "@/components/providers/auth";
+import { GoogleAuthButton, LastUsedTag } from "@/components/auth/auth-decor";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 
 function ErrorNote({ children }: { children: React.ReactNode }) {

@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AuthHeader } from "@/components/phone-shell";
-import { AuthShell } from "@/components/auth-shell";
-import { ArrowIcon, BackLink, Button, Field, TextInput } from "@/components/ui";
-import { useAuth } from "@/components/auth";
+import { AuthHeader } from "@/components/layout/phone-shell";
+import { AuthShell } from "@/components/auth/auth-shell";
+import { ArrowIcon, BackLink, Button, Field, TextInput } from "@/components/ui/ui";
+import { useAuth } from "@/components/providers/auth";
 import { Lock, Mail, MailCheck, Sparkles } from "lucide-react";
 
 export default function ForgotPasswordPage() {

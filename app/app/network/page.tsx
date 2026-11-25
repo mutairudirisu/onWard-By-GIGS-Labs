@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@/components/auth";
-import { Avatar } from "@/components/feed-post";
-import { PhoneShell } from "@/components/phone-shell";
-import { toastError, toastSuccess } from "@/components/toast";
-import { TextInput } from "@/components/ui";
+import { useAuth } from "@/components/providers/auth";
+import { Avatar } from "@/components/feed/feed-post";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { toastError, toastSuccess } from "@/components/ui/toast";
+import { TextInput } from "@/components/ui/ui";
 import {
   fetchConnectionPosts,
   fetchNetworkCatchupEvents,

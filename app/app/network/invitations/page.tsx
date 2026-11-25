@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@/components/auth";
-import { Avatar } from "@/components/feed-post";
-import { PhoneShell } from "@/components/phone-shell";
-import { BackLink, Button } from "@/components/ui";
-import { toastError, toastSuccess } from "@/components/toast";
+import { useAuth } from "@/components/providers/auth";
+import { Avatar } from "@/components/feed/feed-post";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { BackLink, Button } from "@/components/ui/ui";
+import { toastError, toastSuccess } from "@/components/ui/toast";
 import {
   fetchNetworkRequests,
   respondToConnectionRequest,

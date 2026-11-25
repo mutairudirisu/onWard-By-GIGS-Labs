@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { PhoneShell } from "@/components/phone-shell";
-import { ShareButton } from "@/components/share-button";
-import { BackLink, Chip } from "@/components/ui";
-import { useAuth, useCurrentUser } from "@/components/auth";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { ShareButton } from "@/components/overlays/share-button";
+import { BackLink, Chip } from "@/components/ui/ui";
+import { useAuth, useCurrentUser } from "@/components/providers/auth";
 import { fetchLeaderboard, type LeaderboardRow } from "@/lib/db";
 import { Crown, Flame, Trophy } from "lucide-react";
-import { BoardSkeleton } from "@/components/skeleton";
+import { BoardSkeleton } from "@/components/ui/skeleton";
 
 const PERIODS = ["This week", "This month", "All time"] as const;
 type Period = (typeof PERIODS)[number];

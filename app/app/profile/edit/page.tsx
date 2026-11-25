@@ -4,13 +4,13 @@ import { useEffect, useRef, useState, type PointerEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, Pencil } from "lucide-react";
-import { PhoneShell } from "@/components/phone-shell";
-import { Avatar } from "@/components/feed-post";
-import { Modal } from "@/components/modal";
-import { BackLink, Button, Field, TextArea, TextInput, Toggle } from "@/components/ui";
-import { useAuth, useCurrentUser } from "@/components/auth";
-import { useStore } from "@/components/store";
-import { toastError, toastSuccess } from "@/components/toast";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { Avatar } from "@/components/feed/feed-post";
+import { Modal } from "@/components/ui/modal";
+import { BackLink, Button, Field, TextArea, TextInput, Toggle } from "@/components/ui/ui";
+import { useAuth, useCurrentUser } from "@/components/providers/auth";
+import { useStore } from "@/components/providers/store";
+import { toastError, toastSuccess } from "@/components/ui/toast";
 import {
   fetchNetworkProfileDetails,
   saveNetworkProfileDetails,

@@ -3,17 +3,17 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/components/auth";
-import { Modal } from "@/components/modal";
-import { PhoneShell } from "@/components/phone-shell";
-import { DictateTextArea } from "@/components/dictate-field";
-import { BackLink, Button, Field, TextInput, Toggle } from "@/components/ui";
-import { ProBadge, UpgradeModal } from "@/components/pro";
-import { useStore } from "@/components/store";
+import { useAuth } from "@/components/providers/auth";
+import { Modal } from "@/components/ui/modal";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { DictateTextArea } from "@/components/widgets/dictate-field";
+import { BackLink, Button, Field, TextInput, Toggle } from "@/components/ui/ui";
+import { ProBadge, UpgradeModal } from "@/components/overlays/pro";
+import { useStore } from "@/components/providers/store";
 import { type Evidence } from "@/lib/data";
 import { todayISO } from "@/lib/dates";
 import { removeWardEvidenceFiles, uploadWardEvidence, uuid } from "@/lib/db";
-import { toastError } from "@/components/toast";
+import { toastError } from "@/components/ui/toast";
 import {
   Check,
   File as FileIcon,

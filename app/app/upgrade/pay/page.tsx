@@ -12,10 +12,10 @@ import {
   Smartphone,
   Sparkles,
 } from "lucide-react";
-import { PhoneShell } from "@/components/phone-shell";
-import { BackLink } from "@/components/ui";
-import { useStore } from "@/components/store";
-import { useCurrentUser } from "@/components/auth";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { BackLink } from "@/components/ui/ui";
+import { useStore } from "@/components/providers/store";
+import { useCurrentUser } from "@/components/providers/auth";
 import { PRO_PRICING } from "@/lib/data";
 import { isStudentRole, pricingFor } from "@/lib/student";
 

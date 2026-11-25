@@ -11,14 +11,14 @@ import {
   Plus,
   X,
 } from "lucide-react";
-import { PhoneShell } from "@/components/phone-shell";
-import { BackLink } from "@/components/ui";
-import { Avatar, PostBlock } from "@/components/feed-post";
-import { Modal } from "@/components/modal";
-import { PostOptionsSheet } from "@/components/post-options-sheet";
-import { useSheetDrag } from "@/components/sheet-drag";
-import { useAuth } from "@/components/auth";
-import { toastError, toastSuccess } from "@/components/toast";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { BackLink } from "@/components/ui/ui";
+import { Avatar, PostBlock } from "@/components/feed/feed-post";
+import { Modal } from "@/components/ui/modal";
+import { PostOptionsSheet } from "@/components/feed/post-options-sheet";
+import { useSheetDrag } from "@/components/ui/sheet-drag";
+import { useAuth } from "@/components/providers/auth";
+import { toastError, toastSuccess } from "@/components/ui/toast";
 import {
   deletePost,
   fetchMyPostReactions,

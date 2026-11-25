@@ -140,7 +140,6 @@ export default function Home() {
         <span className="pointer-events-none absolute -right-36 top-64 h-96 w-96 rounded-full bg-[#dbe7c6]/55 blur-3xl" />
         <div className="container-x relative">
           <div className="mx-auto max-w-[1040px] text-center">
-            <p className="eyebrow">A calmer way to grow</p>
             <h1 className="editorial-display mt-6 text-balance text-ink">
               Your work deserves
               <br className="hidden sm:block" />{" "}

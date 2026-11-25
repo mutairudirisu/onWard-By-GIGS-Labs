@@ -1,16 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { Avatar } from "@/components/feed-post";
-import { HeatLegend, HeatMap } from "@/components/heat-map";
-import { PhoneShell } from "@/components/phone-shell";
-import { ReferralCard } from "@/components/referral-card";
-import { ShareButton } from "@/components/share-button";
-import { Button, PageHeader, Tag } from "@/components/ui";
-import { CvEntryButton } from "@/components/cv-entry-button";
-import { ProBadge } from "@/components/pro";
-import { useStore } from "@/components/store";
-import { useCurrentUser } from "@/components/auth";
+import { Avatar } from "@/components/feed/feed-post";
+import { HeatLegend, HeatMap } from "@/components/widgets/heat-map";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { ReferralCard } from "@/components/overlays/referral-card";
+import { ShareButton } from "@/components/overlays/share-button";
+import { Button, PageHeader, Tag } from "@/components/ui/ui";
+import { CvEntryButton } from "@/components/portfolio/cv-entry-button";
+import { ProBadge } from "@/components/overlays/pro";
+import { useStore } from "@/components/providers/store";
+import { useCurrentUser } from "@/components/providers/auth";
 import { heatmapFrom, useActivity } from "@/lib/activity";
 import {
   BarChart3,

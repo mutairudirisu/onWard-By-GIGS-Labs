@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Button } from "@/components/ui";
-import { PhoneShell } from "@/components/phone-shell";
-import { PortfolioDetails } from "@/components/portfolio-details";
-import { useAuth } from "@/components/auth";
-import { Wordmark } from "@/components/wordmark";
+import { Button } from "@/components/ui/ui";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { PortfolioDetails } from "@/components/portfolio/portfolio-details";
+import { useAuth } from "@/components/providers/auth";
+import { Wordmark } from "@/components/ui/wordmark";
 import { fetchSharedPortfolio } from "@/lib/portfolio-share";
 import type { PortfolioModel } from "@/lib/portfolio";
 

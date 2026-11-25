@@ -1,9 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { PhoneShell } from "@/components/phone-shell";
-import { ArrowIcon, Button } from "@/components/ui";
-import { AuthTop } from "@/components/auth-decor";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { ArrowIcon, Button } from "@/components/ui/ui";
+import { AuthTop } from "@/components/auth/auth-decor";
 
 const LENGTH = 6;
 

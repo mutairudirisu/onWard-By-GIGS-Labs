@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "@/components/auth";
+import { useAuth } from "@/components/providers/auth";
 import { countNewExchangePosts } from "@/lib/db";
 
 /**

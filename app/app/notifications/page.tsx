@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { PhoneShell } from "@/components/phone-shell";
-import { BackLink } from "@/components/ui";
-import { useNotifications } from "@/components/notifications";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { BackLink } from "@/components/ui/ui";
+import { useNotifications } from "@/components/providers/notifications";
 import type { AppNotice, NoticeKind } from "@/lib/notices";
 import {
   Bell,

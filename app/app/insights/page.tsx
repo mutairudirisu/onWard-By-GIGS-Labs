@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PhoneShell } from "@/components/phone-shell";
-import { BackLink, Chip } from "@/components/ui";
-import { useStore } from "@/components/store";
+import { PhoneShell } from "@/components/layout/phone-shell";
+import { BackLink, Chip } from "@/components/ui/ui";
+import { useStore } from "@/components/providers/store";
 import { bucketsFrom, useActivity } from "@/lib/activity";
 import { addDays, monthTitle, toISO } from "@/lib/dates";
 import { Sprout } from "lucide-react";
